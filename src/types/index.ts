@@ -26,4 +26,39 @@ export interface DataRequestResult {
 export interface DataRequestOptions {
   memo?: string;
   customTimeout?: number;
+}
+
+// DataRequest Configuration Interface
+export interface SEDADataRequestConfig {
+  // Oracle Program Configuration
+  oracleProgramId: string;
+  
+  // Execution Configuration
+  replicationFactor: number;
+  gasPrice: bigint;
+  execGasLimit: number;
+  
+  // Consensus Configuration
+  consensusOptions: {
+    method: 'none';
+  };
+  
+  // Timing Configuration (in seconds)
+  timeoutSeconds: number;
+  pollingIntervalSeconds: number;
+  
+  // Optional metadata
+  memo?: string;
+}
+
+// Network Configuration Interface (includes both RPC and DataRequest settings)
+export interface NetworkConfig {
+  // Network connection settings
+  rpcEndpoint: string;
+  // Explorer endpoint
+  explorerEndpoint: string;
+  network: NetworkType;
+  
+  // DataRequest settings
+  dataRequest: SEDADataRequestConfig;
 } 

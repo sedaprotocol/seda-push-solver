@@ -6,9 +6,9 @@
 
 import { buildSigningConfig, postAndAwaitDataRequest, Signer } from '@seda-protocol/dev-tools';
 import type { PostDataRequestInput, GasOptions } from '@seda-protocol/dev-tools';
-import { getNetworkConfig, type SEDADataRequestConfig } from './seda-dr-config';
+import { getNetworkConfig } from './seda-dr-config';
 import { hexBEToNumber, hexBEToString } from './helpers/hex-converter';
-import type { SEDAConfig, DataRequestResult, DataRequestOptions } from './types';
+import type { SEDAConfig, DataRequestResult, DataRequestOptions, SEDADataRequestConfig } from './types';
 
 /**
  * SEDA DataRequest Builder
@@ -213,8 +213,7 @@ export async function exampleUsage(): Promise<void> {
   }
 }
 
-// Re-export key types and functions for convenience
-export type { SEDADataRequestConfig } from './seda-dr-config';
+// Re-export key functions for convenience
 export {
   getNetworkConfig,
   getDataRequestConfig,

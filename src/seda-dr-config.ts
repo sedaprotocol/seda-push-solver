@@ -3,41 +3,7 @@
  * Centralized configuration for all network settings
  */
 
-// DataRequest Configuration Interface
-export interface SEDADataRequestConfig {
-
-  // Oracle Program Configuration
-  oracleProgramId: string;
-  
-  // Execution Configuration
-  replicationFactor: number;
-  gasPrice: bigint;
-  execGasLimit: number;
-  
-  // Consensus Configuration
-  consensusOptions: {
-    method: 'none';
-  };
-  
-  // Timing Configuration (in seconds)
-  timeoutSeconds: number;
-  pollingIntervalSeconds: number;
-  
-  // Optional metadata
-  memo?: string;
-}
-
-// Network Configuration Interface (includes both RPC and DataRequest settings)
-export interface NetworkConfig {
-  // Network connection settings
-  rpcEndpoint: string;
-  // Explorer endpoint
-  explorerEndpoint: string;
-  network: 'testnet' | 'mainnet' | 'local';
-  
-  // DataRequest settings
-  dataRequest: SEDADataRequestConfig;
-}
+import type { SEDADataRequestConfig, NetworkConfig, NetworkType } from './types';
 
 // Centralized Network Configurations
 export const SEDA_NETWORK_CONFIGS: Record<string, NetworkConfig> = {

@@ -20,7 +20,7 @@ export type {
 
 export type {
   SEDADataRequestConfig
-} from './seda-dr-config';
+} from './types';
 
 export type {
   SchedulerConfig
