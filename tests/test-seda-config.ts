@@ -6,10 +6,13 @@
 
 import { 
   loadSEDAConfig, 
-  SEDADataRequestBuilder, 
+  SEDADataRequestBuilder
+} from '../src/push-solver';
+
+import {
   getDataRequestConfig,
   validateDataRequestConfig
-} from '../src/push-solver';
+} from '../src/core/network';
 
 async function testSEDAConfiguration() {
   console.log('🧪 Testing SEDA Configuration\n');

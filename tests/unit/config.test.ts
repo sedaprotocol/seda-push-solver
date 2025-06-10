@@ -7,7 +7,7 @@ import {
   getDataRequestConfig,
   validateDataRequestConfig,
   SEDA_NETWORK_CONFIGS
-} from '../../src/seda-dr-config';
+} from '../../src/core/network';
 
 import type { SEDADataRequestConfig, NetworkConfig } from '../../src/types';
 
@@ -15,7 +15,7 @@ import type { SEDADataRequestConfig, NetworkConfig } from '../../src/types';
 const testnetConfig: NetworkConfig = getNetworkConfig('testnet');
 console.log('✅ getNetworkConfig works');
 console.log('   Testnet RPC:', testnetConfig.rpcEndpoint);
-console.log('   Testnet network:', testnetConfig.network);
+console.log('   Testnet network:', testnetConfig.name);
 
 // Test getting DataRequest configuration
 const drConfig: SEDADataRequestConfig = getDataRequestConfig('testnet');

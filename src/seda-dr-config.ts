@@ -1,29 +1,42 @@
 /**
- * SEDA Network and DataRequest Configuration
- * Backward compatibility layer - re-exports from core network modules
+ * Legacy SEDA DataRequest Configuration Exports
+ * Maintained for backward compatibility - imports from core modules
  */
 
-// Re-export all network configuration functionality from core modules
-export {
+import type { NetworkConfig, NetworkType } from './types';
+
+// Legacy exports - import from core modules for backward compatibility
+export { 
   SEDA_NETWORK_CONFIGS,
   getNetworkConfig,
-  getRpcEndpoint,
   getDataRequestConfig,
-  createDataRequestConfig,
   validateDataRequestConfig
 } from './core/network';
 
-// Import for legacy exports
+// Legacy interface that includes network field for backward compatibility
+interface LegacyNetworkConfig extends NetworkConfig {
+  network: NetworkType;
+}
+
+// Transform network configs to legacy format (add network field for compatibility)
 import { SEDA_NETWORK_CONFIGS } from './core/network';
 
-// Legacy exports for backward compatibility
-export const SEDA_DR_CONFIGS = Object.fromEntries(
-  Object.entries(SEDA_NETWORK_CONFIGS).map(([key, value]) => [key, value.dataRequest])
+const transformedConfigs: Record<string, LegacyNetworkConfig> = Object.fromEntries(
+  Object.entries(SEDA_NETWORK_CONFIGS).map(([key, value]) => [
+    key,
+    {
+      ...value,
+      network: value.name as NetworkType
+    }
+  ])
 );
+
+export { transformedConfigs as SEDA_DR_CONFIGS };
 
 export const SEDA_NETWORKS = Object.fromEntries(
   Object.entries(SEDA_NETWORK_CONFIGS).map(([key, value]) => [key, {
     rpcEndpoint: value.rpcEndpoint,
-    network: value.network
+    network: value.name,
+    mnemonic: undefined // This will be loaded from environment
   }])
 ); 

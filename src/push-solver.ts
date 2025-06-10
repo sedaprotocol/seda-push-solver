@@ -4,11 +4,17 @@
  * Handles configuration, signing, and posting of DataRequests to SEDA network
  */
 
-import { buildSigningConfig, postAndAwaitDataRequest, Signer } from '@seda-protocol/dev-tools';
-import type { PostDataRequestInput, GasOptions } from '@seda-protocol/dev-tools';
-import { getNetworkConfig } from './seda-dr-config';
-import { hexBEToNumber, hexBEToString } from './helpers/hex-converter';
-import type { SEDAConfig, DataRequestResult, DataRequestOptions, SEDADataRequestConfig } from './types';
+import { Signer } from '@seda-protocol/dev-tools';
+import { getNetworkConfig } from './core/network';
+import { 
+  buildDataRequestInput, 
+  buildGasOptions, 
+  buildAwaitOptions,
+  executeDataRequest,
+  initializeSigner,
+  loadSEDAConfig
+} from './core/data-request';
+import type { SEDAConfig, DataRequestResult, DataRequestOptions } from './types';
 
 /**
  * SEDA DataRequest Builder
@@ -35,18 +41,9 @@ export class SEDADataRequestBuilder {
       return;
     }
 
-    console.log('🔐 Initializing SEDA signing configuration...');
-    
     try {
-      const signingConfig = buildSigningConfig({
-        mnemonic: this.config.mnemonic!,
-        rpc: this.config.rpcEndpoint
-        // contract field omitted - will auto-detect or use SEDA_CORE_CONTRACT env var
-      });
-      
-      this.signer = await Signer.fromPartial(signingConfig);
+      this.signer = await initializeSigner(this.config);
       this.isInitialized = true;
-      console.log('✅ SEDA signing configuration initialized');
     } catch (error) {
       console.error('❌ Failed to initialize signing configuration:', error);
       throw error;
@@ -70,74 +67,23 @@ export class SEDADataRequestBuilder {
       const networkConfig = getNetworkConfig(this.config.network);
       const drConfig = networkConfig.dataRequest;
 
-      // Convert memo to Uint8Array if provided
-      const memoBytes = options.memo ? new TextEncoder().encode(options.memo) : new Uint8Array(0);
+      // Build the PostDataRequestInput using the modular function
+      const postInput = buildDataRequestInput(drConfig, options);
 
-      // Build the PostDataRequestInput
-      const postInput: PostDataRequestInput = {
-        // Oracle program configuration
-        execProgramId: drConfig.oracleProgramId,
-        
-        // Empty inputs since the oracle program doesn't expect any input
-        execInputs: new Uint8Array(0),
-        tallyInputs: new Uint8Array(0),
-        
-        // Execution configuration
-        replicationFactor: drConfig.replicationFactor,
-        execGasLimit: drConfig.execGasLimit,
-        gasPrice: drConfig.gasPrice,
-        
-        // Consensus configuration
-        consensusOptions: drConfig.consensusOptions,
-        
-        // Optional memo
-        memo: memoBytes
-      };
+      // Build gas and await options using modular functions
+      const gasOptions = buildGasOptions(drConfig);
+      const awaitOptions = buildAwaitOptions(drConfig, options);
 
-      // Gas options
-      const gasOptions: GasOptions = {
-        gasPrice: drConfig.gasPrice.toString()
-      };
-
-      // Await options
-      const awaitOptions = {
-        timeoutSeconds: options.customTimeout || drConfig.timeoutSeconds,
-        pollingIntervalSeconds: drConfig.pollingIntervalSeconds
-      };
-
-      console.log('📋 DataRequest Configuration:');
-      console.log(`   Oracle Program ID: ${postInput.execProgramId}`);
-      console.log(`   Replication Factor: ${postInput.replicationFactor}`);
-      console.log(`   Gas Limit: ${postInput.execGasLimit?.toLocaleString()}`);
-      console.log(`   Gas Price: ${postInput.gasPrice}`);
-      console.log(`   Timeout: ${awaitOptions.timeoutSeconds}s`);
       console.log(`   Memo: ${options.memo || drConfig.memo}`);
 
-      // Post the DataRequest and await result
-      const result = await postAndAwaitDataRequest(this.signer!, postInput, gasOptions, awaitOptions);
-
-      console.log('✅ DataRequest completed successfully');
-      console.log('📊 Result Details:');
-      console.log(`   DR ID: ${result.drId}`);
-      console.log(`   Exit Code: ${result.exitCode}`);
-      console.log(`   DR block Height: ${result.drBlockHeight}`);
-      console.log(`   Gas Used: ${result.gasUsed}`);
-      console.log(`   Consensus: ${result.consensus}`);
-      console.log(`   Result (as hex): ${result.result || 'No result data'}`);
-      console.log(`   Explorer: ${networkConfig.explorerEndpoint}/data-requests/${result.drId}/${result.drBlockHeight}`);
-      
-      // Log BE conversions if result looks like hex
-      if (result.result && typeof result.result === 'string' && /^(0x)?[0-9a-fA-F]+$/.test(result.result)) {
-        console.log(`   Result (number): ${hexBEToNumber(result.result)}`);
-      }
-
-      return {
-        drId: result.drId,
-        exitCode: result.exitCode,
-        result: result.result,
-        blockHeight: Number(result.blockHeight),
-        gasUsed: result.gasUsed.toString()
-      };
+      // Execute the DataRequest using the modular function
+      return await executeDataRequest(
+        this.signer!, 
+        postInput, 
+        gasOptions, 
+        awaitOptions, 
+        networkConfig
+      );
 
     } catch (error) {
       console.error('❌ DataRequest failed:', error);
@@ -160,26 +106,8 @@ export class SEDADataRequestBuilder {
   }
 }
 
-/**
- * Load SEDA configuration from environment variables
- */
-export function loadSEDAConfig(): SEDAConfig {
-  const network = (process.env.SEDA_NETWORK || 'testnet') as 'testnet' | 'mainnet' | 'local';
-  const mnemonic = process.env.SEDA_MNEMONIC;
-  
-  if (!mnemonic) {
-    throw new Error('SEDA_MNEMONIC environment variable is required');
-  }
-
-  // Get network configuration
-  const networkConfig = getNetworkConfig(network);
-
-  return {
-    rpcEndpoint: process.env.SEDA_RPC_ENDPOINT || networkConfig.rpcEndpoint,
-    network,
-    mnemonic
-  };
-}
+// Re-export the loadSEDAConfig function for backward compatibility
+export { loadSEDAConfig };
 
 /**
  * Example usage function
@@ -211,16 +139,4 @@ export async function exampleUsage(): Promise<void> {
     console.error('❌ Example failed:', error);
     throw error;
   }
-}
-
-// Re-export key functions for convenience
-export {
-  getNetworkConfig,
-  getDataRequestConfig,
-  getRpcEndpoint,
-  createDataRequestConfig,
-  validateDataRequestConfig,
-  SEDA_NETWORK_CONFIGS,
-  SEDA_DR_CONFIGS,
-  SEDA_NETWORKS
-} from './seda-dr-config'; 
+} 

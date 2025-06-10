@@ -1,63 +1,57 @@
 /**
- * Network Configuration Data and Access Functions
- * Centralized storage and access for network-specific settings
+ * Network Configuration Data
+ * Contains all network-specific configurations for testnet, mainnet, and local environments
  */
 
 import type { NetworkConfig } from '../../types';
 
-// Centralized Network Configurations
-export const SEDA_NETWORK_CONFIGS: Record<string, NetworkConfig> = {
+// Network configurations for different SEDA environments
+export const SEDA_NETWORK_CONFIGS: Record<'testnet' | 'mainnet' | 'local', NetworkConfig> = {
   testnet: {
+    name: 'testnet',
     rpcEndpoint: 'https://rpc.testnet.seda.xyz',
     explorerEndpoint: 'https://testnet.explorer.seda.xyz',
-    network: 'testnet',
     dataRequest: {
       oracleProgramId: 'd9814ceafe4084bd6d9b737be048778dfd81026531cbe4fb361df9c446687607',
-      replicationFactor: 1,
-      execGasLimit: 150_000_000_000_000,
-      gasPrice: 10000n,
-      consensusOptions: {
-        method: 'none'
-      },
-      timeoutSeconds: 60,
-      pollingIntervalSeconds: 1,
-      memo: 'Data request via SEDA'
+      replicationFactor: 2,
+      execGasLimit: BigInt(150_000_000_000_000),
+      gasPrice: BigInt(10_000_000_000),
+      consensusOptions: { method: 'none' },
+      timeoutSeconds: 120,
+      pollingIntervalSeconds: 5,
+      memo: 'DX Feed Oracle DataRequest'
     }
   },
   
   mainnet: {
+    name: 'mainnet',
     rpcEndpoint: 'https://rpc.seda.xyz',
     explorerEndpoint: 'https://explorer.seda.xyz',
-    network: 'mainnet',
     dataRequest: {
-      oracleProgramId: '', // Set this when you have a mainnet oracle program
-      replicationFactor: 1,
-      execGasLimit: 10_000_000_000_000,
-      gasPrice: 1000n,
-      consensusOptions: {
-        method: 'none'
-      },
-      timeoutSeconds: 60,
+      oracleProgramId: 'd9814ceafe4084bd6d9b737be048778dfd81026531cbe4fb361df9c446687607',
+      replicationFactor: 2,
+      execGasLimit: BigInt(10_000_000_000_000),
+      gasPrice: BigInt(10_000_000_000),
+      consensusOptions: { method: 'none' },
+      timeoutSeconds: 120,
       pollingIntervalSeconds: 5,
-      memo: 'Data request via SEDA'
+      memo: 'DX Feed Oracle DataRequest'
     }
   },
   
   local: {
+    name: 'local',
     rpcEndpoint: 'http://localhost:26657',
-    explorerEndpoint: 'http://localhost:8000',
-    network: 'local',
+    explorerEndpoint: 'http://localhost:3000',
     dataRequest: {
-      oracleProgramId: 'local-test-program-id',
+      oracleProgramId: 'd9814ceafe4084bd6d9b737be048778dfd81026531cbe4fb361df9c446687607',
       replicationFactor: 1,
-      execGasLimit: 10_000_000_000_000,
-      gasPrice: 1000n,
-      consensusOptions: {
-        method: 'none'
-      },
-      timeoutSeconds: 30,
-      pollingIntervalSeconds: 2,
-      memo: 'Local test request'
+      execGasLimit: BigInt(10_000_000_000_000),
+      gasPrice: BigInt(10_000_000_000),
+      consensusOptions: { method: 'none' },
+      timeoutSeconds: 60,
+      pollingIntervalSeconds: 3,
+      memo: 'DX Feed Oracle DataRequest (Local)'
     }
   }
 };

@@ -29,21 +29,17 @@ import type { NetworkConfig, SEDADataRequestConfig } from '../../src/types';
 
 console.log('🧪 Testing Core Network Module Structure\n');
 
-// Test direct module imports
 console.log('✅ Direct module imports work');
 const testnetConfig: NetworkConfig = getNetworkConfig('testnet');
-console.log('   Network config:', testnetConfig.network);
-
 const drConfig: SEDADataRequestConfig = getDataRequestConfig('testnet');
-console.log('   DR config oracle ID:', drConfig.oracleProgramId.slice(0, 10) + '...');
-
-const rpcEndpoint = getRpcEndpoint('testnet');
-console.log('   RPC endpoint:', rpcEndpoint);
+console.log('   Network config:', testnetConfig.name);
+console.log('   DR config oracle ID:', drConfig.oracleProgramId.substring(0, 10) + '...');
+console.log('   RPC endpoint:', testnetConfig.rpcEndpoint);
 
 // Test index imports
 console.log('\n✅ Core index imports work');
 const testnetConfig2 = getNetworkConfigFromIndex('testnet');
-console.log('   Network config from index:', testnetConfig2.network);
+console.log('   Network config from index:', testnetConfig2.name);
 
 const drConfig2 = getDataRequestConfigFromIndex('testnet');
 console.log('   DR config from index oracle ID:', drConfig2.oracleProgramId.slice(0, 10) + '...');

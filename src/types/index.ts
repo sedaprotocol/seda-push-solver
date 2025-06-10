@@ -1,64 +1,69 @@
 /**
- * Core Type Definitions
- * Shared TypeScript interfaces and types for the SEDA DataRequest Pusher
+ * Core Type Definitions for SEDA DataRequest System
+ * Centralized location for all interfaces and types used throughout the application
  */
 
 // Network type definition
 export type NetworkType = 'testnet' | 'mainnet' | 'local';
 
-// Main SEDA configuration interface
+// SEDA Configuration Types
 export interface SEDAConfig {
   rpcEndpoint: string;
   network: NetworkType;
   mnemonic?: string;
 }
 
-// DataRequest result interface
+export interface NetworkConfig {
+  name: string;
+  rpcEndpoint: string;
+  explorerEndpoint: string;
+  dataRequest: SEDADataRequestConfig;
+}
+
+export interface SEDADataRequestConfig {
+  oracleProgramId: string;
+  replicationFactor: number;
+  execGasLimit: bigint;
+  gasPrice: bigint;
+  consensusOptions: any;
+  timeoutSeconds: number;
+  pollingIntervalSeconds: number;
+  memo: string;
+}
+
+// DataRequest Operation Types
 export interface DataRequestResult {
   drId: string;
   exitCode: number;
-  result?: any;
+  result?: string | null;
   blockHeight?: number;
   gasUsed?: string;
 }
 
-// DataRequest posting options
 export interface DataRequestOptions {
   memo?: string;
   customTimeout?: number;
 }
 
-// DataRequest Configuration Interface
-export interface SEDADataRequestConfig {
-  // Oracle Program Configuration
-  oracleProgramId: string;
+// Scheduler Configuration Types
+export interface SchedulerConfig {
+  // Interval between DataRequests (in milliseconds)
+  intervalMs: number;
   
-  // Execution Configuration
-  replicationFactor: number;
-  gasPrice: bigint;
-  execGasLimit: number;
+  // Whether to run continuously or stop after one request
+  continuous: boolean;
   
-  // Consensus Configuration
-  consensusOptions: {
-    method: 'none';
-  };
+  // Maximum number of retries for failed requests
+  maxRetries: number;
   
-  // Timing Configuration (in seconds)
-  timeoutSeconds: number;
-  pollingIntervalSeconds: number;
-  
-  // Optional metadata
+  // Custom memo for DataRequests
   memo?: string;
 }
 
-// Network Configuration Interface (includes both RPC and DataRequest settings)
-export interface NetworkConfig {
-  // Network connection settings
-  rpcEndpoint: string;
-  // Explorer endpoint
-  explorerEndpoint: string;
-  network: NetworkType;
-  
-  // DataRequest settings
-  dataRequest: SEDADataRequestConfig;
+// Scheduler Statistics Types
+export interface SchedulerStats {
+  totalRequests: number;
+  successfulRequests: number;
+  failedRequests: number;
+  startTime: number;
 } 

@@ -6,29 +6,13 @@
  */
 
 import { loadSEDAConfig, SEDADataRequestBuilder } from './push-solver';
-
-// Scheduler Configuration
-export interface SchedulerConfig {
-  // Interval between DataRequests (in milliseconds)
-  intervalMs: number;
-  
-  // Whether to run continuously or stop after one request
-  continuous: boolean;
-  
-  // Maximum number of retries for failed requests
-  maxRetries: number;
-  
-  // Custom memo for DataRequests
-  memo?: string;
-}
-
-// Default scheduler configuration
-export const DEFAULT_SCHEDULER_CONFIG: SchedulerConfig = {
-  intervalMs: 60_000, // 1 minute
-  continuous: true,
-  maxRetries: 3,
-  memo: 'Scheduled DataRequest'
-};
+import { 
+  buildSchedulerConfig, 
+  formatSchedulerConfig,
+  SchedulerStatistics,
+  executeWithRetry
+} from './core/scheduler';
+import type { SchedulerConfig, SchedulerStats } from './types';
 
 /**
  * SEDA DataRequest Scheduler
@@ -41,19 +25,15 @@ export class SEDADataRequestScheduler {
   private builder: SEDADataRequestBuilder;
   private isRunning: boolean = false;
   private intervalId: NodeJS.Timeout | null = null;
-  private stats = {
-    totalRequests: 0,
-    successfulRequests: 0,
-    failedRequests: 0,
-    startTime: Date.now()
-  };
+  private statistics: SchedulerStatistics;
 
   /**
    * Create a new scheduler instance
    * @param schedulerConfig Partial configuration to override defaults
    */
   constructor(schedulerConfig: Partial<SchedulerConfig> = {}) {
-    this.config = { ...DEFAULT_SCHEDULER_CONFIG, ...schedulerConfig };
+    this.config = buildSchedulerConfig(schedulerConfig);
+    this.statistics = new SchedulerStatistics();
     
     // Initialize SEDA builder
     const sedaConfig = loadSEDAConfig();
@@ -61,8 +41,7 @@ export class SEDADataRequestScheduler {
     
     console.log('🔧 SEDA DataRequest Scheduler initialized');
     console.log(`📊 Network: ${sedaConfig.network}`);
-    console.log(`⏱️  Interval: ${this.config.intervalMs / 1000}s`);
-    console.log(`📝 Memo: ${this.config.memo}`);
+    formatSchedulerConfig(this.config);
   }
 
   /**
@@ -87,7 +66,7 @@ export class SEDADataRequestScheduler {
     console.log(`⏰ Started at: ${new Date().toISOString()}`);
     
     this.isRunning = true;
-    this.stats.startTime = Date.now();
+    this.statistics.reset();
 
     // Run first request immediately
     await this.executeDataRequest();
@@ -125,7 +104,7 @@ export class SEDADataRequestScheduler {
       this.intervalId = null;
     }
 
-    this.printStats();
+    this.statistics.printReport();
     console.log('✅ Scheduler stopped');
   }
 
@@ -136,48 +115,33 @@ export class SEDADataRequestScheduler {
     if (!this.isRunning) return;
 
     const requestStartTime = Date.now();
+    const currentStats = this.statistics.getStats();
+    const requestNumber = currentStats.totalRequests + 1;
     
-    console.log(`\n📤 DataRequest ${this.stats.totalRequests + 1} - ${new Date().toISOString()}`);
+    console.log(`\n📤 DataRequest ${requestNumber} - ${new Date().toISOString()}`);
 
-    let success = false;
-    let retries = 0;
-    let lastError: any;
+    // Execute DataRequest with retry logic
+    const { success, result, lastError } = await executeWithRetry(
+      () => this.builder.postDataRequest({ memo: this.config.memo }),
+      this.config.maxRetries,
+      requestNumber,
+      () => this.isRunning
+    );
 
-    // Retry logic
-    while (!success && retries <= this.config.maxRetries && this.isRunning) {
-      try {
-        const result = await this.builder.postDataRequest({
-          memo: this.config.memo
-        });
-
-        console.log(`✅ DataRequest completed successfully`);
-        console.log(`   DR ID: ${result.drId}`);
-        console.log(`   Exit Code: ${result.exitCode}`);
-        console.log(`   Block Height: ${result.blockHeight}`);
-        console.log(`   Gas Used: ${result.gasUsed}`);
-
-        this.stats.successfulRequests++;
-        success = true;
-
-      } catch (error) {
-        lastError = error;
-        retries++;
-        
-        if (retries <= this.config.maxRetries) {
-          console.log(`❌ DataRequest failed (attempt ${retries}/${this.config.maxRetries + 1})`);
-          console.log(`   Retrying in 5s...`);
-          await new Promise(resolve => setTimeout(resolve, 5000));
-        }
-      }
-    }
-
-    if (!success) {
+    if (success && result) {
+      console.log(`✅ DataRequest completed successfully`);
+      console.log(`   DR ID: ${result.drId}`);
+      console.log(`   Exit Code: ${result.exitCode}`);
+      console.log(`   Block Height: ${result.blockHeight}`);
+      console.log(`   Gas Used: ${result.gasUsed}`);
+      
+      this.statistics.recordSuccess();
+    } else {
       console.log(`💥 DataRequest failed after ${this.config.maxRetries + 1} attempts`);
       console.log(`   Final error: ${lastError?.message || lastError}`);
-      this.stats.failedRequests++;
+      
+      this.statistics.recordFailure();
     }
-
-    this.stats.totalRequests++;
 
     const requestTime = Date.now() - requestStartTime;
     console.log(`⏱️  Request duration: ${(requestTime / 1000).toFixed(1)}s`);
@@ -189,32 +153,10 @@ export class SEDADataRequestScheduler {
   }
 
   /**
-   * Print overall statistics
-   */
-  private printStats(): void {
-    const runtime = Date.now() - this.stats.startTime;
-    const runtimeMinutes = (runtime / 60000).toFixed(1);
-    
-    console.log('\n📈 SCHEDULER STATISTICS');
-    console.log('='.repeat(50));
-    console.log(`⏱️  Total Runtime: ${runtimeMinutes} minutes`);
-    console.log(`📊 Total Requests: ${this.stats.totalRequests}`);
-    console.log(`✅ Successful: ${this.stats.successfulRequests}`);
-    console.log(`❌ Failed: ${this.stats.failedRequests}`);
-    
-    if (this.stats.totalRequests > 0) {
-      const successRate = (this.stats.successfulRequests / this.stats.totalRequests) * 100;
-      console.log(`📈 Overall Success Rate: ${successRate.toFixed(1)}%`);
-    }
-    
-    console.log('='.repeat(50));
-  }
-
-  /**
    * Get current statistics
    */
-  getStats() {
-    return { ...this.stats };
+  getStats(): SchedulerStats {
+    return this.statistics.getStats();
   }
 
   /**
@@ -229,22 +171,8 @@ export class SEDADataRequestScheduler {
  * Create and start a scheduler with environment-based configuration
  */
 export async function startScheduler(overrides: Partial<SchedulerConfig> = {}): Promise<SEDADataRequestScheduler> {
-  // Load configuration from environment variables
-  const envConfig: Partial<SchedulerConfig> = {};
-  
-  if (process.env.SCHEDULER_INTERVAL_SECONDS) {
-    envConfig.intervalMs = parseInt(process.env.SCHEDULER_INTERVAL_SECONDS) * 1000;
-  }
-  
-  if (process.env.SCHEDULER_MEMO) {
-    envConfig.memo = process.env.SCHEDULER_MEMO;
-  }
-
-  // Create scheduler with combined configuration
-  const scheduler = new SEDADataRequestScheduler({
-    ...envConfig,
-    ...overrides
-  });
+  // Create scheduler with configuration loaded from environment and overrides
+  const scheduler = new SEDADataRequestScheduler(overrides);
 
   // Initialize and start
   await scheduler.initialize();
