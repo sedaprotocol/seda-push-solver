@@ -1,0 +1,36 @@
+{
+  "name": "dxfeed-pusher",
+  "version": "1.0.0",
+  "description": "SEDA DataRequest scheduler - Generic oracle data pusher for SEDA network",
+  "main": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/runner.ts",
+    "scheduler": "bun run src/runner.ts",
+    "demo": "bun run examples/demo.ts",
+    "test": "bun run tests/test-seda-config.ts",
+    "test:datarequest": "bun run tests/test-datarequest.ts",
+    "test:multiple": "bun run tests/test-multiple-requests.ts",
+    "test:all": "bun run tests/test-seda-config.ts && bun run tests/test-datarequest.ts",
+    "build": "tsc --noEmit",
+    "lint": "tsc --noEmit"
+  },
+  "keywords": [
+    "seda",
+    "oracle",
+    "blockchain",
+    "datarequest",
+    "typescript",
+    "scheduler"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@seda-protocol/dev-tools": "^1.0.0-rc.13",
+    "buffer": "^6.0.3"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.0.0"
+  }
+}
