@@ -7,6 +7,8 @@ import type { ILoggingService } from '../../services';
 import type { SEDADataRequestBuilder } from '../../push-solver';
 import type { SchedulerConfig } from '../../types';
 import { executeWithRetry } from './retry-handler';
+import { UniqueMemoGenerator, type UniqueMemoData } from './unique-memo-generator';
+import { CosmosSequenceCoordinator, type SequencedExecution, type ExecutionResult } from './cosmos-sequence-coordinator';
 
 /**
  * Interface for tracking async task results
@@ -20,6 +22,7 @@ export interface AsyncTaskResult {
   blockHeight?: number;
   completedAt: number;
   duration: number;
+  sequenceNumber?: number; // Track the sequence number used
 }
 
 /**
@@ -37,11 +40,16 @@ export interface TaskCompletionHandler {
 export class AsyncTaskManager {
   private activeTasks = new Map<string, Promise<AsyncTaskResult>>();
   private taskCounter = 0;
+  private memoGenerator: UniqueMemoGenerator;
+  private sequenceCoordinator: CosmosSequenceCoordinator;
 
   constructor(
     private logger: ILoggingService,
     private getTimestamp: () => number = Date.now
-  ) {}
+  ) {
+    this.memoGenerator = new UniqueMemoGenerator(this.logger);
+    this.sequenceCoordinator = new CosmosSequenceCoordinator(this.logger);
+  }
 
   /**
    * Launch a new async DataRequest task
@@ -98,7 +106,7 @@ export class AsyncTaskManager {
   }
 
   /**
-   * Execute a single DataRequest asynchronously
+   * Execute a single DataRequest asynchronously with sequence coordination
    */
   private async executeAsyncDataRequest(
     taskId: string,
@@ -114,35 +122,67 @@ export class AsyncTaskManager {
       this.logger.info(`📤 Async DataRequest #${requestNumber} (${taskId}) | ${new Date().toLocaleTimeString()}`);
       this.logger.info('='.repeat(73));
 
-      // Execute DataRequest with retry logic
-      const { success, result, lastError } = await executeWithRetry(
-        () => builder.postDataRequest({ memo: config.memo }),
-        config.maxRetries,
-        requestNumber,
-        isRunning,
-        this.logger
-      );
+      // Create sequenced execution to prevent Cosmos sequence conflicts
+      const sequencedExecution: SequencedExecution<any> = {
+        taskId,
+        timeout: 60000, // 60 seconds timeout for DataRequest execution
+        execute: async (sequenceNumber: number) => {
+          this.logger.info(`🔢 Executing DataRequest in sequence for task ${taskId}`);
+          
+          // Generate unique memo using the sequence number
+          const uniqueMemoData = this.memoGenerator.generateUniqueMemo(
+            config.memo || 'DataRequest',
+            sequenceNumber
+          );
+          
+          return await executeWithRetry(
+            () => builder.postDataRequest({ memo: uniqueMemoData.memo }),
+            config.maxRetries,
+            requestNumber,
+            isRunning,
+            this.logger
+          );
+        }
+      };
+
+      // Execute the DataRequest with sequence coordination
+      const executionResult: ExecutionResult<any> = await this.sequenceCoordinator.executeSequenced(sequencedExecution);
 
       const completedAt = this.getTimestamp();
-      const duration = completedAt - startTime;
+      const totalDuration = completedAt - startTime;
 
-      if (success && result) {
-        return {
-          taskId,
-          success: true,
-          result,
-          drId: result.drId,
-          blockHeight: result.blockHeight,
-          completedAt,
-          duration
-        };
+      if (executionResult.success && executionResult.result) {
+        const { success, result } = executionResult.result;
+        
+        if (success && result) {
+          return {
+            taskId,
+            success: true,
+            result,
+            drId: result.drId,
+            blockHeight: result.blockHeight,
+            completedAt,
+            duration: totalDuration,
+            sequenceNumber: executionResult.sequence
+          };
+        } else {
+          return {
+            taskId,
+            success: false,
+            error: executionResult.result.lastError || new Error('DataRequest failed with unknown error'),
+            completedAt,
+            duration: totalDuration,
+            sequenceNumber: executionResult.sequence
+          };
+        }
       } else {
         return {
           taskId,
           success: false,
-          error: lastError || new Error('DataRequest failed with unknown error'),
+          error: executionResult.error || new Error('Sequenced execution failed'),
           completedAt,
-          duration
+          duration: totalDuration,
+          sequenceNumber: executionResult.sequence
         };
       }
     } catch (error) {
@@ -169,6 +209,20 @@ export class AsyncTaskManager {
   }
 
   /**
+   * Get memo generator statistics
+   */
+  getMemoGeneratorStats() {
+    return this.memoGenerator.getStats();
+  }
+
+  /**
+   * Get sequence coordinator statistics
+   */
+  getSequenceCoordinatorStats() {
+    return this.sequenceCoordinator.getStats();
+  }
+
+  /**
    * Wait for all active tasks to complete
    */
   async waitForAllTasks(): Promise<AsyncTaskResult[]> {
@@ -178,7 +232,12 @@ export class AsyncTaskManager {
     }
     
     this.logger.info(`⏳ Waiting for ${tasks.length} active tasks to complete...`);
+    
+    // First wait for all tasks to finish
     const results = await Promise.allSettled(tasks);
+    
+    // Then wait for the sequence coordinator queue to be empty
+    await this.sequenceCoordinator.waitForQueue();
     
     return results.map(result => 
       result.status === 'fulfilled' 
@@ -198,5 +257,7 @@ export class AsyncTaskManager {
    */
   clear(): void {
     this.activeTasks.clear();
+    this.memoGenerator.reset();
+    this.sequenceCoordinator.clear();
   }
 } 

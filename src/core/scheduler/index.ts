@@ -31,4 +31,17 @@ export {
 // Export task completion handling
 export {
   SchedulerTaskCompletionHandler
-} from './task-completion-handler'; 
+} from './task-completion-handler';
+
+// Export unique memo generation
+export {
+  UniqueMemoGenerator,
+  type UniqueMemoData
+} from './unique-memo-generator';
+
+// Export Cosmos sequence coordination
+export {
+  CosmosSequenceCoordinator,
+  type SequencedExecution,
+  type ExecutionResult
+} from './cosmos-sequence-coordinator'; 

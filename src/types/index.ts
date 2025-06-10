@@ -67,4 +67,12 @@ export interface SchedulerStats {
   failedRequests: number;
   startTime: number;
   activeTasks?: number; // Optional for backward compatibility - tracks currently running async tasks
+  memoGenerator?: {
+    uptimeMs: number;
+  };
+  sequenceCoordinator?: {
+    queueSize: number;
+    isProcessing: boolean;
+    nextSequenceNumber: number;
+  };
 } 

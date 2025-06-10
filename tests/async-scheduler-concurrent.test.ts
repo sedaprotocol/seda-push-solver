@@ -96,7 +96,6 @@ async function testConcurrentAsyncScheduler() {
     console.log('\n✅ Concurrent async scheduler test completed successfully!');
     console.log('✅ Verified non-blocking behavior');
     console.log('✅ Verified concurrent task execution');
-    console.log('⚠️  Sequence conflicts observed (expected - will be fixed in next step)');
 
   } catch (error) {
     console.error('\n❌ Concurrent async scheduler test failed:', error);

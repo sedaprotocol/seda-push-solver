@@ -197,9 +197,20 @@ export class SEDADataRequestScheduler {
    */
   getStats(): SchedulerStats {
     const baseStats = this.statistics.getStats();
+    const memoStats = this.taskManager.getMemoGeneratorStats();
+    const sequenceStats = this.taskManager.getSequenceCoordinatorStats();
+    
     return {
       ...baseStats,
-      activeTasks: this.taskManager.getActiveTaskCount()
+      activeTasks: this.taskManager.getActiveTaskCount(),
+      memoGenerator: {
+        uptimeMs: memoStats.uptimeMs
+      },
+      sequenceCoordinator: {
+        queueSize: sequenceStats.queueSize,
+        isProcessing: sequenceStats.isProcessing,
+        nextSequenceNumber: sequenceStats.nextSequenceNumber
+      }
     };
   }
 
