@@ -1,61 +1,97 @@
 #!/usr/bin/env bun
 
 /**
- * SEDA DataRequest Pusher - Main Runner
- * 
- * This script starts the SEDA DataRequest scheduler to continuously
- * post DataRequests at regular intervals.
+ * SEDA DataRequest Pusher Runner
+ * Entry point for the SEDA DataRequest scheduler application
  */
 
 import { startScheduler } from './scheduler';
+import { ServiceContainer } from './services';
+import { InfrastructureContainer } from './infrastructure';
 
 async function main() {
-  console.log('🚀 SEDA DataRequest Pusher - Starting Scheduler\n');
+  // Initialize service containers
+  const services = ServiceContainer.createProduction();
+  const infrastructure = InfrastructureContainer.createProduction(services.loggingService);
+
+  const logger = services.loggingService;
+
+  logger.info('\n┌─────────────────────────────────────────────────────────────────────┐');
+  logger.info('│                 🚀 SEDA DataRequest Pusher                         │');
+  logger.info('│                     Starting Scheduler                             │');
+  logger.info('└─────────────────────────────────────────────────────────────────────┘');
 
   try {
-    // Start the scheduler with environment-based configuration
-    const scheduler = await startScheduler();
+    // Start scheduler with dependency injection
+    const scheduler = await startScheduler(
+      {}, // default config
+      infrastructure.timerService,
+      infrastructure.processService
+    );
 
-    console.log('\n🎯 Scheduler started successfully!');
-    console.log('📋 Use Ctrl+C to stop the scheduler gracefully');
-    
-    // Keep the process alive
-    process.on('beforeExit', () => {
-      console.log('📊 Process ending...');
+    logger.info('\n✅ Scheduler started successfully!');
+    logger.info('📋 Use Ctrl+C to stop the scheduler gracefully');
+
+    // Start health monitoring
+    infrastructure.healthService.registerCheck('scheduler', async () => {
+      const timestamp = infrastructure.timerService.now();
+      return {
+        status: scheduler.isSchedulerRunning() ? 'healthy' : 'unhealthy',
+        responseTime: 0, // Immediate check
+        timestamp,
+        details: scheduler.getStats()
+      };
     });
 
+    infrastructure.healthService.startPeriodicChecks(30000); // Check every 30s
+
   } catch (error) {
-    console.error('❌ Failed to start scheduler:', error);
+    logger.info('\n📊 Process ending...');
     
     if (error instanceof Error && error.message.includes('Mnemonic is required')) {
-      console.log('\n💡 Setup Instructions:');
-      console.log('   1. Set SEDA_MNEMONIC environment variable');
-      console.log('   2. Ensure account has sufficient testnet tokens');
-      console.log('   3. Oracle Program ID is configured in src/core/network/network-config.ts');
-      console.log('\n📖 Environment Variables:');
-      console.log('   SEDA_MNEMONIC - Your 24-word mnemonic phrase (required)');
-      console.log('   SEDA_NETWORK - Network to use (testnet/mainnet/local)');
-      console.log('   SCHEDULER_INTERVAL_SECONDS - Interval between DataRequests (default: 60)');
-      console.log('   SCHEDULER_MEMO - Custom memo for DataRequests (optional)');
+      logger.error('\n┌─────────────────────────────────────────────────────────────────────┐');
+      logger.error('│                      ❌ Scheduler Failed                            │');
+      logger.error('└─────────────────────────────────────────────────────────────────────┘');
+
+      // Setup instructions with logging service
+      logger.info('\n💡 Setup Instructions:');
+      logger.info('┌─────────────────────────────────────────────────────────────────────┐');
+      logger.info('│                          📖 Setup Guide                            │');
+      logger.info('├─────────────────────────────────────────────────────────────────────┤');
+      logger.info('│ 1. Set SEDA_MNEMONIC environment variable                          │');
+      logger.info('│ 2. Ensure account has sufficient testnet tokens                    │');
+      logger.info('│ 3. Oracle Program ID is configured in src/core/network/network-config.ts │');
+      logger.info('├─────────────────────────────────────────────────────────────────────┤');
+      logger.info('│                     Environment Variables                          │');
+      logger.info('├─────────────────────────────────────────────────────────────────────┤');
+      logger.info('│ SEDA_MNEMONIC              │ Your 24-word mnemonic (required)      │');
+      logger.info('│ SEDA_NETWORK               │ Network (testnet/mainnet/local)       │');
+      logger.info('│ SCHEDULER_INTERVAL_SECONDS │ Interval between requests (default:60)│');
+      logger.info('│ SCHEDULER_MEMO             │ Custom memo (optional)                │');
+      logger.info('└─────────────────────────────────────────────────────────────────────┘');
     }
     
+    logger.error(`\n❌ Error: ${error instanceof Error ? error.message : error}`);
     process.exit(1);
   }
 }
 
-// Handle uncaught exceptions
+// Global error handlers using logging service
+const services = ServiceContainer.createProduction();
+const logger = services.loggingService;
+
 process.on('uncaughtException', (error) => {
-  console.error('💥 Uncaught Exception:', error);
+  logger.error('💥 Uncaught Exception:', error);
   process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-  console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
+  logger.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
   process.exit(1);
 });
 
-// Run the main function
-main().catch((error) => {
-  console.error('❌ Application failed:', error);
+// Start the application
+main().catch(error => {
+  logger.error('❌ Application failed:', error);
   process.exit(1);
 }); 

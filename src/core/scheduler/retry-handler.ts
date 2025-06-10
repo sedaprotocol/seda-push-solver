@@ -3,6 +3,8 @@
  * Provides configurable retry logic with exponential backoff and timeout handling
  */
 
+import type { ILoggingService } from '../../services';
+
 /**
  * Retry operation with configurable attempts and delay
  */
@@ -39,7 +41,8 @@ export async function executeWithRetry<T>(
   operation: () => Promise<T>,
   maxRetries: number,
   requestNumber: number,
-  isRunning: () => boolean
+  isRunning: () => boolean,
+  logger?: ILoggingService
 ): Promise<{ success: boolean; result?: T; lastError?: any }> {
   let retries = 0;
   
@@ -51,11 +54,20 @@ export async function executeWithRetry<T>(
   };
   
   const onRetry = (attempt: number, error: any) => {
-    console.log(`❌ DataRequest failed (attempt ${attempt}/${maxRetries + 1})`);
-    console.log(`   Error: ${error?.message || error}`);
-    
-    if (attempt <= maxRetries) {
-      console.log(`   Retrying in 5s...`);
+    if (logger) {
+      logger.error(`❌ DataRequest failed (attempt ${attempt}/${maxRetries + 1})`);
+      logger.error(`   Error: ${error?.message || error}`);
+      
+      if (attempt <= maxRetries) {
+        logger.info(`   Retrying in 5s...`);
+      }
+    } else {
+      console.log(`❌ DataRequest failed (attempt ${attempt}/${maxRetries + 1})`);
+      console.log(`   Error: ${error?.message || error}`);
+      
+      if (attempt <= maxRetries) {
+        console.log(`   Retrying in 5s...`);
+      }
     }
   };
   

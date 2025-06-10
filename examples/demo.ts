@@ -8,82 +8,103 @@
  */
 
 import { loadSEDAConfig, SEDADataRequestBuilder } from '../src/push-solver';
+import { ServiceContainer } from '../src/services';
 
 async function runDemo() {
-  console.log('🚀 SEDA DataRequest Pusher Demo\n');
-  console.log('This demo will show you how to post DataRequests to SEDA network');
-  console.log('='.repeat(60));
+  // Initialize logging service
+  const services = ServiceContainer.createProduction();
+  const logger = services.loggingService;
+
+  logger.info('\n┌─────────────────────────────────────────────────────────────────────┐');
+  logger.info('│                   🚀 SEDA DataRequest Demo                          │');
+  logger.info('│              Demonstrating Oracle Network Integration              │');
+  logger.info('└─────────────────────────────────────────────────────────────────────┘');
 
   try {
     // Step 1: Load Configuration
-    console.log('\n📋 Step 1: Loading SEDA Configuration...');
+    logger.info('\n📋 Step 1: Loading SEDA Configuration...');
     const config = loadSEDAConfig();
     
-    console.log('✅ Configuration loaded successfully');
-    console.log(`   🌐 Network: ${config.network}`);
-    console.log(`   🔗 RPC: ${config.rpcEndpoint}`);
-    console.log(`   🔑 Has Mnemonic: ${config.mnemonic ? 'Yes' : 'No'}`);
+    logger.info('\n┌─────────────────────────────────────────────────────────────────────┐');
+    logger.info('│                       ✅ Configuration Loaded                       │');
+    logger.info('├─────────────────────────────────────────────────────────────────────┤');
+    logger.info(`│ Network: ${config.network.toUpperCase()}`);
+    logger.info(`│ RPC Endpoint: ${config.rpcEndpoint}`);
+    logger.info(`│ Has Mnemonic: ${config.mnemonic ? 'Yes' : 'No'}`);
+    logger.info('└─────────────────────────────────────────────────────────────────────┘');
 
     if (!config.mnemonic) {
-      console.log('\n⚠️  Demo requires SEDA_MNEMONIC environment variable');
-      console.log('   Please set it with your 24-word mnemonic phrase');
-      console.log('   Example: export SEDA_MNEMONIC="word1 word2 ... word24"');
+      logger.info('\n┌─────────────────────────────────────────────────────────────────────┐');
+      logger.info('│                       ⚠️  Setup Required                            │');
+      logger.info('├─────────────────────────────────────────────────────────────────────┤');
+      logger.info('│ Missing           │ SEDA_MNEMONIC environment variable             │');
+      logger.info('│ Required          │ Your 24-word mnemonic phrase                   │');
+      logger.info('│ Example           │ export SEDA_MNEMONIC="word1 word2 ... word24"  │');
+      logger.info('└─────────────────────────────────────────────────────────────────────┘');
       return;
     }
 
     // Step 2: Create and Initialize Builder
-    console.log('\n🔧 Step 2: Creating DataRequest Builder...');
-    const builder = new SEDADataRequestBuilder(config);
-    
-    console.log('✅ Builder created successfully');
-    console.log('🔐 Initializing signer...');
+    logger.info('\n🔧 Step 2: Creating DataRequest Builder...');
+    const builder = new SEDADataRequestBuilder(config, logger);
+    logger.info('✅ Builder created successfully');
     
     await builder.initialize();
-    console.log('✅ Builder initialized and ready');
 
     // Step 3: Post a DataRequest
-    console.log('\n📤 Step 3: Posting DataRequest...');
-    console.log('⏱️  This may take 30-60 seconds...');
+    logger.info('\n📤 Step 3: Posting DataRequest...');
+    logger.info('⏱️  This may take 30-60 seconds to complete...');
     
     const result = await builder.postDataRequest({
       memo: 'Demo DataRequest from SEDA pusher'
     });
 
-    console.log('\n🎉 DataRequest completed successfully!');
-    console.log('📊 Results:');
-    console.log(`   🆔 DR ID: ${result.drId}`);
-    console.log(`   🔢 Exit Code: ${result.exitCode}`);
-    console.log(`   🏗️  Block Height: ${result.blockHeight}`);
-    console.log(`   ⛽ Gas Used: ${result.gasUsed}`);
-    console.log(`   📄 Result: ${result.result || 'No result data'}`);
+    // Step 4: Show Results & Explanation
+    logger.info('\n┌─────────────────────────────────────────────────────────────────────┐');
+    logger.info('│                      🎉 Demo Completed!                            │');
+    logger.info('├─────────────────────────────────────────────────────────────────────┤');
+    logger.info('│                        📖 Understanding Results                     │');
+    logger.info('├─────────────────────────────────────────────────────────────────────┤');
+    logger.info('│ DR ID             │ Unique identifier for your DataRequest         │');
+    logger.info('│ Exit Code         │ 0 = success, others = error conditions         │');
+    logger.info('│ Block Height      │ Blockchain block with recorded result          │');
+    logger.info('│ Gas Used          │ Computational cost of oracle execution         │');
+    logger.info('│ Result            │ Output data from the oracle program            │');
+    logger.info('└─────────────────────────────────────────────────────────────────────┘');
 
-    // Step 4: Explain the Results
-    console.log('\n📖 Understanding the Results:');
-    console.log('   • DR ID: Unique identifier for your DataRequest');
-    console.log('   • Exit Code: 0 = success, others = various error conditions');
-    console.log('   • Block Height: The blockchain block where the result was recorded');
-    console.log('   • Gas Used: Amount of gas consumed by the oracle execution');
-    console.log('   • Result: The output data from the oracle program');
-
-    console.log('\n🎯 Next Steps:');
-    console.log('   1. Try posting more DataRequests using the builder');
-    console.log('   2. Use the scheduler to post DataRequests automatically');
-    console.log('   3. Check your DataRequest results on the SEDA explorer');
-    console.log('   4. Run: bun start - to start the continuous scheduler');
+    logger.info('\n┌─────────────────────────────────────────────────────────────────────┐');
+    logger.info('│                          🎯 Next Steps                              │');
+    logger.info('├─────────────────────────────────────────────────────────────────────┤');
+    logger.info('│ 1. More Requests  │ Try posting additional DataRequests            │');
+    logger.info('│ 2. Use Scheduler  │ Post DataRequests automatically (bun start)   │');
+    logger.info('│ 3. Check Explorer │ View results on SEDA blockchain explorer      │');
+    logger.info('│ 4. Customize      │ Modify oracle program and configuration       │');
+    logger.info('└─────────────────────────────────────────────────────────────────────┘');
 
   } catch (error) {
-    console.error('\n❌ Demo failed:', error);
+    logger.error('\n┌─────────────────────────────────────────────────────────────────────┐');
+    logger.error('│                         ❌ Demo Failed                              │');
+    logger.error('└─────────────────────────────────────────────────────────────────────┘');
     
     if (error instanceof Error) {
       if (error.message.includes('Mnemonic is required')) {
-        console.log('\n💡 Setup Instructions:');
-        console.log('   1. Set SEDA_MNEMONIC environment variable with your mnemonic');
-        console.log('   2. Ensure the account has sufficient testnet tokens');
-        console.log('   3. Oracle program ID is configured in src/seda-dr-config.ts');
+        logger.info('\n┌─────────────────────────────────────────────────────────────────────┐');
+        logger.info('│                      💡 Setup Instructions                          │');
+        logger.info('├─────────────────────────────────────────────────────────────────────┤');
+        logger.info('│ 1. Mnemonic       │ Set SEDA_MNEMONIC environment variable         │');
+        logger.info('│ 2. Tokens         │ Ensure account has sufficient testnet tokens   │');
+        logger.info('│ 3. Configuration  │ Check oracle program ID in network config      │');
+        logger.info('└─────────────────────────────────────────────────────────────────────┘');
       } else if (error.message.includes('insufficient funds')) {
-        console.log('\n💰 Fund your account:');
-        console.log('   1. Get testnet tokens from SEDA faucet');
-        console.log('   2. Make sure your account address has enough balance');
+        logger.info('\n┌─────────────────────────────────────────────────────────────────────┐');
+        logger.info('│                       💰 Fund Your Account                          │');
+        logger.info('├─────────────────────────────────────────────────────────────────────┤');
+        logger.info('│ 1. Faucet         │ Get testnet tokens from SEDA faucet            │');
+        logger.info('│ 2. Balance        │ Verify account has enough token balance         │');
+        logger.info('│ 3. Gas Costs      │ Ensure sufficient funds for transaction fees   │');
+        logger.info('└─────────────────────────────────────────────────────────────────────┘');
+      } else {
+        logger.error(`\n❌ Error: ${error.message}`);
       }
     }
     
@@ -93,6 +114,9 @@ async function runDemo() {
 
 // Run the demo
 runDemo().catch(error => {
-  console.error('💥 Demo script failed:', error);
+  // Create logging service for error handling
+  const services = ServiceContainer.createProduction();
+  const logger = services.loggingService;
+  logger.error('💥 Demo script failed:', error);
   process.exit(1);
 });

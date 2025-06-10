@@ -5,7 +5,7 @@
  * at regular intervals. Includes retry logic, statistics tracking, and graceful shutdown.
  */
 
-import { loadSEDAConfig, SEDADataRequestBuilder } from './push-solver';
+import { SEDADataRequestBuilder } from './push-solver';
 import { 
   buildSchedulerConfig, 
   formatSchedulerConfig,
@@ -14,6 +14,8 @@ import {
 } from './core/scheduler';
 import type { SchedulerConfig, SchedulerStats } from './types';
 import type { ITimerService, IProcessService, TimerId } from './infrastructure';
+import type { ILoggingService } from './services';
+import { loadSEDAConfig } from './core/data-request';
 
 /**
  * SEDA DataRequest Scheduler
@@ -31,11 +33,13 @@ export class SEDADataRequestScheduler {
   /**
    * Create a new scheduler instance
    * @param schedulerConfig Partial configuration to override defaults
+   * @param logger Logging service for structured output
    * @param timerService Timer service for scheduling (defaults to production timer)
    * @param processService Process service for shutdown handling (defaults to production process)
    */
   constructor(
     schedulerConfig: Partial<SchedulerConfig> = {},
+    private logger: ILoggingService,
     private timerService?: ITimerService,
     private processService?: IProcessService
   ) {
@@ -44,20 +48,24 @@ export class SEDADataRequestScheduler {
     
     // Initialize SEDA builder
     const sedaConfig = loadSEDAConfig();
-    this.builder = new SEDADataRequestBuilder(sedaConfig);
+    this.builder = new SEDADataRequestBuilder(sedaConfig, this.logger);
     
-    console.log('🔧 SEDA DataRequest Scheduler initialized');
-    console.log(`📊 Network: ${sedaConfig.network}`);
-    formatSchedulerConfig(this.config);
+    this.logger.info('\n┌─────────────────────────────────────────────────────────────────────┐');
+    this.logger.info('│                    🔧 Scheduler Initialized                         │');
+    this.logger.info('├─────────────────────────────────────────────────────────────────────┤');
+    this.logger.info(`│ Network: ${sedaConfig.network.toUpperCase()}`);
+    this.logger.info(`│ RPC Endpoint: ${sedaConfig.rpcEndpoint}`);
+    this.logger.info('└─────────────────────────────────────────────────────────────────────┘');
+    formatSchedulerConfig(this.config, this.logger);
   }
 
   /**
    * Initialize the scheduler (set up signer)
    */
   async initialize(): Promise<void> {
-    console.log('🔐 Initializing SEDA signer...');
+    this.logger.info('\n🔐 Initializing SEDA signer...');
     await this.builder.initialize();
-    console.log('✅ Scheduler ready to start posting DataRequests');
+    this.logger.info('✅ Scheduler initialization complete\n');
   }
 
   /**
@@ -65,12 +73,19 @@ export class SEDADataRequestScheduler {
    */
   async start(): Promise<void> {
     if (this.isRunning) {
-      console.log('⚠️  Scheduler is already running');
+      this.logger.warn('⚠️  Scheduler is already running');
       return;
     }
 
-    console.log('\n🚀 Starting SEDA DataRequest Scheduler...');
-    console.log(`⏰ Started at: ${new Date().toISOString()}`);
+    this.logger.info('┌─────────────────────────────────────────────────────────────────────┐');
+    this.logger.info('│                    🚀 SEDA DataRequest Scheduler                    │');
+    this.logger.info('├─────────────────────────────────────────────────────────────────────┤');
+    this.logger.info(`│ Status: Starting scheduler...`);
+    this.logger.info(`│ Start Time: ${new Date().toISOString()}`);
+    this.logger.info(`│ Interval: ${(this.config.intervalMs / 1000)}s`);
+    this.logger.info(`│ Mode: ${this.config.continuous ? 'Continuous' : 'Single'}`);
+    this.logger.info(`│ Max Retries: ${this.config.maxRetries}`);
+    this.logger.info('└─────────────────────────────────────────────────────────────────────┘');
     
     this.isRunning = true;
     this.statistics.reset();
@@ -85,7 +100,7 @@ export class SEDADataRequestScheduler {
           try {
             await this.executeDataRequest();
           } catch (error) {
-            console.error('❌ DataRequest execution failed:', error);
+            this.logger.error('❌ DataRequest execution failed:', error);
           }
         }, this.config.intervalMs);
       } else {
@@ -94,14 +109,15 @@ export class SEDADataRequestScheduler {
           try {
             await this.executeDataRequest();
           } catch (error) {
-            console.error('❌ DataRequest execution failed:', error);
+            this.logger.error('❌ DataRequest execution failed:', error);
           }
         }, this.config.intervalMs) as unknown as TimerId;
       }
 
-      console.log(`🔄 Scheduler running continuously every ${this.config.intervalMs / 1000}s`);
+      this.logger.info(`\n🔄 Scheduler running continuously (${this.config.intervalMs / 1000}s intervals)`);
+      this.logger.info('   Press Ctrl+C to stop gracefully');
     } else {
-      console.log('✅ Single DataRequest completed');
+      this.logger.info('\n✅ Single DataRequest mode - stopping after completion');
       this.stop();
     }
   }
@@ -111,11 +127,13 @@ export class SEDADataRequestScheduler {
    */
   stop(): void {
     if (!this.isRunning) {
-      console.log('⚠️  Scheduler is not running');
+      this.logger.warn('⚠️  Scheduler is not running');
       return;
     }
 
-    console.log('\n🛑 Stopping SEDA DataRequest Scheduler...');
+    this.logger.info('\n┌─────────────────────────────────────────────────────────────────────┐');
+    this.logger.info('│                      🛑 Stopping Scheduler                         │');
+    this.logger.info('└─────────────────────────────────────────────────────────────────────┘');
     
     this.isRunning = false;
     
@@ -128,8 +146,8 @@ export class SEDADataRequestScheduler {
       this.intervalId = null;
     }
 
-    this.statistics.printReport();
-    console.log('✅ Scheduler stopped');
+    this.statistics.printReport(this.logger);
+    this.logger.info('✅ Scheduler stopped gracefully');
   }
 
   /**
@@ -142,37 +160,47 @@ export class SEDADataRequestScheduler {
     const currentStats = this.statistics.getStats();
     const requestNumber = currentStats.totalRequests + 1;
     
-    console.log(`\n📤 DataRequest ${requestNumber} - ${new Date().toISOString()}`);
+    this.logger.info('\n' + '='.repeat(73));
+    this.logger.info(`📤 DataRequest #${requestNumber} | ${new Date().toLocaleTimeString()}`);
+    this.logger.info('='.repeat(73));
 
     // Execute DataRequest with retry logic
     const { success, result, lastError } = await executeWithRetry(
       () => this.builder.postDataRequest({ memo: this.config.memo }),
       this.config.maxRetries,
       requestNumber,
-      () => this.isRunning
+      () => this.isRunning,
+      this.logger
     );
 
     if (success && result) {
-      console.log(`✅ DataRequest completed successfully`);
-      console.log(`   DR ID: ${result.drId}`);
-      console.log(`   Exit Code: ${result.exitCode}`);
-      console.log(`   Block Height: ${result.blockHeight}`);
-      console.log(`   Gas Used: ${result.gasUsed}`);
+      this.logger.info('\n┌─────────────────────────────────────────────────────────────────────┐');
+      this.logger.info('│                        ✅ Request Successful                        │');
+      this.logger.info('├─────────────────────────────────────────────────────────────────────┤');
+      this.logger.info(`│ Request ID: ${result.drId}`);
+      this.logger.info(`│ Exit Code: ${result.exitCode}`);
+      this.logger.info(`│ Block Height: ${result.blockHeight || 'N/A'}`);
+      this.logger.info(`│ Gas Used: ${result.gasUsed || 'N/A'}`);
+      this.logger.info('└─────────────────────────────────────────────────────────────────────┘');
       
       this.statistics.recordSuccess();
     } else {
-      console.log(`💥 DataRequest failed after ${this.config.maxRetries + 1} attempts`);
-      console.log(`   Final error: ${lastError?.message || lastError}`);
+      this.logger.info('\n┌─────────────────────────────────────────────────────────────────────┐');
+      this.logger.info('│                         💥 Request Failed                          │');
+      this.logger.info('├─────────────────────────────────────────────────────────────────────┤');
+      this.logger.info(`│ Attempts: ${this.config.maxRetries + 1}`);
+      this.logger.info(`│ Final Error: ${lastError?.message || 'Unknown error'}`);
+      this.logger.info('└─────────────────────────────────────────────────────────────────────┘');
       
       this.statistics.recordFailure();
     }
 
     const requestTime = (this.timerService?.now() || Date.now()) - requestStartTime;
-    console.log(`⏱️  Request duration: ${(requestTime / 1000).toFixed(1)}s`);
+    this.logger.info(`\n⏱️  Duration: ${(requestTime / 1000).toFixed(1)}s`);
 
     if (this.config.continuous && this.isRunning) {
       const nextRequest = new Date((this.timerService?.now() || Date.now()) + this.config.intervalMs);
-      console.log(`⏭️  Next DataRequest at: ${nextRequest.toISOString()}`);
+      this.logger.info(`⏭️  Next request: ${nextRequest.toLocaleTimeString()}`);
     }
   }
 
@@ -199,8 +227,13 @@ export async function startScheduler(
   timerService?: ITimerService,
   processService?: IProcessService
 ): Promise<SEDADataRequestScheduler> {
+  // Use injected services or create defaults
+  const { ServiceContainer } = await import('./services');
+  const services = ServiceContainer.createProduction();
+  const logger = services.loggingService;
+
   // Create scheduler with configuration loaded from environment and overrides
-  const scheduler = new SEDADataRequestScheduler(overrides, timerService, processService);
+  const scheduler = new SEDADataRequestScheduler(overrides, logger, timerService, processService);
 
   // Initialize and start
   await scheduler.initialize();
@@ -210,20 +243,20 @@ export async function startScheduler(
   if (processService) {
     // Use process service for shutdown handling
     processService.onShutdown(async () => {
-      console.log('\n🔔 Shutting down scheduler gracefully...');
+      logger.info('\n🔔 Shutting down scheduler gracefully...');
       scheduler.stop();
     });
     processService.startSignalHandling();
   } else {
     // Fallback to direct process handling
     process.on('SIGINT', () => {
-      console.log('\n🔔 Received SIGINT, shutting down gracefully...');
+      logger.info('\n🔔 Received SIGINT, shutting down gracefully...');
       scheduler.stop();
       process.exit(0);
     });
 
     process.on('SIGTERM', () => {
-      console.log('\n🔔 Received SIGTERM, shutting down gracefully...');
+      logger.info('\n🔔 Received SIGTERM, shutting down gracefully...');
       scheduler.stop();
       process.exit(0);
     });

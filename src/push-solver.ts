@@ -7,9 +7,6 @@
  * - core/data-request: Handles input building, execution, and signing
  * - core/network: Manages network configurations
  * - types: Centralized type definitions
- * 
- * The builder maintains backward compatibility while leveraging the new
- * modular architecture for better maintainability and testability.
  */
 
 import { Signer } from '@seda-protocol/dev-tools';
@@ -23,6 +20,7 @@ import {
   loadSEDAConfig
 } from './core/data-request';
 import type { SEDAConfig, DataRequestResult, DataRequestOptions } from './types';
+import type { ILoggingService } from './services';
 
 /**
  * SEDA DataRequest Builder
@@ -33,7 +31,7 @@ export class SEDADataRequestBuilder {
   private signer: Signer | null = null;
   private isInitialized: boolean = false;
 
-  constructor(config: SEDAConfig) {
+  constructor(config: SEDAConfig, private logger?: ILoggingService) {
     this.config = config;
     
     if (!this.config.mnemonic) {
@@ -50,10 +48,15 @@ export class SEDADataRequestBuilder {
     }
 
     try {
-      this.signer = await initializeSigner(this.config);
+      this.signer = await initializeSigner(this.config, this.logger);
       this.isInitialized = true;
     } catch (error) {
-      console.error('❌ Failed to initialize signing configuration:', error);
+      const message = '❌ Failed to initialize signing configuration:';
+      if (this.logger) {
+        this.logger.error(message, error);
+      } else {
+        console.error(message, error);
+      }
       throw error;
     }
   }
@@ -66,9 +69,23 @@ export class SEDADataRequestBuilder {
       await this.initialize();
     }
 
-    console.log('📤 Posting DataRequest to SEDA network...');
-    console.log(`🌐 Network: ${this.config.network}`);
-    console.log(`🔗 RPC: ${this.config.rpcEndpoint}`);
+    if (this.logger) {
+      this.logger.info('\n┌─────────────────────────────────────────────────────────────────────┐');
+      this.logger.info('│                     📤 Posting DataRequest                         │');
+      this.logger.info('├─────────────────────────────────────────────────────────────────────┤');
+      this.logger.info(`│ Network: ${this.config.network.toUpperCase()}`);
+      this.logger.info(`│ RPC Endpoint: ${this.config.rpcEndpoint}`);
+      this.logger.info(`│ Memo: ${options.memo || 'Default memo'}`);
+      this.logger.info('└─────────────────────────────────────────────────────────────────────┘');
+    } else {
+      console.log('\n┌─────────────────────────────────────────────────────────────────────┐');
+      console.log('│                     📤 Posting DataRequest                         │');
+      console.log('├─────────────────────────────────────────────────────────────────────┤');
+      console.log(`│ Network: ${this.config.network.toUpperCase()}`);
+      console.log(`│ RPC Endpoint: ${this.config.rpcEndpoint}`);
+      console.log(`│ Memo: ${options.memo || 'Default memo'}`);
+      console.log('└─────────────────────────────────────────────────────────────────────┘');
+    }
 
     try {
       // Get network-specific DataRequest configuration
@@ -82,19 +99,30 @@ export class SEDADataRequestBuilder {
       const gasOptions = buildGasOptions(drConfig);
       const awaitOptions = buildAwaitOptions(drConfig, options);
 
-      console.log(`   Memo: ${options.memo || drConfig.memo}`);
-
       // Execute the DataRequest using the modular function
       return await executeDataRequest(
         this.signer!, 
         postInput, 
         gasOptions, 
         awaitOptions, 
-        networkConfig
+        networkConfig,
+        this.logger
       );
 
     } catch (error) {
-      console.error('❌ DataRequest failed:', error);
+      if (this.logger) {
+        this.logger.info('\n┌─────────────────────────────────────────────────────────────────────┐');
+        this.logger.info('│                        ❌ DataRequest Failed                        │');
+        this.logger.info('├─────────────────────────────────────────────────────────────────────┤');
+        this.logger.info(`│ Error: ${(error as Error).message}`);
+        this.logger.info('└─────────────────────────────────────────────────────────────────────┘');
+      } else {
+        console.log('\n┌─────────────────────────────────────────────────────────────────────┐');
+        console.log('│                        ❌ DataRequest Failed                        │');
+        console.log('├─────────────────────────────────────────────────────────────────────┤');
+        console.log(`│ Error: ${(error as Error).message}`);
+        console.log('└─────────────────────────────────────────────────────────────────────┘');
+      }
       throw error;
     }
   }
@@ -121,14 +149,16 @@ export { loadSEDAConfig };
  * Example usage function
  */
 export async function exampleUsage(): Promise<void> {
-  console.log('🚀 SEDA DataRequest Example Usage\n');
+  console.log('\n┌─────────────────────────────────────────────────────────────────────┐');
+  console.log('│                   🚀 SEDA DataRequest Example                       │');
+  console.log('└─────────────────────────────────────────────────────────────────────┘');
 
   try {
     // Load configuration
     const config = loadSEDAConfig();
-    console.log('📋 Configuration loaded successfully');
-    console.log(`🌐 Network: ${config.network}`);
-    console.log(`🔗 RPC: ${config.rpcEndpoint}`);
+    console.log('\n📋 Configuration loaded successfully');
+    console.log(`   Network: ${config.network}`);
+    console.log(`   RPC: ${config.rpcEndpoint}`);
 
     // Create builder
     const builder = new SEDADataRequestBuilder(config);
@@ -139,12 +169,19 @@ export async function exampleUsage(): Promise<void> {
       memo: 'Test DataRequest from example'
     });
 
-    console.log('\n✅ Example completed successfully!');
-    console.log(`📊 DataRequest ID: ${result.drId}`);
-    console.log(`📊 Exit Code: ${result.exitCode}`);
+    console.log('\n┌─────────────────────────────────────────────────────────────────────┐');
+    console.log('│                      ✅ Example Completed                           │');
+    console.log('├─────────────────────────────────────────────────────────────────────┤');
+    console.log(`│ Request ID: ${result.drId}`);
+    console.log(`│ Exit Code: ${result.exitCode}`);
+    console.log('└─────────────────────────────────────────────────────────────────────┘');
 
   } catch (error) {
-    console.error('❌ Example failed:', error);
+    console.log('\n┌─────────────────────────────────────────────────────────────────────┐');
+    console.log('│                        ❌ Example Failed                            │');
+    console.log('├─────────────────────────────────────────────────────────────────────┤');
+    console.log(`│ Error: ${(error as Error).message}`);
+    console.log('└─────────────────────────────────────────────────────────────────────┘');
     throw error;
   }
 } 

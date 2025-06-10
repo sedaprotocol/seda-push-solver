@@ -13,12 +13,12 @@ export const SEDA_NETWORK_CONFIGS: Record<'testnet' | 'mainnet' | 'local', Netwo
     explorerEndpoint: 'https://testnet.explorer.seda.xyz',
     dataRequest: {
       oracleProgramId: 'd9814ceafe4084bd6d9b737be048778dfd81026531cbe4fb361df9c446687607',
-      replicationFactor: 2,
+      replicationFactor: 1,
       execGasLimit: BigInt(150_000_000_000_000),
-      gasPrice: BigInt(10_000_000_000),
+      gasPrice: BigInt(10_000),
       consensusOptions: { method: 'none' },
       timeoutSeconds: 120,
-      pollingIntervalSeconds: 5,
+      pollingIntervalSeconds: 1,
       memo: 'DX Feed Oracle DataRequest'
     }
   },

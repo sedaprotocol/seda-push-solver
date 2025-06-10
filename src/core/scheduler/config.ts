@@ -4,6 +4,7 @@
  */
 
 import type { SchedulerConfig } from '../../types';
+import type { ILoggingService } from '../../services';
 
 // Default scheduler configuration
 export const DEFAULT_SCHEDULER_CONFIG: SchedulerConfig = {
@@ -62,10 +63,18 @@ export function buildSchedulerConfig(
 /**
  * Format scheduler configuration for display
  */
-export function formatSchedulerConfig(config: SchedulerConfig): void {
-  console.log('🔧 SEDA DataRequest Scheduler Configuration:');
-  console.log(`   ⏱️  Interval: ${config.intervalMs / 1000}s`);
-  console.log(`   🔄 Continuous: ${config.continuous}`);
-  console.log(`   🔁 Max Retries: ${config.maxRetries}`);
-  console.log(`   📝 Memo: ${config.memo}`);
+export function formatSchedulerConfig(config: SchedulerConfig, logger?: ILoggingService): void {
+  if (logger) {
+    logger.info('🔧 SEDA DataRequest Scheduler Configuration:');
+    logger.info(`   ⏱️  Interval: ${config.intervalMs / 1000}s`);
+    logger.info(`   🔄 Continuous: ${config.continuous}`);
+    logger.info(`   🔁 Max Retries: ${config.maxRetries}`);
+    logger.info(`   📝 Memo: ${config.memo}`);
+  } else {
+    console.log('🔧 SEDA DataRequest Scheduler Configuration:');
+    console.log(`   ⏱️  Interval: ${config.intervalMs / 1000}s`);
+    console.log(`   🔄 Continuous: ${config.continuous}`);
+    console.log(`   🔁 Max Retries: ${config.maxRetries}`);
+    console.log(`   📝 Memo: ${config.memo}`);
+  }
 } 
