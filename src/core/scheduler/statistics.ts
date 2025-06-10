@@ -4,6 +4,7 @@
  */
 
 import type { SchedulerStats } from '../../types';
+import type { ILoggingService } from '../../services';
 
 /**
  * Statistics Manager for the SEDA DataRequest Scheduler
@@ -74,21 +75,37 @@ export class SchedulerStatistics {
   /**
    * Print comprehensive statistics report
    */
-  printReport(): void {
+  printReport(logger?: ILoggingService): void {
     const runtime = this.getRuntimeMinutes();
     
-    console.log('\n📈 SCHEDULER STATISTICS');
-    console.log('='.repeat(50));
-    console.log(`⏱️  Total Runtime: ${runtime} minutes`);
-    console.log(`📊 Total Requests: ${this.stats.totalRequests}`);
-    console.log(`✅ Successful: ${this.stats.successfulRequests}`);
-    console.log(`❌ Failed: ${this.stats.failedRequests}`);
-    
-    if (this.stats.totalRequests > 0) {
-      const successRate = this.getSuccessRate();
-      console.log(`📈 Overall Success Rate: ${successRate.toFixed(1)}%`);
+    if (logger) {
+      logger.info('\n📈 SCHEDULER STATISTICS');
+      logger.info('='.repeat(50));
+      logger.info(`⏱️  Total Runtime: ${runtime} minutes`);
+      logger.info(`📊 Total Requests: ${this.stats.totalRequests}`);
+      logger.info(`✅ Successful: ${this.stats.successfulRequests}`);
+      logger.info(`❌ Failed: ${this.stats.failedRequests}`);
+      
+      if (this.stats.totalRequests > 0) {
+        const successRate = this.getSuccessRate();
+        logger.info(`📈 Overall Success Rate: ${successRate.toFixed(1)}%`);
+      }
+      
+      logger.info('='.repeat(50));
+    } else {
+      console.log('\n📈 SCHEDULER STATISTICS');
+      console.log('='.repeat(50));
+      console.log(`⏱️  Total Runtime: ${runtime} minutes`);
+      console.log(`📊 Total Requests: ${this.stats.totalRequests}`);
+      console.log(`✅ Successful: ${this.stats.successfulRequests}`);
+      console.log(`❌ Failed: ${this.stats.failedRequests}`);
+      
+      if (this.stats.totalRequests > 0) {
+        const successRate = this.getSuccessRate();
+        console.log(`📈 Overall Success Rate: ${successRate.toFixed(1)}%`);
+      }
+      
+      console.log('='.repeat(50));
     }
-    
-    console.log('='.repeat(50));
   }
 } 
