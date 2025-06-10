@@ -11,14 +11,24 @@ export {
   formatSchedulerConfig
 } from './config';
 
-// Export statistics functionality
+// Export statistics functions
 export {
   SchedulerStatistics
 } from './statistics';
 
-// Export retry functionality
+// Export retry handling functions
 export {
-  withRetry,
-  executeWithRetry,
-  delay
-} from './retry-handler'; 
+  executeWithRetry
+} from './retry-handler';
+
+// Export async task management
+export {
+  AsyncTaskManager,
+  type AsyncTaskResult,
+  type TaskCompletionHandler
+} from './async-task-manager';
+
+// Export task completion handling
+export {
+  SchedulerTaskCompletionHandler
+} from './task-completion-handler'; 
