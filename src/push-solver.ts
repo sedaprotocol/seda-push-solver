@@ -140,7 +140,7 @@ export class SEDADataRequestBuilder {
       console.log('📊 Result Details:');
       console.log(`   DR ID: ${result.drId}`);
       console.log(`   Exit Code: ${result.exitCode}`);
-      console.log(`   Block Height: ${result.blockHeight}`);
+      console.log(`   DR block Height: ${result.drBlockHeight}`);
       console.log(`   Gas Used: ${result.gasUsed}`);
       console.log(`   Consensus: ${result.consensus}`);
       console.log(`   Result (as hex): ${result.result || 'No result data'}`);
