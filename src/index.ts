@@ -5,18 +5,22 @@
  * Provides classes and utilities for posting DataRequests to the SEDA network.
  */
 
-// Main entry point for SEDA DataRequest Pusher
+// Export all modules - this includes all types, classes, and functions
 export * from './push-solver';
 export * from './seda-dr-config';
 export * from './scheduler';
+export * from './types';
 
 // Re-export key types
 export type { 
   SEDAConfig,
-  SEDADataRequestConfig,
   DataRequestResult,
   DataRequestOptions
-} from './push-solver';
+} from './types';
+
+export type {
+  SEDADataRequestConfig
+} from './seda-dr-config';
 
 export type {
   SchedulerConfig

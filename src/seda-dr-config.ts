@@ -43,7 +43,7 @@ export interface NetworkConfig {
 export const SEDA_NETWORK_CONFIGS: Record<string, NetworkConfig> = {
   testnet: {
     rpcEndpoint: 'https://rpc.testnet.seda.xyz',
-    explorerEndpoint: 'https://explorer.testnet.seda.xyz',
+    explorerEndpoint: 'https://testnet.explorer.seda.xyz',
     network: 'testnet',
     dataRequest: {
       oracleProgramId: 'd9814ceafe4084bd6d9b737be048778dfd81026531cbe4fb361df9c446687607',

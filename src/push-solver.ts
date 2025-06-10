@@ -8,28 +8,7 @@ import { buildSigningConfig, postAndAwaitDataRequest, Signer } from '@seda-proto
 import type { PostDataRequestInput, GasOptions } from '@seda-protocol/dev-tools';
 import { getNetworkConfig, type SEDADataRequestConfig } from './seda-dr-config';
 import { hexBEToNumber, hexBEToString } from './helpers/hex-converter';
-
-// Main SEDA configuration interface
-export interface SEDAConfig {
-  rpcEndpoint: string;
-  network: 'testnet' | 'mainnet' | 'local';
-  mnemonic?: string;
-}
-
-// DataRequest result interface
-export interface DataRequestResult {
-  drId: string;
-  exitCode: number;
-  result?: any;
-  blockHeight?: number;
-  gasUsed?: string;
-}
-
-// DataRequest posting options
-export interface DataRequestOptions {
-  memo?: string;
-  customTimeout?: number;
-}
+import type { SEDAConfig, DataRequestResult, DataRequestOptions } from './types';
 
 /**
  * SEDA DataRequest Builder
