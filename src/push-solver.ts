@@ -143,12 +143,11 @@ export class SEDADataRequestBuilder {
       console.log(`   Block Height: ${result.blockHeight}`);
       console.log(`   Gas Used: ${result.gasUsed}`);
       console.log(`   Consensus: ${result.consensus}`);
-      console.log(`   Result: ${result.result || 'No result data'}`);
+      console.log(`   Result (as hex): ${result.result || 'No result data'}`);
       
       // Log BE conversions if result looks like hex
       if (result.result && typeof result.result === 'string' && /^(0x)?[0-9a-fA-F]+$/.test(result.result)) {
-        console.log(`   Result (BE Number): ${hexBEToNumber(result.result)}`);
-        console.log(`   Result (BE String): "${hexBEToString(result.result)}"`);
+        console.log(`   Result (number): ${hexBEToNumber(result.result)}`);
       }
 
       return {
