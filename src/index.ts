@@ -1,12 +1,20 @@
 /**
- * SEDA DataRequest Pusher - Main Module Exports
- * 
- * Main entry point for the SEDA DataRequest Pusher library.
- * Provides classes and utilities for posting DataRequests to the SEDA network.
+ * SEDA DataRequest Pusher
+ * Main entry point and exports
  */
 
-// Export all modules - this includes all types, classes, and functions
+// Core functionality
 export * from './push-solver';
-export * from './seda-dr-config';
 export * from './scheduler';
+
+// Type definitions
 export * from './types';
+
+// Services layer
+export * from './services';
+
+// Infrastructure layer
+export * from './infrastructure';
+
+// Legacy configuration (for backward compatibility)
+export * from './seda-dr-config';

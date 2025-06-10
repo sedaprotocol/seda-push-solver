@@ -13,6 +13,7 @@ import {
   executeWithRetry
 } from './core/scheduler';
 import type { SchedulerConfig, SchedulerStats } from './types';
+import type { ITimerService, IProcessService, TimerId } from './infrastructure';
 
 /**
  * SEDA DataRequest Scheduler
@@ -24,14 +25,20 @@ export class SEDADataRequestScheduler {
   private config: SchedulerConfig;
   private builder: SEDADataRequestBuilder;
   private isRunning: boolean = false;
-  private intervalId: NodeJS.Timeout | null = null;
+  private intervalId: TimerId | null = null;
   private statistics: SchedulerStatistics;
 
   /**
    * Create a new scheduler instance
    * @param schedulerConfig Partial configuration to override defaults
+   * @param timerService Timer service for scheduling (defaults to production timer)
+   * @param processService Process service for shutdown handling (defaults to production process)
    */
-  constructor(schedulerConfig: Partial<SchedulerConfig> = {}) {
+  constructor(
+    schedulerConfig: Partial<SchedulerConfig> = {},
+    private timerService?: ITimerService,
+    private processService?: IProcessService
+  ) {
     this.config = buildSchedulerConfig(schedulerConfig);
     this.statistics = new SchedulerStatistics();
     
@@ -72,12 +79,25 @@ export class SEDADataRequestScheduler {
     await this.executeDataRequest();
 
     if (this.config.continuous) {
-      // Schedule subsequent requests
-      this.intervalId = setInterval(() => {
-        this.executeDataRequest().catch(error => {
-          console.error('❌ DataRequest execution failed:', error);
-        });
-      }, this.config.intervalMs);
+      // Schedule subsequent requests using timer service
+      if (this.timerService) {
+        this.intervalId = this.timerService.setInterval(async () => {
+          try {
+            await this.executeDataRequest();
+          } catch (error) {
+            console.error('❌ DataRequest execution failed:', error);
+          }
+        }, this.config.intervalMs);
+      } else {
+        // Fallback to built-in setInterval
+        this.intervalId = setInterval(async () => {
+          try {
+            await this.executeDataRequest();
+          } catch (error) {
+            console.error('❌ DataRequest execution failed:', error);
+          }
+        }, this.config.intervalMs) as unknown as TimerId;
+      }
 
       console.log(`🔄 Scheduler running continuously every ${this.config.intervalMs / 1000}s`);
     } else {
@@ -100,7 +120,11 @@ export class SEDADataRequestScheduler {
     this.isRunning = false;
     
     if (this.intervalId) {
-      clearInterval(this.intervalId);
+      if (this.timerService) {
+        this.timerService.clearInterval(this.intervalId);
+      } else {
+        clearInterval(this.intervalId);
+      }
       this.intervalId = null;
     }
 
@@ -114,7 +138,7 @@ export class SEDADataRequestScheduler {
   private async executeDataRequest(): Promise<void> {
     if (!this.isRunning) return;
 
-    const requestStartTime = Date.now();
+    const requestStartTime = this.timerService?.now() || Date.now();
     const currentStats = this.statistics.getStats();
     const requestNumber = currentStats.totalRequests + 1;
     
@@ -143,11 +167,11 @@ export class SEDADataRequestScheduler {
       this.statistics.recordFailure();
     }
 
-    const requestTime = Date.now() - requestStartTime;
+    const requestTime = (this.timerService?.now() || Date.now()) - requestStartTime;
     console.log(`⏱️  Request duration: ${(requestTime / 1000).toFixed(1)}s`);
 
     if (this.config.continuous && this.isRunning) {
-      const nextRequest = new Date(Date.now() + this.config.intervalMs);
+      const nextRequest = new Date((this.timerService?.now() || Date.now()) + this.config.intervalMs);
       console.log(`⏭️  Next DataRequest at: ${nextRequest.toISOString()}`);
     }
   }
@@ -170,26 +194,40 @@ export class SEDADataRequestScheduler {
 /**
  * Create and start a scheduler with environment-based configuration
  */
-export async function startScheduler(overrides: Partial<SchedulerConfig> = {}): Promise<SEDADataRequestScheduler> {
+export async function startScheduler(
+  overrides: Partial<SchedulerConfig> = {},
+  timerService?: ITimerService,
+  processService?: IProcessService
+): Promise<SEDADataRequestScheduler> {
   // Create scheduler with configuration loaded from environment and overrides
-  const scheduler = new SEDADataRequestScheduler(overrides);
+  const scheduler = new SEDADataRequestScheduler(overrides, timerService, processService);
 
   // Initialize and start
   await scheduler.initialize();
   await scheduler.start();
 
   // Graceful shutdown handling
-  process.on('SIGINT', () => {
-    console.log('\n🔔 Received SIGINT, shutting down gracefully...');
-    scheduler.stop();
-    process.exit(0);
-  });
+  if (processService) {
+    // Use process service for shutdown handling
+    processService.onShutdown(async () => {
+      console.log('\n🔔 Shutting down scheduler gracefully...');
+      scheduler.stop();
+    });
+    processService.startSignalHandling();
+  } else {
+    // Fallback to direct process handling
+    process.on('SIGINT', () => {
+      console.log('\n🔔 Received SIGINT, shutting down gracefully...');
+      scheduler.stop();
+      process.exit(0);
+    });
 
-  process.on('SIGTERM', () => {
-    console.log('\n🔔 Received SIGTERM, shutting down gracefully...');
-    scheduler.stop();
-    process.exit(0);
-  });
+    process.on('SIGTERM', () => {
+      console.log('\n🔔 Received SIGTERM, shutting down gracefully...');
+      scheduler.stop();
+      process.exit(0);
+    });
+  }
 
   return scheduler;
 } 
