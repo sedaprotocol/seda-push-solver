@@ -8,6 +8,9 @@ import type { SEDADataRequestConfig, DataRequestOptions } from '../../types';
 
 /**
  * Build PostDataRequestInput from DataRequest configuration and options
+ * @param drConfig The SEDA DataRequest configuration containing oracle program settings
+ * @param options Optional DataRequest parameters to override defaults
+ * @returns PostDataRequestInput object ready for SEDA network submission
  */
 export function buildDataRequestInput(
   drConfig: SEDADataRequestConfig, 
@@ -39,6 +42,8 @@ export function buildDataRequestInput(
 
 /**
  * Build gas options from DataRequest configuration
+ * @param drConfig The SEDA DataRequest configuration containing gas settings
+ * @returns GasOptions object for transaction gas configuration
  */
 export function buildGasOptions(drConfig: SEDADataRequestConfig): GasOptions {
   return {
@@ -48,6 +53,9 @@ export function buildGasOptions(drConfig: SEDADataRequestConfig): GasOptions {
 
 /**
  * Build await options from DataRequest configuration and custom options
+ * @param drConfig The SEDA DataRequest configuration containing timeout settings
+ * @param options Optional parameters to override default timeout values
+ * @returns Await options for DataRequest execution monitoring
  */
 export function buildAwaitOptions(
   drConfig: SEDADataRequestConfig, 

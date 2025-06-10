@@ -31,7 +31,7 @@ async function main() {
       console.log('\n💡 Setup Instructions:');
       console.log('   1. Set SEDA_MNEMONIC environment variable');
       console.log('   2. Ensure account has sufficient testnet tokens');
-      console.log('   3. Oracle Program ID is configured in src/seda-dr-config.ts');
+      console.log('   3. Oracle Program ID is configured in src/core/network/network-config.ts');
       console.log('\n📖 Environment Variables:');
       console.log('   SEDA_MNEMONIC - Your 24-word mnemonic phrase (required)');
       console.log('   SEDA_NETWORK - Network to use (testnet/mainnet/local)');

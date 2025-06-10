@@ -1,7 +1,15 @@
 /**
  * SEDA DataRequest Builder and Pusher
  * Generic SEDA oracle DataRequest posting functionality for any Oracle Program
- * Handles configuration, signing, and posting of DataRequests to SEDA network
+ * 
+ * This module provides the main SEDADataRequestBuilder class that orchestrates
+ * DataRequest creation and posting using the modular core components:
+ * - core/data-request: Handles input building, execution, and signing
+ * - core/network: Manages network configurations
+ * - types: Centralized type definitions
+ * 
+ * The builder maintains backward compatibility while leveraging the new
+ * modular architecture for better maintainability and testability.
  */
 
 import { Signer } from '@seda-protocol/dev-tools';

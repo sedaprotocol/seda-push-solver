@@ -37,25 +37,71 @@ bun run demo
 
 ```
 dxfeed-pusher/
-├── src/                          # Source code
-│   ├── index.ts                  # Main exports
-│   ├── push-solver.ts            # DataRequest builder and posting
-│   ├── seda-dr-config.ts         # Network configurations
-│   ├── scheduler.ts              # Automated scheduling
-│   ├── runner.ts                 # CLI runner script
-│   └── helpers/
-│       └── hex-converter.ts      # Hex conversion utilities
-├── tests/                        # Test files
-│   ├── test-seda-config.ts       # Configuration tests
-│   ├── test-datarequest.ts       # Single DataRequest tests
-│   └── test-multiple-requests.ts # Multiple DataRequest tests
-├── examples/                     # Example usage
-│   └── demo.ts                   # Demo application
-├── config/                       # Configuration templates
-├── docs/                         # Documentation
-├── package.json                  # Dependencies and scripts
-├── tsconfig.json                 # TypeScript configuration
-└── .env                          # Environment variables (create from template)
+├── src/                              # Source code
+│   ├── index.ts                      # Main exports
+│   ├── push-solver.ts                # DataRequest builder (refactored)
+│   ├── scheduler.ts                  # Automated scheduling
+│   ├── runner.ts                     # CLI runner script
+│   │
+│   ├── types/                        # Type definitions
+│   │   └── index.ts                  # Core interfaces and types
+│   │
+│   ├── core/                         # Core business logic modules
+│   │   ├── data-request/             # DataRequest functionality
+│   │   │   ├── input-builder.ts      # Build PostDataRequestInput objects
+│   │   │   ├── executor.ts           # Execute DataRequests
+│   │   │   ├── signer.ts             # SEDA signer initialization
+│   │   │   ├── config-loader.ts      # Environment configuration
+│   │   │   └── index.ts              # Module exports
+│   │   │
+│   │   ├── network/                  # Network configuration
+│   │   │   ├── network-config.ts     # Network configurations
+│   │   │   ├── data-request-config.ts # DataRequest configurations
+│   │   │   ├── network-validator.ts  # Configuration validation
+│   │   │   └── index.ts              # Module exports
+│   │   │
+│   │   └── scheduler/                # Scheduler core logic
+│   │       ├── config.ts             # Scheduler configuration
+│   │       ├── statistics.ts         # Statistics tracking
+│   │       ├── retry-handler.ts      # Retry logic
+│   │       └── index.ts              # Module exports
+│   │
+│   ├── services/                     # Service layer abstractions
+│   │   ├── seda-service.ts           # SEDA operations service
+│   │   ├── config-service.ts         # Configuration management
+│   │   ├── logging-service.ts        # Structured logging
+│   │   ├── service-container.ts      # Dependency injection
+│   │   └── index.ts                  # Service exports
+│   │
+│   ├── infrastructure/               # Infrastructure services
+│   │   ├── timer-service.ts          # Timer abstractions
+│   │   ├── process-service.ts        # Process management
+│   │   ├── health-service.ts         # Health monitoring
+│   │   ├── infrastructure-container.ts # Infrastructure DI
+│   │   └── index.ts                  # Infrastructure exports
+│   │
+│   └── helpers/                      # Utility functions
+│       └── hex-converter.ts          # Hex conversion utilities
+│
+├── tests/                            # Test files
+│   ├── unit/                         # Unit tests
+│   │   ├── types.test.ts             # Type definition tests
+│   │   ├── core-network.test.ts      # Network module tests
+│   │   ├── config.test.ts            # Configuration tests
+│   │   ├── index-exports.test.ts     # Export validation tests
+│   │   ├── infrastructure.test.ts    # Infrastructure tests
+│   │   └── services.test.ts          # Service layer tests
+│   │
+│   ├── test-seda-config.ts           # Configuration integration tests
+│   ├── test-datarequest.ts           # Single DataRequest tests
+│   └── test-multiple-requests.ts     # Multiple DataRequest tests
+│
+├── examples/                         # Example usage
+│   └── demo.ts                       # Demo application
+├── docs/                             # Documentation
+├── package.json                      # Dependencies and scripts
+├── tsconfig.json                     # TypeScript configuration
+└── .env                              # Environment variables (create from template)
 ```
 
 ## Environment Setup
@@ -68,7 +114,7 @@ SEDA_NETWORK=testnet                    # testnet, mainnet, or local
 SEDA_MNEMONIC="your 24-word mnemonic"   # Your SEDA wallet mnemonic
 SEDA_RPC_ENDPOINT=                      # Optional: custom RPC endpoint
 
-# Oracle Program Configuration (set in src/seda-dr-config.ts)
+# Oracle Program Configuration (set in src/core/network/network-config.ts)
 # Update the oracleProgramId in the network config
 
 # Scheduler Configuration (optional)
@@ -92,18 +138,23 @@ SCHEDULER_MEMO="Custom memo text"       # Custom memo for DataRequests
 
 ### Network Configuration
 
-Edit `src/seda-dr-config.ts` to configure your Oracle Program ID for each network:
+Edit `src/core/network/network-config.ts` to configure your Oracle Program ID for each network:
 
 ```typescript
 export const SEDA_NETWORK_CONFIGS = {
   testnet: {
+    name: 'testnet',
     rpcEndpoint: 'https://rpc.testnet.seda.xyz',
-    network: 'testnet',
+    explorerEndpoint: 'https://testnet.explorer.seda.xyz',
     dataRequest: {
       oracleProgramId: 'your-oracle-program-id-here', // ← Set this
-      replicationFactor: 1,
-      execGasLimit: 150_000_000_000_000,
-      // ... other settings
+      replicationFactor: 2,
+      execGasLimit: BigInt(150_000_000_000_000),
+      gasPrice: BigInt(10_000_000_000),
+      consensusOptions: { method: 'none' },
+      timeoutSeconds: 120,
+      pollingIntervalSeconds: 5,
+      memo: 'DX Feed Oracle DataRequest'
     }
   },
   // ... other networks

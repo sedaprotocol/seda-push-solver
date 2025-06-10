@@ -15,6 +15,3 @@ export * from './services';
 
 // Infrastructure layer
 export * from './infrastructure';
-
-// Legacy configuration (for backward compatibility)
-export * from './seda-dr-config';

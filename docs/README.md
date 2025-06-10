@@ -53,22 +53,23 @@ SCHEDULER_MEMO="Custom memo text"       # Custom memo for DataRequests
 
 ### Network Configuration
 
-Edit `src/seda-dr-config.ts` to configure Oracle Program IDs:
+Configure Oracle Program IDs in `src/core/network/network-config.ts`:
 
 ```typescript
 export const SEDA_NETWORK_CONFIGS = {
   testnet: {
+    name: 'testnet',
     rpcEndpoint: 'https://rpc.testnet.seda.xyz',
-    network: 'testnet',
+    explorerEndpoint: 'https://testnet.explorer.seda.xyz',
     dataRequest: {
       oracleProgramId: 'your-oracle-program-id', // Set your Oracle Program ID
-      replicationFactor: 1,
-      execGasLimit: 150_000_000_000_000,
-      gasPrice: 10000n,
+      replicationFactor: 2,
+      execGasLimit: BigInt(150_000_000_000_000),
+      gasPrice: BigInt(10_000_000_000),
       consensusOptions: { method: 'none' },
-      timeoutSeconds: 60,
-      pollingIntervalSeconds: 1,
-      memo: 'Data request via SEDA'
+      timeoutSeconds: 120,
+      pollingIntervalSeconds: 5,
+      memo: 'DX Feed Oracle DataRequest'
     }
   },
   // ... other networks
@@ -374,16 +375,22 @@ bun run test:all
 src/
 ├── index.ts                  # Main exports
 ├── push-solver.ts            # DataRequest builder
-├── seda-dr-config.ts         # Network configurations
 ├── scheduler.ts              # Scheduling functionality
 ├── runner.ts                 # CLI runner
+├── types/                    # Type definitions
+├── core/                     # Core business logic
+│   ├── data-request/         # DataRequest functionality
+│   ├── network/              # Network configuration
+│   └── scheduler/            # Scheduler logic
+├── services/                 # Service layer
+├── infrastructure/           # Infrastructure services
 └── helpers/
     └── hex-converter.ts      # Utility functions
 ```
 
 ### Adding New Networks
 
-1. Edit `src/seda-dr-config.ts`
+1. Edit `src/core/network/network-config.ts`
 2. Add network configuration to `SEDA_NETWORK_CONFIGS`
 3. Set appropriate RPC endpoint and Oracle Program ID
 4. Configure gas limits and other parameters
