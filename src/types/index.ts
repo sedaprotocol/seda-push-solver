@@ -66,4 +66,5 @@ export interface SchedulerStats {
   successfulRequests: number;
   failedRequests: number;
   startTime: number;
+  activeTasks?: number; // Optional for backward compatibility - tracks currently running async tasks
 } 
