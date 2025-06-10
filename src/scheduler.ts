@@ -1,3 +1,10 @@
+/**
+ * SEDA DataRequest Scheduler
+ * 
+ * Provides scheduling functionality to continuously post DataRequests to the SEDA network
+ * at regular intervals. Includes retry logic, statistics tracking, and graceful shutdown.
+ */
+
 import { loadSEDAConfig, SEDADataRequestBuilder } from './push-solver';
 
 // Scheduler Configuration
@@ -23,6 +30,12 @@ export const DEFAULT_SCHEDULER_CONFIG: SchedulerConfig = {
   memo: 'Scheduled DataRequest'
 };
 
+/**
+ * SEDA DataRequest Scheduler
+ * 
+ * Manages the automated posting of DataRequests to the SEDA network at regular intervals.
+ * Provides retry logic, statistics tracking, and graceful shutdown capabilities.
+ */
 export class SEDADataRequestScheduler {
   private config: SchedulerConfig;
   private builder: SEDADataRequestBuilder;
@@ -35,6 +48,10 @@ export class SEDADataRequestScheduler {
     startTime: Date.now()
   };
 
+  /**
+   * Create a new scheduler instance
+   * @param schedulerConfig Partial configuration to override defaults
+   */
   constructor(schedulerConfig: Partial<SchedulerConfig> = {}) {
     this.config = { ...DEFAULT_SCHEDULER_CONFIG, ...schedulerConfig };
     

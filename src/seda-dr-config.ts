@@ -5,6 +5,7 @@
 
 // DataRequest Configuration Interface
 export interface SEDADataRequestConfig {
+
   // Oracle Program Configuration
   oracleProgramId: string;
   
@@ -30,6 +31,8 @@ export interface SEDADataRequestConfig {
 export interface NetworkConfig {
   // Network connection settings
   rpcEndpoint: string;
+  // Explorer endpoint
+  explorerEndpoint: string;
   network: 'testnet' | 'mainnet' | 'local';
   
   // DataRequest settings
@@ -40,6 +43,7 @@ export interface NetworkConfig {
 export const SEDA_NETWORK_CONFIGS: Record<string, NetworkConfig> = {
   testnet: {
     rpcEndpoint: 'https://rpc.testnet.seda.xyz',
+    explorerEndpoint: 'https://explorer.testnet.seda.xyz',
     network: 'testnet',
     dataRequest: {
       oracleProgramId: 'd9814ceafe4084bd6d9b737be048778dfd81026531cbe4fb361df9c446687607',
@@ -57,6 +61,7 @@ export const SEDA_NETWORK_CONFIGS: Record<string, NetworkConfig> = {
   
   mainnet: {
     rpcEndpoint: 'https://rpc.seda.xyz',
+    explorerEndpoint: 'https://explorer.seda.xyz',
     network: 'mainnet',
     dataRequest: {
       oracleProgramId: '', // Set this when you have a mainnet oracle program
@@ -74,6 +79,7 @@ export const SEDA_NETWORK_CONFIGS: Record<string, NetworkConfig> = {
   
   local: {
     rpcEndpoint: 'http://localhost:26657',
+    explorerEndpoint: 'http://localhost:8000',
     network: 'local',
     dataRequest: {
       oracleProgramId: 'local-test-program-id',

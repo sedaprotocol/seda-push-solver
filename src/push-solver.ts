@@ -1,6 +1,7 @@
 /**
- * SEDA DataRequest Builder and Configuration
- * Generic SEDA oracle DataRequest posting functionality
+ * SEDA DataRequest Builder and Pusher
+ * Generic SEDA oracle DataRequest posting functionality for any Oracle Program
+ * Handles configuration, signing, and posting of DataRequests to SEDA network
  */
 
 import { buildSigningConfig, postAndAwaitDataRequest, Signer } from '@seda-protocol/dev-tools';
@@ -144,6 +145,7 @@ export class SEDADataRequestBuilder {
       console.log(`   Gas Used: ${result.gasUsed}`);
       console.log(`   Consensus: ${result.consensus}`);
       console.log(`   Result (as hex): ${result.result || 'No result data'}`);
+      console.log(`   Explorer: ${networkConfig.explorerEndpoint}/data-requests/${result.drId}/${result.drBlockHeight}`);
       
       // Log BE conversions if result looks like hex
       if (result.result && typeof result.result === 'string' && /^(0x)?[0-9a-fA-F]+$/.test(result.result)) {
