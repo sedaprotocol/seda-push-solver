@@ -6,7 +6,7 @@
 import { buildSigningConfig, postAndAwaitDataRequest, Signer } from '@seda-protocol/dev-tools';
 import type { PostDataRequestInput, GasOptions } from '@seda-protocol/dev-tools';
 import { getNetworkConfig, type SEDADataRequestConfig } from './seda-dr-config';
-import { hexLEToNumber, hexLEToString } from './helpers/hex-converter';
+import { hexBEToNumber, hexBEToString } from './helpers/hex-converter';
 
 // Main SEDA configuration interface
 export interface SEDAConfig {
@@ -145,10 +145,10 @@ export class SEDADataRequestBuilder {
       console.log(`   Consensus: ${result.consensus}`);
       console.log(`   Result: ${result.result || 'No result data'}`);
       
-      // Log LE conversions if result looks like hex
+      // Log BE conversions if result looks like hex
       if (result.result && typeof result.result === 'string' && /^(0x)?[0-9a-fA-F]+$/.test(result.result)) {
-        console.log(`   Result (LE Number): ${hexLEToNumber(result.result)}`);
-        console.log(`   Result (LE String): "${hexLEToString(result.result)}"`);
+        console.log(`   Result (BE Number): ${hexBEToNumber(result.result)}`);
+        console.log(`   Result (BE String): "${hexBEToString(result.result)}"`);
       }
 
       return {
