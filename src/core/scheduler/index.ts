@@ -42,6 +42,7 @@ export {
 // Export Cosmos sequence coordination
 export {
   CosmosSequenceCoordinator,
-  type SequencedExecution,
-  type ExecutionResult
+  type SequencedPosting,
+  type PostingResult,
+  type CosmosSequenceConfig
 } from './cosmos-sequence-coordinator'; 

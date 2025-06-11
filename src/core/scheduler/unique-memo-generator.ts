@@ -11,6 +11,7 @@ import type { ILoggingService } from '../../services';
 export interface UniqueMemoData {
   memo: string;
   sequenceNumber: number;
+  timestamp: number;
 }
 
 /**
@@ -26,13 +27,15 @@ export class UniqueMemoGenerator {
    * Generate a unique memo using sequence number for uniqueness
    */
   generateUniqueMemo(baseMemo: string, sequenceNumber: number): UniqueMemoData {
-    const memo = `${baseMemo} | seq:${sequenceNumber}`;
+    // Simple sequence-based uniqueness
+    const uniqueMemo = `${baseMemo} | seq:${sequenceNumber}`;
     
-    this.logger.info(`🆔 Generated unique memo (seq: ${sequenceNumber}): "${memo}"`);
+    this.logger.info(`🆔 Generated unique memo (seq: ${sequenceNumber}): "${uniqueMemo}"`);
     
     return {
-      memo,
-      sequenceNumber
+      memo: uniqueMemo,
+      sequenceNumber,
+      timestamp: this.getTimestamp()
     };
   }
 
@@ -50,5 +53,9 @@ export class UniqueMemoGenerator {
    */
   reset(): void {
     this.logger.info('🔄 Unique memo generator reset');
+  }
+
+  private getTimestamp(): number {
+    return Date.now();
   }
 } 

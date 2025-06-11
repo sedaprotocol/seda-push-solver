@@ -7,8 +7,16 @@ import type { ILoggingService } from '../../services';
 import type { SEDADataRequestBuilder } from '../../push-solver';
 import type { SchedulerConfig } from '../../types';
 import { executeWithRetry } from './retry-handler';
-import { UniqueMemoGenerator, type UniqueMemoData } from './unique-memo-generator';
-import { CosmosSequenceCoordinator, type SequencedExecution, type ExecutionResult } from './cosmos-sequence-coordinator';
+import { UniqueMemoGenerator } from './unique-memo-generator';
+import { 
+  CosmosSequenceCoordinator, 
+  type SequencedPosting, 
+  type PostingResult,
+  type CosmosSequenceConfig 
+} from './cosmos-sequence-coordinator';
+import type { SchedulerStatistics } from './statistics';
+import { postDataRequestTransaction, awaitDataRequestResult, buildDataRequestInput, buildGasOptions } from '../data-request';
+import { getNetworkConfig } from '../network';
 
 /**
  * Interface for tracking async task results
@@ -35,7 +43,8 @@ export interface TaskCompletionHandler {
 
 /**
  * Async Task Manager
- * Handles the creation, execution, and tracking of async DataRequest tasks
+ * Handles launching and tracking multiple concurrent DataRequest tasks
+ * Provides coordination to prevent Cosmos sequence conflicts
  */
 export class AsyncTaskManager {
   private activeTasks = new Map<string, Promise<AsyncTaskResult>>();
@@ -45,10 +54,30 @@ export class AsyncTaskManager {
 
   constructor(
     private logger: ILoggingService,
+    private cosmosSequenceConfig: CosmosSequenceConfig,
     private getTimestamp: () => number = Date.now
   ) {
     this.memoGenerator = new UniqueMemoGenerator(this.logger);
-    this.sequenceCoordinator = new CosmosSequenceCoordinator(this.logger);
+    this.sequenceCoordinator = new CosmosSequenceCoordinator(this.logger, this.cosmosSequenceConfig);
+  }
+
+  /**
+   * Initialize the task manager with signer access for sequence coordination
+   */
+  async initialize(builder: SEDADataRequestBuilder): Promise<void> {
+    // Ensure builder is initialized
+    if (!builder.isBuilderInitialized()) {
+      await builder.initialize();
+    }
+
+    // Get the signer and initialize sequence coordinator
+    const signer = (builder as any).signer;
+    if (!signer) {
+      throw new Error('Builder signer not available for sequence coordinator initialization');
+    }
+
+    await this.sequenceCoordinator.initialize(signer);
+    this.logger.info('✅ Async task manager initialized with real account sequence');
   }
 
   /**
@@ -58,45 +87,32 @@ export class AsyncTaskManager {
     builder: SEDADataRequestBuilder,
     config: SchedulerConfig,
     isRunning: () => boolean,
-    completionHandler: TaskCompletionHandler
+    completionHandler: TaskCompletionHandler,
+    statistics: SchedulerStatistics // Properly typed statistics parameter
   ): string {
-    const taskId = `task-${++this.taskCounter}-${this.getTimestamp()}`;
+    this.taskCounter++;
+    const taskId = `task-${this.taskCounter}-${Date.now()}`;
     const requestNumber = this.taskCounter;
     
     this.logger.info(`\n🚀 Launching async DataRequest task #${requestNumber} (${taskId})`);
     this.logger.info(`📊 Active tasks: ${this.activeTasks.size + 1}`);
 
-    // Create the async task promise
+    // Create the async task promise - but only resolve when oracle result comes back
     const taskPromise = this.executeAsyncDataRequest(
       taskId,
       requestNumber,
       builder,
       config,
-      isRunning
+      isRunning,
+      completionHandler,
+      statistics
     );
     
     // Store the task reference
     this.activeTasks.set(taskId, taskPromise);
     
-    // Handle task completion asynchronously
+    // Handle final cleanup when task fully completes (oracle result or failure)
     taskPromise
-      .then((result) => {
-        if (result.success) {
-          completionHandler.onSuccess(result);
-        } else {
-          completionHandler.onFailure(result);
-        }
-      })
-      .catch((error) => {
-        const failureResult: AsyncTaskResult = {
-          taskId,
-          success: false,
-          error: error instanceof Error ? error : new Error(String(error)),
-          completedAt: this.getTimestamp(),
-          duration: 0
-        };
-        completionHandler.onFailure(failureResult);
-      })
       .finally(() => {
         // Clean up task reference
         this.activeTasks.delete(taskId);
@@ -107,13 +123,17 @@ export class AsyncTaskManager {
 
   /**
    * Execute a single DataRequest asynchronously with sequence coordination
+   * This method now handles the complete lifecycle and only calls completion handler 
+   * when oracle results are available
    */
   private async executeAsyncDataRequest(
     taskId: string,
     requestNumber: number,
     builder: SEDADataRequestBuilder,
     config: SchedulerConfig,
-    isRunning: () => boolean
+    isRunning: () => boolean,
+    completionHandler: TaskCompletionHandler,
+    statistics: SchedulerStatistics
   ): Promise<AsyncTaskResult> {
     const startTime = this.getTimestamp();
     
@@ -122,12 +142,17 @@ export class AsyncTaskManager {
       this.logger.info(`📤 Async DataRequest #${requestNumber} (${taskId}) | ${new Date().toLocaleTimeString()}`);
       this.logger.info('='.repeat(73));
 
-      // Create sequenced execution to prevent Cosmos sequence conflicts
-      const sequencedExecution: SequencedExecution<any> = {
+      // Get network configuration for building inputs and query config
+      const builderConfig = builder.getConfig();
+      const networkConfig = getNetworkConfig(builderConfig.network);
+
+      // Create sequenced posting to prevent Cosmos sequence conflicts
+      // This only coordinates the POSTING phase, not the result waiting
+      const sequencedPosting: SequencedPosting<{ drId: string; blockHeight: bigint; txHash: string }> = {
         taskId,
-        timeout: 60000, // 60 seconds timeout for DataRequest execution
-        execute: async (sequenceNumber: number) => {
-          this.logger.info(`🔢 Executing DataRequest in sequence for task ${taskId}`);
+        timeout: this.cosmosSequenceConfig.postingTimeoutMs,
+        postTransaction: async (sequenceNumber: number) => {
+          this.logger.info(`🔢 Posting DataRequest transaction for task ${taskId} with sequence ${sequenceNumber}`);
           
           // Generate unique memo using the sequence number
           const uniqueMemoData = this.memoGenerator.generateUniqueMemo(
@@ -135,69 +160,205 @@ export class AsyncTaskManager {
             sequenceNumber
           );
           
-          return await executeWithRetry(
-            () => builder.postDataRequest({ memo: uniqueMemoData.memo }),
+          // Post transaction only (no waiting for results yet)
+          const retryResult = await executeWithRetry(
+            async () => {
+              // Ensure builder is initialized
+              if (!builder.isBuilderInitialized()) {
+                await builder.initialize();
+              }
+
+              // Build the post input
+              const postInput = buildDataRequestInput(networkConfig.dataRequest, { memo: uniqueMemoData.memo });
+              const gasOptions = buildGasOptions(networkConfig.dataRequest);
+              
+              // Get the signer from the builder (need to make it accessible)
+              const signer = (builder as any).signer;
+              if (!signer) {
+                throw new Error('Builder signer not available');
+              }
+              
+              // Use the split function to ONLY post the transaction
+              const result = await postDataRequestTransaction(
+                signer,
+                postInput,
+                gasOptions,
+                networkConfig,
+                this.logger
+              );
+              
+              return result;
+            },
             config.maxRetries,
             requestNumber,
             isRunning,
             this.logger
           );
+
+          // Handle retry result
+          if (retryResult.success && retryResult.result) {
+            return retryResult.result;
+          } else {
+            throw retryResult.lastError || new Error('Failed to post DataRequest transaction');
+          }
         }
       };
 
-      // Execute the DataRequest with sequence coordination
-      const executionResult: ExecutionResult<any> = await this.sequenceCoordinator.executeSequenced(sequencedExecution);
+      // Phase 1: Post the DataRequest with sequence coordination (fast, ~5-10 seconds)
+      this.logger.info(`🎯 Coordinating DataRequest posting for task ${taskId}`);
+      const postingResult: PostingResult<{ drId: string; blockHeight: bigint; txHash: string }> = 
+        await this.sequenceCoordinator.executeSequenced(sequencedPosting);
 
-      const completedAt = this.getTimestamp();
-      const totalDuration = completedAt - startTime;
-
-      if (executionResult.success && executionResult.result) {
-        const { success, result } = executionResult.result;
+      if (!postingResult.success || !postingResult.result) {
+        // Posting failed - call completion handler immediately
+        const completedAt = this.getTimestamp();
+        const duration = completedAt - startTime;
         
-        if (success && result) {
-          return {
-            taskId,
-            success: true,
-            result,
-            drId: result.drId,
-            blockHeight: result.blockHeight,
-            completedAt,
-            duration: totalDuration,
-            sequenceNumber: executionResult.sequence
-          };
-        } else {
-          return {
-            taskId,
-            success: false,
-            error: executionResult.result.lastError || new Error('DataRequest failed with unknown error'),
-            completedAt,
-            duration: totalDuration,
-            sequenceNumber: executionResult.sequence
-          };
-        }
-      } else {
-        return {
+        const failureResult: AsyncTaskResult = {
           taskId,
           success: false,
-          error: executionResult.error || new Error('Sequenced execution failed'),
+          error: postingResult.error || new Error('Failed to post DataRequest transaction'),
           completedAt,
-          duration: totalDuration,
-          sequenceNumber: executionResult.sequence
+          duration,
+          sequenceNumber: postingResult.sequence
         };
+        
+        // Call completion handler for posting failure
+        completionHandler.onFailure(failureResult);
+        
+        return failureResult;
       }
+
+      // Phase 2: DataRequest posted successfully - log and record posting success
+      const postedData = postingResult.result;
+      const postingDuration = Date.now() - startTime;
+
+      this.logger.info(`✅ DataRequest posted successfully for task ${taskId}`);
+      this.logger.info(`   📋 Request ID: ${postedData.drId}`);
+      this.logger.info(`   📦 Block Height: ${postedData.blockHeight}`);
+      this.logger.info(`   🔗 Transaction: ${postedData.txHash}`);
+      this.logger.info(`   ⏱️ Posting Duration: ${postingDuration}ms`);
+      this.logger.info(`   🔍 Now waiting for oracle execution...`);
+
+      // Record that the DataRequest was successfully posted to blockchain
+      statistics.recordPosted();
+
+      // Phase 3: Wait for oracle result (this is where completion handler gets called)
+      return await this.awaitOracleResultWithCompletion(
+        taskId,
+        postedData,
+        networkConfig,
+        builderConfig,
+        startTime,
+        postingResult.sequence,
+        completionHandler
+      );
+        
     } catch (error) {
       const completedAt = this.getTimestamp();
       const duration = completedAt - startTime;
       
       this.logger.error(`❌ Async task ${taskId} failed:`, error);
       
-      return {
+      const failureResult: AsyncTaskResult = {
         taskId,
         success: false,
         error: error instanceof Error ? error : new Error(String(error)),
         completedAt,
         duration
       };
+      
+      // Call completion handler for general failure
+      completionHandler.onFailure(failureResult);
+      
+      return failureResult;
+    }
+  }
+
+  /**
+   * Await oracle execution results and call completion handler when done
+   * This replaces the old background tracking approach
+   */
+  private async awaitOracleResultWithCompletion(
+    taskId: string,
+    postedData: { drId: string; blockHeight: bigint; txHash: string },
+    networkConfig: any,
+    builderConfig: any,
+    taskStartTime: number,
+    sequenceNumber: number,
+    completionHandler: TaskCompletionHandler
+  ): Promise<AsyncTaskResult> {
+    try {
+      // Use specific polling parameters from network config
+      const awaitOptions = {
+        timeoutSeconds: networkConfig.dataRequest.timeoutSeconds,
+        pollingIntervalSeconds: networkConfig.dataRequest.pollingIntervalSeconds
+      };
+
+      // Query configuration for awaiting results
+      const queryConfig = { rpc: builderConfig.rpcEndpoint };
+
+      this.logger.info(`⏳ Awaiting oracle execution for DataRequest ${postedData.drId}...`);
+      this.logger.info(`   ⏱️ Timeout: ${awaitOptions.timeoutSeconds}s, Polling: ${awaitOptions.pollingIntervalSeconds}s`);
+
+      // Wait for the DataRequest execution to complete
+      const executionResult = await awaitDataRequestResult(
+        queryConfig,
+        postedData.drId,
+        postedData.blockHeight,
+        awaitOptions,
+        networkConfig,
+        this.logger
+      );
+      
+      const completedAt = this.getTimestamp();
+      const totalDuration = completedAt - taskStartTime;
+
+      // Create success result
+      const successResult: AsyncTaskResult = {
+        taskId,
+        success: true,
+        result: executionResult,
+        drId: executionResult.drId,
+        blockHeight: Number(executionResult.blockHeight),
+        completedAt,
+        duration: totalDuration,
+        sequenceNumber
+      };
+
+      // Call completion handler for oracle success
+      completionHandler.onSuccess(successResult);
+      
+      return successResult;
+      
+    } catch (error) {
+      const completedAt = this.getTimestamp();
+      const totalDuration = completedAt - taskStartTime;
+      
+      this.logger.error(`❌ Oracle execution failed for ${taskId}:`, error);
+      this.logger.info(`   📋 DataRequest ${postedData.drId} was posted successfully but oracle execution timed out or failed`);
+      this.logger.info(`   💡 The DataRequest may still be executing - check the explorer manually`);
+      
+      if (networkConfig.explorerEndpoint) {
+        this.logger.info(`   🔗 Manual Check: ${networkConfig.explorerEndpoint}/data-requests/${postedData.drId}/${postedData.blockHeight}`);
+      }
+      
+      // Create failure result
+      const failureResult: AsyncTaskResult = {
+        taskId,
+        success: false,
+        error: error instanceof Error ? error : new Error(String(error)),
+        drId: postedData.drId,
+        blockHeight: Number(postedData.blockHeight),
+        completedAt,
+        duration: totalDuration,
+        sequenceNumber
+      };
+      
+      // Call completion handler for oracle failure
+      completionHandler.onFailure(failureResult);
+      
+      return failureResult;
     }
   }
 

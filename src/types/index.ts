@@ -58,13 +58,26 @@ export interface SchedulerConfig {
   
   // Custom memo for DataRequests
   memo?: string;
+  
+  // Cosmos sequence coordinator timeouts
+  cosmosSequence: {
+    // Timeout for posting DataRequest transaction (posting phase)
+    postingTimeoutMs: number;
+    
+    // Default timeout for sequence coordinator operations
+    defaultTimeoutMs: number;
+    
+    // Maximum queue size for sequence coordination
+    maxQueueSize: number;
+  };
 }
 
 // Scheduler Statistics Types
 export interface SchedulerStats {
-  totalRequests: number;
-  successfulRequests: number;
-  failedRequests: number;
+  totalRequests: number; // Total oracle executions completed (success + failed)
+  postedRequests: number; // Total DataRequests successfully posted to blockchain
+  successfulRequests: number; // Oracle executions that completed successfully
+  failedRequests: number; // Oracle executions that failed or timed out
   startTime: number;
   activeTasks?: number; // Optional for backward compatibility - tracks currently running async tasks
   memoGenerator?: {
