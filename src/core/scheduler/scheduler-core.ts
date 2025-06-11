@@ -12,7 +12,7 @@ import {
 import type { SchedulerConfig } from '../../types';
 import type { ITimerService, TimerId } from '../../infrastructure';
 import type { ILoggingService } from '../../services';
-import type { SEDADataRequestBuilder } from '../data-request/builder';
+import type { SEDADataRequestBuilder } from '../data-request';
 
 /**
  * Core scheduler implementation focused on the scheduling logic

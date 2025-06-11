@@ -1,75 +1,82 @@
 #!/usr/bin/env bun
 
 /**
- * Test script for posting a single DataRequest to SEDA network
+ * SEDA DataRequest Single Posting Test
  */
 
-import { loadSEDAConfig, SEDADataRequestBuilder } from '../src';
+import { loadSEDAConfig, SEDADataRequestBuilder } from '../src/core/data-request';
+import { ServiceContainer } from '../src/services';
 
 async function testDataRequest() {
-  console.log('🧪 Testing SEDA DataRequest Posting\n');
+  const services = ServiceContainer.createProduction();
+  const logger = services.loggingService;
+  
+  logger.info('🧪 Testing SEDA DataRequest Posting');
 
   try {
     // Load configuration
     const config = loadSEDAConfig();
-    console.log('✅ Configuration loaded successfully');
-    console.log(`🌐 Network: ${config.network}`);
-    console.log(`🔗 RPC: ${config.rpcEndpoint}`);
+    logger.info('✅ Configuration loaded successfully');
+    logger.info(`🌐 Network: ${config.network}`);
+    logger.info(`🔗 RPC: ${config.rpcEndpoint}`);
 
     // Create builder
-    const builder = new SEDADataRequestBuilder(config);
-    console.log('✅ DataRequest builder created');
+    const builder = new SEDADataRequestBuilder(config, logger);
+    logger.info('✅ DataRequest builder created');
 
-    // Initialize builder
+    // Initialize
     await builder.initialize();
-    console.log('✅ Builder initialized successfully');
+    logger.info('✅ Builder initialized successfully');
 
     // Post DataRequest
-    console.log('\n📤 Posting DataRequest...');
-    
+    logger.info('\n📤 Posting DataRequest...');
     const startTime = Date.now();
+    
     const result = await builder.postDataRequest({
-      memo: 'Test DataRequest from automated test'
+      memo: 'Test DataRequest from SEDA single test'
     });
+    
     const duration = Date.now() - startTime;
 
-    console.log('\n🎉 DataRequest completed successfully!');
-    console.log('📊 Results:');
-    console.log(`   DR ID: ${result.drId}`);
-    console.log(`   Exit Code: ${result.exitCode}`);
-    console.log(`   Block Height: ${result.blockHeight}`);
-    console.log(`   Gas Used: ${result.gasUsed}`);
-    console.log(`   Result: ${result.result || 'No result data'}`);
-    console.log(`   Duration: ${(duration / 1000).toFixed(2)}s`);
+    logger.info('\n🎉 DataRequest completed successfully!');
+    logger.info('📊 Results:');
+    logger.info(`   DR ID: ${result.drId}`);
+    logger.info(`   Exit Code: ${result.exitCode}`);
+    logger.info(`   Block Height: ${result.blockHeight}`);
+    logger.info(`   Gas Used: ${result.gasUsed}`);
+    logger.info(`   Result: ${result.result || 'No result data'}`);
+    logger.info(`   Duration: ${(duration / 1000).toFixed(2)}s`);
 
-    return {
-      success: true,
-      drId: result.drId,
-      exitCode: result.exitCode,
-      gasUsed: result.gasUsed,
-      duration,
-      result: result.result
-    };
+    // Validate results
+    if (!result.drId) {
+      throw new Error('Missing DataRequest ID in result');
+    }
+    if (typeof result.exitCode !== 'number') {
+      throw new Error('Invalid exit code in result');
+    }
+    if (!result.blockHeight) {
+      throw new Error('Missing block height in result');
+    }
 
   } catch (error) {
-    console.error('❌ Test failed:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error)
-    };
+    logger.error('❌ Test failed:', error);
+    throw error;
   }
 }
 
-// Run the test
-testDataRequest().then(result => {
-  if (result.success) {
-    console.log('\n✅ DataRequest test completed successfully');
-    process.exit(0);
-  } else {
-    console.log('\n❌ DataRequest test failed');
-    process.exit(1);
-  }
-}).catch(error => {
-  console.error('💥 Test script failed:', error);
-  process.exit(1);
-}); 
+// Run test if executed directly
+if (import.meta.main) {
+  testDataRequest()
+    .then(() => {
+      const services = ServiceContainer.createProduction();
+      const logger = services.loggingService;
+      logger.info('\n✅ DataRequest test completed successfully');
+      process.exit(0);
+    })
+    .catch(() => {
+      const services = ServiceContainer.createProduction();
+      const logger = services.loggingService;
+      logger.error('\n❌ DataRequest test failed');
+      process.exit(1);
+    });
+} 

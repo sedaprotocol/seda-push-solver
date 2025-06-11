@@ -4,7 +4,7 @@
  */
 
 // Export builder
-export { SEDADataRequestBuilder } from './builder';
+export { SEDADataRequestBuilder } from './data-request-builder';
 
 // Export input building functions
 export {

@@ -4,7 +4,7 @@
  */
 
 import type { ILoggingService } from '../../services';
-import type { SEDADataRequestBuilder } from '../data-request/builder';
+import type { SEDADataRequestBuilder } from '../data-request';
 import type { SchedulerConfig } from '../../types';
 import { 
   CosmosSequenceCoordinator,

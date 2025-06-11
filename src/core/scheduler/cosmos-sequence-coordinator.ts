@@ -1,6 +1,6 @@
 /**
- * Ultra-Robust Cosmos Sequence Number Coordinator for SEDA DataRequest Scheduler
- * Provides bulletproof sequence management with atomic allocation, aggressive validation, and comprehensive recovery
+ * Cosmos Sequence Number Coordinator for SEDA DataRequest Scheduler
+ * Provides reliable sequence management with atomic allocation, validation, and comprehensive recovery
  */
 
 import type { ILoggingService } from '../../services';
@@ -53,10 +53,10 @@ interface PendingSequence {
 }
 
 /**
- * Ultra-Robust Cosmos Sequence Coordinator
+ * Cosmos Sequence Coordinator
  * Features:
  * - Atomic sequence number allocation
- * - Aggressive blockchain validation (every 5 seconds)
+ * - Regular blockchain validation (every 5 seconds)
  * - Comprehensive error detection and recovery
  * - Advanced pending sequence management
  * - Automatic sequence gap detection and healing
@@ -79,9 +79,9 @@ export class CosmosSequenceCoordinator {
   private signer: Signer | null = null;
   private sequenceAllocationLock = false; // Prevent race conditions
 
-  // Ultra-robust settings
-  private readonly VALIDATION_INTERVAL_MS = 5000; // Validate every 5 seconds (aggressive)
-  private readonly SEQUENCE_RECOVERY_ATTEMPTS = 5; // More recovery attempts
+  // Reliable coordination settings
+  private readonly VALIDATION_INTERVAL_MS = 5000; // Validate every 5 seconds
+  private readonly SEQUENCE_RECOVERY_ATTEMPTS = 5; // Recovery attempts on conflicts
   private readonly PENDING_TIMEOUT_MS = 30000; // 30 seconds for pending sequences
   private readonly MAX_SEQUENCE_DRIFT = 5; // Maximum allowed drift before forced sync
 
@@ -93,7 +93,7 @@ export class CosmosSequenceCoordinator {
   }
 
   /**
-   * Initialize with ultra-robust sequence detection
+   * Initialize with reliable sequence detection
    */
   async initialize(signer: Signer): Promise<void> {
     if (this.isInitialized) {
@@ -101,10 +101,10 @@ export class CosmosSequenceCoordinator {
     }
 
     this.signer = signer;
-    await this.performUltraRobustInitialization();
+    await this.performReliableInitialization();
     this.isInitialized = true;
     
-    this.logger.info(`🛡️ Ultra-robust sequence coordinator initialized with sequence: ${this.nextSequence}`);
+    this.logger.info(`🛡️ Sequence coordinator initialized with sequence: ${this.nextSequence}`);
   }
 
   /**
@@ -136,7 +136,7 @@ export class CosmosSequenceCoordinator {
   }
 
   /**
-   * Ultra-robust queue processing with aggressive validation and recovery
+   * Reliable queue processing with validation and recovery
    */
   private async processQueue(): Promise<void> {
     if (this.isProcessing) {
@@ -144,12 +144,12 @@ export class CosmosSequenceCoordinator {
     }
 
     this.isProcessing = true;
-    this.logger.info('🛡️ Starting ultra-robust sequence coordinator processing');
+    this.logger.info('🛡️ Starting sequence coordinator processing');
 
     while (this.executionQueue.length > 0) {
       // Only perform validation if enough time has passed
       if (Date.now() - this.lastValidationTime > this.VALIDATION_INTERVAL_MS) {
-        await this.performAggressiveValidation();
+        await this.performPeriodicValidation();
       }
 
       const queueItem = this.executionQueue.shift();
@@ -158,20 +158,20 @@ export class CosmosSequenceCoordinator {
       }
 
       const { execution, resolve, reject } = queueItem;
-      await this.executeWithUltraRobustSequence(execution, resolve, reject);
+      await this.executeWithReliableSequence(execution, resolve, reject);
 
       // Remove delay for maximum posting speed - sequence coordination handles safety
       // await delay(200); // REMOVED: This was causing unnecessary 200ms delays
     }
 
     this.isProcessing = false;
-    this.logger.info('✅ Ultra-robust sequence coordinator processing completed');
+    this.logger.info('✅ Sequence coordinator processing completed');
   }
 
   /**
-   * Execute single transaction with ultra-robust sequence handling
+   * Execute single transaction with reliable sequence handling
    */
-  private async executeWithUltraRobustSequence(
+  private async executeWithReliableSequence(
     execution: SequencedPosting<any>,
     resolve: (result: PostingResult<any>) => void,
     reject: (error: Error) => void
@@ -222,7 +222,7 @@ export class CosmosSequenceCoordinator {
           duration: endTime - startTime
         };
 
-        this.logger.info(`✅ Ultra-robust sequence #${sequence} completed for task ${execution.taskId}`);
+        this.logger.info(`✅ Sequence #${sequence} completed for task ${execution.taskId}`);
         resolve(executionResult);
         return;
 
@@ -269,7 +269,7 @@ export class CosmosSequenceCoordinator {
     }
 
     // All attempts failed
-    this.logger.error(`💥 Ultra-robust sequence execution failed for task ${execution.taskId} after ${attempts} attempts`);
+    this.logger.error(`💥 Sequence execution failed for task ${execution.taskId} after ${attempts} attempts`);
     resolve({
       taskId: execution.taskId,
       success: false,
@@ -335,10 +335,10 @@ export class CosmosSequenceCoordinator {
   }
 
   /**
-   * Perform ultra-robust sequence initialization
+   * Perform reliable sequence initialization
    */
-  private async performUltraRobustInitialization(): Promise<void> {
-    this.logger.info('🛡️ Performing ultra-robust sequence initialization...');
+  private async performReliableInitialization(): Promise<void> {
+    this.logger.info('🛡️ Performing reliable sequence initialization...');
 
     // Try multiple strategies with retries
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -350,10 +350,10 @@ export class CosmosSequenceCoordinator {
         this.nextSequence = blockchainSequence;
         this.lastValidationTime = Date.now();
         
-        this.logger.info(`✅ Ultra-robust init: Blockchain sequence ${blockchainSequence}`);
+        this.logger.info(`✅ Initialization complete: Blockchain sequence ${blockchainSequence}`);
         
         // Validate immediately to ensure consistency
-        await this.performAggressiveValidation();
+        await this.performPeriodicValidation();
         return;
         
       } catch (error) {
@@ -365,19 +365,19 @@ export class CosmosSequenceCoordinator {
     }
 
     // Fallback with conservative approach
-    this.logger.warn('⚠️ Using ultra-conservative fallback sequence initialization');
+    this.logger.warn('⚠️ Using conservative fallback sequence initialization');
     this.confirmedSequence = 0;
     this.nextSequence = 0;
     this.lastValidationTime = Date.now();
     
     // Schedule immediate validation
-    setTimeout(() => this.performAggressiveValidation(), 1000);
+    setTimeout(() => this.performPeriodicValidation(), 1000);
   }
 
   /**
-   * Perform aggressive validation every 5 seconds
+   * Perform periodic validation every 5 seconds
    */
-  private async performAggressiveValidation(): Promise<void> {
+  private async performPeriodicValidation(): Promise<void> {
     const now = Date.now();
     if (now - this.lastValidationTime < this.VALIDATION_INTERVAL_MS) {
       return; // Too soon to validate again
@@ -515,7 +515,7 @@ export class CosmosSequenceCoordinator {
     this.isProcessing = false;
     this.sequenceAllocationLock = false;
     
-    this.logger.info('🔄 Ultra-robust sequence coordinator cleared');
+    this.logger.info('🔄 Sequence coordinator cleared');
   }
 
   /**
