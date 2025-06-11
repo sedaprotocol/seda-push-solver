@@ -7,6 +7,8 @@
 import type { ILoggingService } from '../../services';
 import type { Signer } from '@seda-protocol/dev-tools';
 import { getNetworkConfig } from '../network';
+import { SequenceQueryService } from './sequence-query-service';
+import { withTimeout, delay, isSequenceError, isDataRequestExistsError } from '../../helpers';
 
 /**
  * Interface for transaction posting with sequence coordination
@@ -55,11 +57,14 @@ export class CosmosSequenceCoordinator {
   private isProcessing = false;
   private sequenceNumber: number = 0; // Will be initialized from blockchain
   private isInitialized = false;
+  private queryService: SequenceQueryService;
 
   constructor(
     private logger: ILoggingService,
     private config: CosmosSequenceConfig
-  ) {}
+  ) {
+    this.queryService = new SequenceQueryService(this.logger);
+  }
 
   /**
    * Initialize the sequence coordinator with the current account sequence number
@@ -73,7 +78,7 @@ export class CosmosSequenceCoordinator {
       this.logger.info('🔍 Querying account sequence number from blockchain...');
       
       // Query the current account sequence number from the blockchain
-      const accountSequence = await this.queryAccountSequence(signer);
+      const accountSequence = await this.queryService.queryAccountSequence(signer);
       this.sequenceNumber = accountSequence;
       this.isInitialized = true;
       
@@ -84,127 +89,6 @@ export class CosmosSequenceCoordinator {
       this.sequenceNumber = 0;
       this.isInitialized = true;
       this.logger.warn('⚠️ Using fallback sequence number: 0 (assuming new account)');
-    }
-  }
-
-  /**
-   * Query the current account sequence number from the blockchain using CosmJS
-   */
-  private async queryAccountSequence(signer: Signer): Promise<number> {
-    try {
-      // Get the address and endpoint from the signer
-      const address = signer.getAddress();
-      const endpoint = signer.getEndpoint();
-      
-      this.logger.info(`🔍 Querying account ${address} from ${endpoint}`);
-      
-      // Use CosmJS Stargate client to query account information
-      // We'll use the Stargate client from cosmjs which should be available through the signer
-      const cosmjsSigner = signer.getSigner(); // This returns DirectSecp256k1HdWallet
-      
-      try {
-        // Import StargateClient dynamically to avoid module loading issues
-        const { StargateClient } = await import('@cosmjs/stargate');
-        
-        // Create a Stargate client for querying
-        const client = await StargateClient.connect(endpoint);
-        
-        try {
-          // Query account information
-          const account = await client.getAccount(address);
-          
-          if (account) {
-            const sequence = account.sequence;
-            this.logger.info(`📋 Account ${address} current sequence: ${sequence}`);
-            
-            // Clean up the client
-            client.disconnect();
-            
-            return sequence;
-          } else {
-            // Account doesn't exist yet - this means sequence 0
-            this.logger.info(`📋 Account ${address} not found - assuming new account with sequence 0`);
-            
-            // Clean up the client
-            client.disconnect();
-            
-            return 0;
-          }
-        } finally {
-          // Ensure we always disconnect the client
-          if (client) {
-            client.disconnect();
-          }
-        }
-      } catch (importError) {
-        this.logger.warn('❌ Failed to import @cosmjs/stargate, trying alternative method');
-        
-        // Fallback to direct RPC query if CosmJS import fails
-        return await this.queryAccountSequenceRpc(address, endpoint);
-      }
-      
-    } catch (error) {
-      this.logger.error('❌ Error querying account sequence:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Fallback method to query account sequence using direct RPC calls
-   */
-  private async queryAccountSequenceRpc(address: string, rpcEndpoint: string): Promise<number> {
-    try {
-      // Try Tendermint RPC method first (more reliable)
-      const rpcUrl = `${rpcEndpoint}/abci_query`;
-      
-      this.logger.info(`🔍 Trying Tendermint RPC query: ${rpcUrl}`);
-      
-      // Query account using ABCI query
-      const queryData = {
-        path: "store/acc/key",
-        data: Buffer.from(`account:${address}`).toString('hex'),
-        prove: false
-      };
-      
-      const response = await fetch(rpcUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'abci_query',
-          params: queryData
-        })
-      });
-      
-      if (response.ok) {
-        const data = await response.json() as any;
-        
-        if (data.result && data.result.response && data.result.response.value) {
-          // Decode the base64 response
-          const accountData = Buffer.from(data.result.response.value, 'base64');
-          
-          // For now, assume sequence 0 if we can't parse properly
-          // This is a simplified approach - full account parsing would require protobuf decoding
-          this.logger.info(`📋 Account exists, assuming sequence 0 for safety`);
-          return 0;
-        } else {
-          // Account doesn't exist
-          this.logger.info(`📋 Account ${address} not found via RPC - new account, sequence 0`);
-          return 0;
-        }
-      } else {
-        throw new Error(`RPC query failed: ${response.status} ${response.statusText}`);
-      }
-      
-    } catch (error) {
-      this.logger.warn(`❌ RPC fallback failed: ${error}`);
-      
-      // Final fallback - assume sequence 0 for new accounts
-      this.logger.warn('⚠️ All query methods failed, assuming sequence 0 (new account)');
-      return 0;
     }
   }
 
@@ -265,17 +149,13 @@ export class CosmosSequenceCoordinator {
       try {
         // Set up timeout
         const timeout = getNetworkConfig('testnet').dataRequest.timeoutSeconds * 1000;
-        const timeoutPromise = new Promise<never>((_, rejectTimeout) => {
-          setTimeout(() => {
-            rejectTimeout(new Error(`Transaction timeout after ${timeout}ms`));
-          }, timeout);
-        });
-
+        
         // Race between execution and timeout
-        const result = await Promise.race([
+        const result = await withTimeout(
           execution.postTransaction(sequence),
-          timeoutPromise
-        ]);
+          timeout,
+          `Transaction timeout after ${timeout}ms`
+        );
 
         const endTime = Date.now();
         const duration = endTime - startTime;
@@ -303,7 +183,7 @@ export class CosmosSequenceCoordinator {
         const duration = endTime - startTime;
 
         // Check if this is a "DataRequestAlreadyExists" error - this actually means posting succeeded
-        if (error instanceof Error && error.message.includes('DataRequestAlreadyExists')) {
+        if (error instanceof Error && isDataRequestExistsError(error)) {
           this.logger.warn(`⚠️ DataRequestAlreadyExists error for task ${execution.taskId} - this means posting actually succeeded!`);
           
           // Increment sequence number since the DataRequest was actually posted
@@ -337,7 +217,7 @@ export class CosmosSequenceCoordinator {
           };
 
           // Check if it's a sequence-related error
-          if (error instanceof Error && this.isSequenceError(error.message)) {
+          if (error instanceof Error && isSequenceError(error)) {
             this.logger.warn(`⚠️ Sequence error detected in task ${execution.taskId}: ${error.message}`);
             // For sequence errors, we don't retry automatically - let the caller handle it
           }
@@ -347,29 +227,14 @@ export class CosmosSequenceCoordinator {
       }
 
       // Small delay between transactions to ensure proper sequencing
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await delay(100);
     }
 
     this.isProcessing = false;
     this.logger.info('✅ Sequence coordinator processing completed');
   }
 
-  /**
-   * Check if an error is related to sequence number conflicts
-   */
-  private isSequenceError(errorMessage: string): boolean {
-    const sequenceErrorPatterns = [
-      'account sequence mismatch',
-      'incorrect account sequence',
-      'sequence number',
-      'nonce too low',
-      'sequence too low'
-    ];
 
-    return sequenceErrorPatterns.some(pattern => 
-      errorMessage.toLowerCase().includes(pattern.toLowerCase())
-    );
-  }
 
   /**
    * Get current queue statistics

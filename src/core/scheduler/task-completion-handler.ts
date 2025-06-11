@@ -7,7 +7,7 @@ import type { ILoggingService } from '../../services';
 import type { ITimerService } from '../../infrastructure';
 import type { SchedulerStatistics } from './statistics';
 import type { SchedulerConfig } from '../../types';
-import type { AsyncTaskResult, TaskCompletionHandler } from './async-task-manager';
+import type { AsyncTaskResult, TaskCompletionHandler } from './types';
 
 /**
  * Implementation of task completion handling

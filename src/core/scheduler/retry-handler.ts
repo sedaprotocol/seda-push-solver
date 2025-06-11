@@ -4,6 +4,7 @@
  */
 
 import type { ILoggingService } from '../../services';
+import { delay } from '../../helpers';
 
 /**
  * Retry operation with configurable attempts and delay
@@ -72,11 +73,4 @@ export async function executeWithRetry<T>(
   };
   
   return await withRetry(retryOperation, maxRetries, 5000, onRetry);
-}
-
-/**
- * Simple delay utility
- */
-export function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
 } 

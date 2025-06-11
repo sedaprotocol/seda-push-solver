@@ -3,6 +3,9 @@
  * Centralized exports for all DataRequest-related functionality
  */
 
+// Export builder
+export { SEDADataRequestBuilder } from './builder';
+
 // Export input building functions
 export {
   buildDataRequestInput,

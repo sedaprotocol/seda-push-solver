@@ -1,11 +1,19 @@
 /**
- * SEDA DataRequest Pusher
- * Main entry point and exports
+ * SEDA DataRequest Pusher & Scheduler
+ * Main exports for the library
  */
 
-// Core functionality
-export * from './push-solver';
-export * from './scheduler';
+// Export core functionality
+export {
+  SEDADataRequestBuilder,
+  loadSEDAConfig
+} from './core/data-request';
+
+// Export scheduler
+export {
+  SEDADataRequestScheduler,
+  startScheduler
+} from './scheduler';
 
 // Type definitions
 export * from './types';
@@ -15,3 +23,6 @@ export * from './services';
 
 // Infrastructure layer
 export * from './infrastructure';
+
+// Helper utilities
+export * from './helpers';

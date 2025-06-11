@@ -3,6 +3,13 @@
  * Centralized exports for all scheduler-related functionality
  */
 
+// Export types
+export type {
+  DataRequestTracker,
+  AsyncTaskResult,
+  TaskCompletionHandler
+} from './types';
+
 // Export configuration functions
 export {
   DEFAULT_SCHEDULER_CONFIG,
@@ -21,12 +28,23 @@ export {
   executeWithRetry
 } from './retry-handler';
 
-// Export async task management
+// Export task management components
 export {
-  AsyncTaskManager,
-  type AsyncTaskResult,
-  type TaskCompletionHandler
+  AsyncTaskManager
 } from './async-task-manager';
+
+export {
+  TaskRegistry
+} from './task-registry';
+
+export {
+  TaskExecutor
+} from './task-executor';
+
+// Export scheduler core
+export {
+  SchedulerCore
+} from './scheduler-core';
 
 // Export task completion handling
 export {
@@ -45,4 +63,9 @@ export {
   type SequencedPosting,
   type PostingResult,
   type CosmosSequenceConfig
-} from './cosmos-sequence-coordinator'; 
+} from './cosmos-sequence-coordinator';
+
+// Export sequence query service
+export {
+  SequenceQueryService
+} from './sequence-query-service'; 
