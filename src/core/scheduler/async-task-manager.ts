@@ -19,6 +19,23 @@ import { postDataRequestTransaction, awaitDataRequestResult, buildDataRequestInp
 import { getNetworkConfig } from '../network';
 
 /**
+ * Interface for tracking individual DataRequest details
+ */
+export interface DataRequestTracker {
+  taskId: string;
+  drId?: string;
+  blockHeight?: bigint;
+  txHash?: string;
+  sequenceNumber?: number;
+  status: 'posting' | 'posted' | 'completed' | 'failed';
+  postedAt?: number;
+  completedAt?: number;
+  startTime: number;
+  memo?: string;
+  error?: Error;
+}
+
+/**
  * Interface for tracking async task results
  */
 export interface AsyncTaskResult {
@@ -48,6 +65,7 @@ export interface TaskCompletionHandler {
  */
 export class AsyncTaskManager {
   private activeTasks = new Map<string, Promise<AsyncTaskResult>>();
+  private dataRequestRegistry = new Map<string, DataRequestTracker>(); // Track individual DataRequests
   private taskCounter = 0;
   private memoGenerator: UniqueMemoGenerator;
   private sequenceCoordinator: CosmosSequenceCoordinator;
@@ -97,6 +115,15 @@ export class AsyncTaskManager {
     this.logger.info(`\n🚀 Launching async DataRequest task #${requestNumber} (${taskId})`);
     this.logger.info(`📊 Active tasks: ${this.activeTasks.size + 1}`);
 
+    // Initialize DataRequest tracker
+    const tracker: DataRequestTracker = {
+      taskId,
+      status: 'posting',
+      startTime: this.getTimestamp(),
+      memo: config.memo
+    };
+    this.dataRequestRegistry.set(taskId, tracker);
+
     // Create the async task promise - but only resolve when oracle result comes back
     const taskPromise = this.executeAsyncDataRequest(
       taskId,
@@ -116,6 +143,12 @@ export class AsyncTaskManager {
       .finally(() => {
         // Clean up task reference
         this.activeTasks.delete(taskId);
+        // Keep registry entry for history/debugging but mark as completed
+        const tracker = this.dataRequestRegistry.get(taskId);
+        if (tracker && tracker.status !== 'completed' && tracker.status !== 'failed') {
+          tracker.status = 'completed';
+          tracker.completedAt = this.getTimestamp();
+        }
       });
 
     return taskId;
@@ -210,9 +243,18 @@ export class AsyncTaskManager {
         await this.sequenceCoordinator.executeSequenced(sequencedPosting);
 
       if (!postingResult.success || !postingResult.result) {
-        // Posting failed - call completion handler immediately
+        // Posting failed - update registry and call completion handler
         const completedAt = this.getTimestamp();
         const duration = completedAt - startTime;
+        
+        // Update registry with failure info
+        const tracker = this.dataRequestRegistry.get(taskId);
+        if (tracker) {
+          tracker.status = 'failed';
+          tracker.error = postingResult.error || new Error('Failed to post DataRequest transaction');
+          tracker.sequenceNumber = postingResult.sequence;
+          tracker.completedAt = completedAt;
+        }
         
         const failureResult: AsyncTaskResult = {
           taskId,
@@ -239,6 +281,17 @@ export class AsyncTaskManager {
       this.logger.info(`   🔗 Transaction: ${postedData.txHash}`);
       this.logger.info(`   ⏱️ Posting Duration: ${postingDuration}ms`);
       this.logger.info(`   🔍 Now waiting for oracle execution...`);
+
+      // Update registry with posted info
+      const tracker = this.dataRequestRegistry.get(taskId);
+      if (tracker) {
+        tracker.status = 'posted';
+        tracker.drId = postedData.drId;
+        tracker.blockHeight = postedData.blockHeight;
+        tracker.txHash = postedData.txHash;
+        tracker.sequenceNumber = postingResult.sequence;
+        tracker.postedAt = this.getTimestamp();
+      }
 
       // Record that the DataRequest was successfully posted to blockchain
       statistics.recordPosted();
@@ -314,6 +367,13 @@ export class AsyncTaskManager {
       const completedAt = this.getTimestamp();
       const totalDuration = completedAt - taskStartTime;
 
+      // Update registry with completion info
+      const tracker = this.dataRequestRegistry.get(taskId);
+      if (tracker) {
+        tracker.status = 'completed';
+        tracker.completedAt = completedAt;
+      }
+
       // Create success result
       const successResult: AsyncTaskResult = {
         taskId,
@@ -343,6 +403,14 @@ export class AsyncTaskManager {
         this.logger.info(`   🔗 Manual Check: ${networkConfig.explorerEndpoint}/data-requests/${postedData.drId}/${postedData.blockHeight}`);
       }
       
+      // Update registry with failure info
+      const tracker = this.dataRequestRegistry.get(taskId);
+      if (tracker) {
+        tracker.status = 'failed';
+        tracker.error = error instanceof Error ? error : new Error(String(error));
+        tracker.completedAt = completedAt;
+      }
+
       // Create failure result
       const failureResult: AsyncTaskResult = {
         taskId,
@@ -367,6 +435,36 @@ export class AsyncTaskManager {
    */
   getActiveTaskCount(): number {
     return this.activeTasks.size;
+  }
+
+  /**
+   * Get all DataRequest trackers (active and completed)
+   */
+  getAllDataRequests(): DataRequestTracker[] {
+    return Array.from(this.dataRequestRegistry.values());
+  }
+
+  /**
+   * Get active DataRequest trackers only
+   */
+  getActiveDataRequests(): DataRequestTracker[] {
+    return Array.from(this.dataRequestRegistry.values())
+      .filter(tracker => tracker.status === 'posting' || tracker.status === 'posted');
+  }
+
+  /**
+   * Get DataRequest tracker by task ID
+   */
+  getDataRequest(taskId: string): DataRequestTracker | undefined {
+    return this.dataRequestRegistry.get(taskId);
+  }
+
+  /**
+   * Get DataRequest trackers by status
+   */
+  getDataRequestsByStatus(status: DataRequestTracker['status']): DataRequestTracker[] {
+    return Array.from(this.dataRequestRegistry.values())
+      .filter(tracker => tracker.status === status);
   }
 
   /**
