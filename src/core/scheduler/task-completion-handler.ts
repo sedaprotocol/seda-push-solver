@@ -26,18 +26,52 @@ export class SchedulerTaskCompletionHandler implements TaskCompletionHandler {
    * Handle successful task completion
    */
   onSuccess(result: AsyncTaskResult): void {
-    this.logger.info('\n┌─────────────────────────────────────────────────────────────────────┐');
+    this.logger.info(`\n┌─────────────────────────────────────────────────────────────────────┐`);
     this.logger.info(`│                    ✅ Task ${result.taskId} Successful                    │`);
-    this.logger.info('├─────────────────────────────────────────────────────────────────────┤');
-    this.logger.info(`│ Request ID: ${result.drId || 'N/A'}`);
-    this.logger.info(`│ Exit Code: ${result.result?.exitCode || 'N/A'}`);
-    this.logger.info(`│ Block Height: ${result.blockHeight || 'N/A'}`);
-    this.logger.info(`│ Gas Used: ${result.result?.gasUsed || 'N/A'}`);
+    this.logger.info(`├─────────────────────────────────────────────────────────────────────┤`);
+    
+    if (result.drId) {
+      this.logger.info(`│ Request ID: ${result.drId}`);
+    }
+    if (result.result?.exitCode !== undefined) {
+      this.logger.info(`│ Exit Code: ${result.result.exitCode === 0 ? 'Success (0)' : result.result.exitCode}`);
+    }
+    if (result.blockHeight) {
+      this.logger.info(`│ Block Height: ${result.blockHeight}`);
+    }
+    if (result.result?.gasUsed) {
+      this.logger.info(`│ Gas Used: ${result.result.gasUsed}`);
+    }
+    if (result.sequenceNumber) {
+      this.logger.info(`│ Sequence Number: ${result.sequenceNumber}`);
+    }
+    
     this.logger.info(`│ Duration: ${(result.duration / 1000).toFixed(1)}s`);
-    this.logger.info('└─────────────────────────────────────────────────────────────────────┘');
+    
+    // Add explorer link
+    if (result.drId && result.blockHeight) {
+      const explorerUrl = this.getExplorerUrl(result.drId, result.blockHeight);
+      this.logger.info(`├─────────────────────────────────────────────────────────────────────┤`);
+      this.logger.info(`│ 🔗 Explorer: ${explorerUrl}`);
+    }
+    
+    this.logger.info(`└─────────────────────────────────────────────────────────────────────┘`);
     
     this.statistics.recordSuccess();
     this.logCurrentStatus();
+  }
+
+  /**
+   * Get explorer URL for a DataRequest
+   */
+  private getExplorerUrl(drId: string, blockHeight: number): string {
+    // Determine network based on RPC endpoint or use testnet as default
+    const isTestnet = true; // For now, assuming testnet - could be made configurable
+    const baseUrl = isTestnet 
+      ? 'https://testnet.explorer.seda.xyz/data-requests'
+      : 'https://explorer.seda.xyz/data-requests';
+    
+    return `${baseUrl}/${drId}/${blockHeight}`;
   }
 
   /**

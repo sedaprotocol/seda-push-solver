@@ -8,41 +8,64 @@ import type { ILoggingService } from '../../services';
 
 // Default scheduler configuration
 export const DEFAULT_SCHEDULER_CONFIG: SchedulerConfig = {
-  intervalMs: 60_000, // 1 minute
-  continuous: true,
+  intervalMs: 30000, // 30 seconds
+  continuous: true, // Run continuously by default
   maxRetries: 3,
-  memo: 'Scheduled DataRequest'
+  memo: 'SEDA DataRequest',
+  cosmosSequence: {
+    postingTimeoutMs: 20000, // 20 seconds for posting transaction
+    defaultTimeoutMs: 60000, // 60 seconds default timeout
+    maxQueueSize: 100 // Maximum 100 items in sequence queue
+  }
 };
 
 /**
  * Load scheduler configuration from environment variables
  */
 export function loadSchedulerConfigFromEnv(): Partial<SchedulerConfig> {
-  const envConfig: Partial<SchedulerConfig> = {};
-  
-  if (process.env.SCHEDULER_INTERVAL_SECONDS) {
-    const intervalSeconds = parseInt(process.env.SCHEDULER_INTERVAL_SECONDS);
-    if (!isNaN(intervalSeconds) && intervalSeconds > 0) {
-      envConfig.intervalMs = intervalSeconds * 1000;
-    }
+  const config: Partial<SchedulerConfig> = {};
+
+  // Basic scheduler settings
+  if (process.env.SCHEDULER_INTERVAL_MS) {
+    config.intervalMs = parseInt(process.env.SCHEDULER_INTERVAL_MS, 10);
   }
-  
-  if (process.env.SCHEDULER_MEMO) {
-    envConfig.memo = process.env.SCHEDULER_MEMO;
-  }
-  
-  if (process.env.SCHEDULER_MAX_RETRIES) {
-    const maxRetries = parseInt(process.env.SCHEDULER_MAX_RETRIES);
-    if (!isNaN(maxRetries) && maxRetries >= 0) {
-      envConfig.maxRetries = maxRetries;
-    }
-  }
-  
+
   if (process.env.SCHEDULER_CONTINUOUS) {
-    envConfig.continuous = process.env.SCHEDULER_CONTINUOUS.toLowerCase() === 'true';
+    config.continuous = process.env.SCHEDULER_CONTINUOUS.toLowerCase() === 'true';
+  }
+
+  if (process.env.SCHEDULER_MAX_RETRIES) {
+    config.maxRetries = parseInt(process.env.SCHEDULER_MAX_RETRIES, 10);
+  }
+
+  if (process.env.SCHEDULER_MEMO) {
+    config.memo = process.env.SCHEDULER_MEMO;
+  }
+
+  // Cosmos sequence configuration
+  const cosmosSequence: Partial<SchedulerConfig['cosmosSequence']> = {};
+  
+  if (process.env.COSMOS_POSTING_TIMEOUT_MS) {
+    cosmosSequence.postingTimeoutMs = parseInt(process.env.COSMOS_POSTING_TIMEOUT_MS, 10);
   }
   
-  return envConfig;
+  if (process.env.COSMOS_DEFAULT_TIMEOUT_MS) {
+    cosmosSequence.defaultTimeoutMs = parseInt(process.env.COSMOS_DEFAULT_TIMEOUT_MS, 10);
+  }
+  
+  if (process.env.COSMOS_MAX_QUEUE_SIZE) {
+    cosmosSequence.maxQueueSize = parseInt(process.env.COSMOS_MAX_QUEUE_SIZE, 10);
+  }
+
+  // Only add cosmosSequence if we have at least one value
+  if (Object.keys(cosmosSequence).length > 0) {
+    config.cosmosSequence = {
+      ...DEFAULT_SCHEDULER_CONFIG.cosmosSequence,
+      ...cosmosSequence
+    };
+  }
+
+  return config;
 }
 
 /**

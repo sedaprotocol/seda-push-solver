@@ -12,7 +12,9 @@ export {
 
 // Export execution functions
 export {
-  executeDataRequest
+  executeDataRequest,
+  postDataRequestTransaction,
+  awaitDataRequestResult
 } from './executor';
 
 // Export signer functions

@@ -15,6 +15,7 @@ export class SchedulerStatistics {
   constructor() {
     this.stats = {
       totalRequests: 0,
+      postedRequests: 0,
       successfulRequests: 0,
       failedRequests: 0,
       startTime: Date.now()
@@ -27,6 +28,7 @@ export class SchedulerStatistics {
   reset(): void {
     this.stats = {
       totalRequests: 0,
+      postedRequests: 0,
       successfulRequests: 0,
       failedRequests: 0,
       startTime: Date.now()
@@ -34,7 +36,14 @@ export class SchedulerStatistics {
   }
 
   /**
-   * Record a successful DataRequest
+   * Record a successfully posted DataRequest (posting phase completed)
+   */
+  recordPosted(): void {
+    this.stats.postedRequests++;
+  }
+
+  /**
+   * Record a successful oracle execution (oracle completed successfully)
    */
   recordSuccess(): void {
     this.stats.successfulRequests++;
@@ -42,7 +51,7 @@ export class SchedulerStatistics {
   }
 
   /**
-   * Record a failed DataRequest
+   * Record a failed oracle execution (oracle failed or timed out)
    */
   recordFailure(): void {
     this.stats.failedRequests++;
@@ -50,26 +59,36 @@ export class SchedulerStatistics {
   }
 
   /**
-   * Get current statistics
+   * Get current statistics snapshot
    */
   getStats(): SchedulerStats {
     return { ...this.stats };
   }
 
   /**
-   * Calculate and format runtime duration
+   * Get runtime in minutes
    */
   getRuntimeMinutes(): string {
-    const runtime = Date.now() - this.stats.startTime;
-    return (runtime / 60000).toFixed(1);
+    const runtimeMs = Date.now() - this.stats.startTime;
+    const minutes = Math.round((runtimeMs / (1000 * 60)) * 10) / 10; // One decimal place
+    return minutes.toFixed(1);
   }
 
   /**
-   * Calculate success rate as percentage
+   * Calculate success rate as percentage (based on completed oracle executions)
    */
   getSuccessRate(): number {
     if (this.stats.totalRequests === 0) return 0;
     return (this.stats.successfulRequests / this.stats.totalRequests) * 100;
+  }
+
+  /**
+   * Calculate posting success rate as percentage (based on posted vs attempted)
+   */
+  getPostingSuccessRate(): number {
+    // This would need to track attempted posts vs successful posts
+    // For now, assuming all posts that reach recordPosted() were successful
+    return this.stats.postedRequests > 0 ? 100 : 0;
   }
 
   /**
@@ -82,13 +101,19 @@ export class SchedulerStatistics {
       logger.info('\n📈 SCHEDULER STATISTICS');
       logger.info('='.repeat(50));
       logger.info(`⏱️  Total Runtime: ${runtime} minutes`);
-      logger.info(`📊 Total Requests: ${this.stats.totalRequests}`);
-      logger.info(`✅ Successful: ${this.stats.successfulRequests}`);
-      logger.info(`❌ Failed: ${this.stats.failedRequests}`);
+      logger.info(`📤 Posted to Blockchain: ${this.stats.postedRequests}`);
+      logger.info(`📊 Oracle Executions Completed: ${this.stats.totalRequests}`);
+      logger.info(`✅ Successful Executions: ${this.stats.successfulRequests}`);
+      logger.info(`❌ Failed Executions: ${this.stats.failedRequests}`);
       
       if (this.stats.totalRequests > 0) {
         const successRate = this.getSuccessRate();
-        logger.info(`📈 Overall Success Rate: ${successRate.toFixed(1)}%`);
+        logger.info(`📈 Oracle Success Rate: ${successRate.toFixed(1)}%`);
+      }
+      
+      if (this.stats.postedRequests > this.stats.totalRequests) {
+        const pending = this.stats.postedRequests - this.stats.totalRequests;
+        logger.info(`⏳ Pending Oracle Executions: ${pending}`);
       }
       
       logger.info('='.repeat(50));
@@ -96,13 +121,19 @@ export class SchedulerStatistics {
       console.log('\n📈 SCHEDULER STATISTICS');
       console.log('='.repeat(50));
       console.log(`⏱️  Total Runtime: ${runtime} minutes`);
-      console.log(`📊 Total Requests: ${this.stats.totalRequests}`);
-      console.log(`✅ Successful: ${this.stats.successfulRequests}`);
-      console.log(`❌ Failed: ${this.stats.failedRequests}`);
+      console.log(`📤 Posted to Blockchain: ${this.stats.postedRequests}`);
+      console.log(`📊 Oracle Executions Completed: ${this.stats.totalRequests}`);
+      console.log(`✅ Successful Executions: ${this.stats.successfulRequests}`);
+      console.log(`❌ Failed Executions: ${this.stats.failedRequests}`);
       
       if (this.stats.totalRequests > 0) {
         const successRate = this.getSuccessRate();
-        console.log(`📈 Overall Success Rate: ${successRate.toFixed(1)}%`);
+        console.log(`📈 Oracle Success Rate: ${successRate.toFixed(1)}%`);
+      }
+      
+      if (this.stats.postedRequests > this.stats.totalRequests) {
+        const pending = this.stats.postedRequests - this.stats.totalRequests;
+        console.log(`⏳ Pending Oracle Executions: ${pending}`);
       }
       
       console.log('='.repeat(50));

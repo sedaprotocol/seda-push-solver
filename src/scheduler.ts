@@ -30,9 +30,12 @@ export class SEDADataRequestScheduler {
   private builder: SEDADataRequestBuilder;
   private isRunning: boolean = false;
   private intervalId: TimerId | null = null;
+  private tickerIntervalId: TimerId | null = null;
   private statistics: SchedulerStatistics;
   private taskManager: AsyncTaskManager;
   private completionHandler: SchedulerTaskCompletionHandler;
+  private nextPostTime: number = 0;
+  private postCount: number = 0;
 
   /**
    * Create a new scheduler instance
@@ -53,6 +56,7 @@ export class SEDADataRequestScheduler {
     // Initialize async task management
     this.taskManager = new AsyncTaskManager(
       this.logger,
+      this.config.cosmosSequence,
       this.timerService?.now.bind(this.timerService) || Date.now
     );
     
@@ -85,6 +89,10 @@ export class SEDADataRequestScheduler {
   async initialize(): Promise<void> {
     this.logger.info('\n🔐 Initializing SEDA signer...');
     await this.builder.initialize();
+    
+    this.logger.info('🔢 Initializing sequence coordinator with account sequence...');
+    await this.taskManager.initialize(this.builder);
+    
     this.logger.info('✅ Scheduler initialization complete\n');
   }
 
@@ -112,6 +120,8 @@ export class SEDADataRequestScheduler {
 
     // Launch first async task immediately (non-blocking)
     this.launchAsyncDataRequest();
+    this.postCount = 1; // First post happened
+    this.nextPostTime = (this.timerService?.now() || Date.now()) + this.config.intervalMs; // Next post time
 
     if (this.config.continuous) {
       // Schedule subsequent requests using timer service - each tick launches a new async task
@@ -119,6 +129,8 @@ export class SEDADataRequestScheduler {
         this.intervalId = this.timerService.setInterval(() => {
           if (this.isRunning) {
             this.launchAsyncDataRequest();
+            this.postCount++;
+            this.nextPostTime = (this.timerService?.now() || Date.now()) + this.config.intervalMs;
           }
         }, this.config.intervalMs);
       } else {
@@ -126,9 +138,14 @@ export class SEDADataRequestScheduler {
         this.intervalId = setInterval(() => {
           if (this.isRunning) {
             this.launchAsyncDataRequest();
+            this.postCount++;
+            this.nextPostTime = Date.now() + this.config.intervalMs;
           }
         }, this.config.intervalMs) as unknown as TimerId;
       }
+
+      // Start countdown ticker
+      this.startCountdownTicker();
 
       this.logger.info(`\n🔄 Scheduler running continuously (${this.config.intervalMs / 1000}s intervals)`);
       this.logger.info('   Press Ctrl+C to stop gracefully');
@@ -159,6 +176,7 @@ export class SEDADataRequestScheduler {
     
     this.isRunning = false;
     
+    // Clear main interval
     if (this.intervalId) {
       if (this.timerService) {
         this.timerService.clearInterval(this.intervalId);
@@ -166,6 +184,16 @@ export class SEDADataRequestScheduler {
         clearInterval(this.intervalId);
       }
       this.intervalId = null;
+    }
+
+    // Clear ticker interval
+    if (this.tickerIntervalId) {
+      if (this.timerService) {
+        this.timerService.clearInterval(this.tickerIntervalId);
+      } else {
+        clearInterval(this.tickerIntervalId);
+      }
+      this.tickerIntervalId = null;
     }
 
     // Log active tasks that are still running
@@ -188,7 +216,8 @@ export class SEDADataRequestScheduler {
       this.builder,
       this.config,
       () => this.isRunning,
-      this.completionHandler
+      this.completionHandler,
+      this.statistics
     );
   }
 
@@ -233,6 +262,48 @@ export class SEDADataRequestScheduler {
    */
   async waitForAllTasks(): Promise<AsyncTaskResult[]> {
     return this.taskManager.waitForAllTasks();
+  }
+
+  /**
+   * Start countdown ticker
+   */
+  private startCountdownTicker(): void {
+    if (this.timerService) {
+      this.tickerIntervalId = this.timerService.setInterval(() => {
+        if (this.isRunning) {
+          this.logCountdown();
+        }
+      }, 1000); // Log every second
+    } else {
+      // Fallback to built-in setInterval
+      this.tickerIntervalId = setInterval(() => {
+        if (this.isRunning) {
+          this.logCountdown();
+        }
+      }, 1000) as unknown as TimerId;
+    }
+  }
+
+  /**
+   * Log countdown to next DataRequest post
+   */
+  private logCountdown(): void {
+    const now = this.timerService?.now() || Date.now();
+    const secondsLeft = Math.max(0, Math.ceil((this.nextPostTime - now) / 1000));
+    
+    if (secondsLeft > 0) {
+      const stats = this.getStats();
+      const successRate = stats.totalRequests > 0 ? 
+        `${((stats.successfulRequests / stats.totalRequests) * 100).toFixed(0)}%` : '0%';
+      
+      this.logger.info(
+        `⏰ Next DataRequest post in: ${secondsLeft}s | ` +
+        `🔄 Active: ${stats.activeTasks || 0} | ` +
+        `📤 Posted: ${stats.postedRequests} | ` +
+        `✅ Success: ${stats.successfulRequests} (${successRate}) | ` +
+        `🔢 Queue: ${stats.sequenceCoordinator?.queueSize || 0}`
+      );
+    }
   }
 }
 
