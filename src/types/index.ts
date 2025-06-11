@@ -92,4 +92,7 @@ export interface SchedulerStats {
     isProcessing: boolean;
     nextSequenceNumber: number;
   };
-} 
+}
+
+// Export EVM types
+export * from './evm-types'; 

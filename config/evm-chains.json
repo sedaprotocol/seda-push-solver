@@ -1,0 +1,143 @@
+{
+  "description": "EVM Chain Configuration for SEDA Batch Pusher",
+  "version": "1.0.0",
+  "environments": {
+    "development": {
+      "enabledChains": [42161, 10],
+      "batchPolling": {
+        "intervalMs": 30000,
+        "batchWindow": 5,
+        "maxBatchAgeMs": 1800000
+      },
+      "concurrency": {
+        "maxParallelChains": 2,
+        "maxTransactionsPerChain": 1
+      },
+      "monitoring": {
+        "enableMetrics": true,
+        "healthCheckIntervalMs": 60000,
+        "alerts": {
+          "minSuccessRatePercent": 80,
+          "maxAveragePushTimeMs": 180000,
+          "maxConsecutiveFailures": 3
+        }
+      }
+    },
+    "staging": {
+      "enabledChains": [42161, 10, 8453],
+      "batchPolling": {
+        "intervalMs": 15000,
+        "batchWindow": 10,
+        "maxBatchAgeMs": 3600000
+      },
+      "concurrency": {
+        "maxParallelChains": 3,
+        "maxTransactionsPerChain": 2
+      },
+      "monitoring": {
+        "enableMetrics": true,
+        "healthCheckIntervalMs": 30000,
+        "alerts": {
+          "minSuccessRatePercent": 85,
+          "maxAveragePushTimeMs": 150000,
+          "maxConsecutiveFailures": 5
+        }
+      }
+    },
+    "production": {
+      "enabledChains": [42161, 10, 8453, 137],
+      "batchPolling": {
+        "intervalMs": 10000,
+        "batchWindow": 20,
+        "maxBatchAgeMs": 3600000
+      },
+      "concurrency": {
+        "maxParallelChains": 5,
+        "maxTransactionsPerChain": 3
+      },
+      "monitoring": {
+        "enableMetrics": true,
+        "healthCheckIntervalMs": 30000,
+        "alerts": {
+          "minSuccessRatePercent": 90,
+          "maxAveragePushTimeMs": 120000,
+          "maxConsecutiveFailures": 5
+        }
+      }
+    }
+  },
+  "chains": {
+    "42161": {
+      "name": "Arbitrum One",
+      "description": "Ethereum Layer 2 with optimistic rollups",
+      "documentation": "https://docs.arbitrum.io/",
+      "gasMultiplier": 1.1,
+      "priorityLevel": "high"
+    },
+    "10": {
+      "name": "Optimism",
+      "description": "Ethereum Layer 2 with optimistic rollups",
+      "documentation": "https://docs.optimism.io/",
+      "gasMultiplier": 1.1,
+      "priorityLevel": "high"
+    },
+    "8453": {
+      "name": "Base",
+      "description": "Coinbase's Ethereum Layer 2",
+      "documentation": "https://docs.base.org/",
+      "gasMultiplier": 1.1,
+      "priorityLevel": "medium"
+    },
+    "137": {
+      "name": "Polygon",
+      "description": "Polygon PoS sidechain",
+      "documentation": "https://docs.polygon.technology/",
+      "gasMultiplier": 1.2,
+      "priorityLevel": "medium"
+    }
+  },
+  "contractAddresses": {
+    "development": {
+      "42161": {
+        "sedaCore": "0x0000000000000000000000000000000000000000",
+        "sedaProver": "0x0000000000000000000000000000000000000000"
+      },
+      "10": {
+        "sedaCore": "0x0000000000000000000000000000000000000000",
+        "sedaProver": "0x0000000000000000000000000000000000000000"
+      }
+    },
+    "staging": {
+      "42161": {
+        "sedaCore": "0x0000000000000000000000000000000000000000",
+        "sedaProver": "0x0000000000000000000000000000000000000000"
+      },
+      "10": {
+        "sedaCore": "0x0000000000000000000000000000000000000000",
+        "sedaProver": "0x0000000000000000000000000000000000000000"
+      },
+      "8453": {
+        "sedaCore": "0x0000000000000000000000000000000000000000",
+        "sedaProver": "0x0000000000000000000000000000000000000000"
+      }
+    },
+    "production": {
+      "42161": {
+        "sedaCore": "0x0000000000000000000000000000000000000000",
+        "sedaProver": "0x0000000000000000000000000000000000000000"
+      },
+      "10": {
+        "sedaCore": "0x0000000000000000000000000000000000000000",
+        "sedaProver": "0x0000000000000000000000000000000000000000"
+      },
+      "8453": {
+        "sedaCore": "0x0000000000000000000000000000000000000000",
+        "sedaProver": "0x0000000000000000000000000000000000000000"
+      },
+      "137": {
+        "sedaCore": "0x0000000000000000000000000000000000000000",
+        "sedaProver": "0x0000000000000000000000000000000000000000"
+      }
+    }
+  }
+} 

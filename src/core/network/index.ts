@@ -20,4 +20,15 @@ export {
 // Export validation functions
 export {
   validateDataRequestConfig
-} from './network-validator'; 
+} from './network-validator';
+
+// Export EVM configuration functions
+export {
+  DEFAULT_EVM_CHAINS,
+  buildEVMPusherConfig,
+  getEVMChainConfig,
+  validateEVMPusherConfig,
+  getSupportedChainIds,
+  getChainName,
+  isChainSupported
+} from './evm-config'; 

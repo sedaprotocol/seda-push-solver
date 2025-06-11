@@ -32,4 +32,11 @@ export {
   getServices,
   setServices,
   resetToProductionServices
-} from './service-container'; 
+} from './service-container';
+
+// Export EVM services
+export type { IBatchService } from './batch-service';
+export { BatchService, MockBatchService } from './batch-service';
+
+export type { IEVMService } from './evm-service';
+export { EVMService, MockEVMService } from './evm-service'; 
