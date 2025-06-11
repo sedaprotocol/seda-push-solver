@@ -6,6 +6,7 @@
 
 import type { ILoggingService } from '../../services';
 import type { Signer } from '@seda-protocol/dev-tools';
+import { getNetworkConfig } from '../network';
 
 /**
  * Interface for transaction posting with sequence coordination
@@ -263,7 +264,7 @@ export class CosmosSequenceCoordinator {
 
       try {
         // Set up timeout
-        const timeout = execution.timeout || this.config.defaultTimeoutMs;
+        const timeout = getNetworkConfig('testnet').dataRequest.timeoutSeconds * 1000;
         const timeoutPromise = new Promise<never>((_, rejectTimeout) => {
           setTimeout(() => {
             rejectTimeout(new Error(`Transaction timeout after ${timeout}ms`));

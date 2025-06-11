@@ -305,6 +305,34 @@ export class SEDADataRequestScheduler {
       );
     }
   }
+
+  /**
+   * Get all DataRequest details (active and completed)
+   */
+  getAllDataRequests() {
+    return this.taskManager.getAllDataRequests();
+  }
+
+  /**
+   * Get only active DataRequest details
+   */
+  getActiveDataRequests() {
+    return this.taskManager.getActiveDataRequests();
+  }
+
+  /**
+   * Get DataRequest details by task ID
+   */
+  getDataRequest(taskId: string) {
+    return this.taskManager.getDataRequest(taskId);
+  }
+
+  /**
+   * Get DataRequest details by status
+   */
+  getDataRequestsByStatus(status: 'posting' | 'posted' | 'completed' | 'failed') {
+    return this.taskManager.getDataRequestsByStatus(status);
+  }
 }
 
 /**
