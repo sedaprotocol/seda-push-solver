@@ -39,4 +39,16 @@ export type { IBatchService } from './batch-service';
 export { BatchService, MockBatchService } from './batch-service';
 
 export type { IEVMService } from './evm-service';
-export { EVMService, MockEVMService } from './evm-service'; 
+export { EVMService, MockEVMService } from './evm-service';
+
+// Export DataRequest completion tracking
+export type { 
+  IDataRequestCompletionTracker,
+  CompletedDataRequest,
+  DataRequestBatchAssignment,
+  CompletionTrackerStatistics
+} from './dataquest-completion-tracker';
+export { 
+  DataRequestCompletionTracker, 
+  MockDataRequestCompletionTracker 
+} from './dataquest-completion-tracker'; 
