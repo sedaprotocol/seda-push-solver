@@ -15,6 +15,7 @@
     "test:multiple": "bun run tests/test-multiple-requests.ts",
     "test:evm": "bun run tests/unit/evm-foundation.test.ts",
     "test:seda": "bun run tests/unit/seda-integration.test.ts",
+    "test:phase3": "bun run tests/unit/multi-chain-push-engine.test.ts",
     "test:all": "bun test && bun run tests/test-seda-config.ts && bun run tests/test-datarequest.ts && bun run tests/unit/evm-foundation.test.ts && bun run tests/unit/seda-integration.test.ts",
     "build": "tsc --noEmit",
     "build:bundle": "bun build src/runner.ts --target=bun --outfile dist/bundle.js",

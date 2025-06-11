@@ -106,6 +106,11 @@ export interface IBatchService {
   getBatchesContainingDataRequests(dataRequestIds: string[]): Promise<BatchTrackingInfo[]>;
 
   /**
+   * Get batch tracking information (alias for getBatch for EVM pusher compatibility)
+   */
+  getBatchTrackingInfo(batchNumber: bigint): Promise<BatchTrackingInfo | null>;
+
+  /**
    * Check if service is properly initialized
    */
   isInitialized(): boolean;
@@ -377,6 +382,11 @@ export class BatchService implements IBatchService {
     }
   }
 
+  async getBatchTrackingInfo(batchNumber: bigint): Promise<BatchTrackingInfo | null> {
+    // This is an alias for getBatch for EVM pusher compatibility
+    return this.getBatch(batchNumber);
+  }
+
   /**
    * Convert solver-sdk Batch to our BatchTrackingInfo format
    */
@@ -532,6 +542,11 @@ export class MockBatchService implements IBatchService {
     }
     
     return Array.from(foundBatches);
+  }
+
+  async getBatchTrackingInfo(batchNumber: bigint): Promise<BatchTrackingInfo | null> {
+    // This is an alias for getBatch for EVM pusher compatibility
+    return this.getBatch(batchNumber);
   }
 
   /**

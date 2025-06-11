@@ -39,6 +39,11 @@ export interface IDataRequestCompletionTracker {
   checkForBatchAssignments(): Promise<void>;
 
   /**
+   * Get batches that are ready for EVM pushing
+   */
+  getBatchesReadyForPushing(): Promise<BatchTrackingInfo[]>;
+
+  /**
    * Get completion statistics
    */
   getStatistics(): CompletionTrackerStatistics;
@@ -238,6 +243,17 @@ export class DataRequestCompletionTracker extends EventEmitter implements IDataR
     }
   }
 
+  async getBatchesReadyForPushing(): Promise<BatchTrackingInfo[]> {
+    // Get unique batches from all assigned DataRequests
+    const batchesMap = new Map<bigint, BatchTrackingInfo>();
+    
+    for (const assignment of this.batchAssignments.values()) {
+      batchesMap.set(assignment.batch.batchNumber, assignment.batch);
+    }
+    
+    return Array.from(batchesMap.values());
+  }
+
   getStatistics(): CompletionTrackerStatistics {
     return { ...this.statistics };
   }
@@ -343,6 +359,17 @@ export class MockDataRequestCompletionTracker extends EventEmitter implements ID
   async checkForBatchAssignments(): Promise<void> {
     this.logger.debug('📋 Mock: Checking for batch assignments');
     // Mock implementation would simulate finding assignments
+  }
+
+  async getBatchesReadyForPushing(): Promise<BatchTrackingInfo[]> {
+    // Return batches from mock assignments
+    const batchesMap = new Map<bigint, BatchTrackingInfo>();
+    
+    for (const assignment of this.mockBatchAssignments) {
+      batchesMap.set(assignment.batch.batchNumber, assignment.batch);
+    }
+    
+    return Array.from(batchesMap.values());
   }
 
   getStatistics(): CompletionTrackerStatistics {
