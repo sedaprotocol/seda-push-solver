@@ -59,15 +59,20 @@ async function main() {
       logger.info('│                          📖 Setup Guide                            │');
       logger.info('├─────────────────────────────────────────────────────────────────────┤');
       logger.info('│ 1. Set SEDA_MNEMONIC environment variable                          │');
-      logger.info('│ 2. Ensure account has sufficient testnet tokens                    │');
-      logger.info('│ 3. Oracle Program ID is configured in src/core/network/network-config.ts │');
+      logger.info('│ 2. Set SEDA_ORACLE_PROGRAM_ID environment variable                 │');
+      logger.info('│ 3. Ensure account has sufficient testnet tokens                    │');
       logger.info('├─────────────────────────────────────────────────────────────────────┤');
       logger.info('│                     Environment Variables                          │');
       logger.info('├─────────────────────────────────────────────────────────────────────┤');
-      logger.info('│ SEDA_MNEMONIC              │ Your 24-word mnemonic (required)      │');
-      logger.info('│ SEDA_NETWORK               │ Network (testnet/mainnet/local)       │');
-      logger.info('│ SCHEDULER_INTERVAL_SECONDS │ Interval between requests (default:60)│');
-      logger.info('│ SCHEDULER_MEMO             │ Custom memo (optional)                │');
+      logger.info('│ SEDA_MNEMONIC                     │ Your 24-word mnemonic (required) │');
+      logger.info('│ SEDA_ORACLE_PROGRAM_ID            │ Oracle Program ID (required)     │');
+      logger.info('│ SEDA_NETWORK                      │ Network (testnet/mainnet/local)  │');
+      logger.info('│ SCHEDULER_INTERVAL_MS             │ Interval between requests (ms)   │');
+      logger.info('│ SCHEDULER_MEMO                    │ Custom memo (optional)           │');
+      logger.info('│ SEDA_DR_TIMEOUT_SECONDS           │ DataRequest exec timeout (sec)   │');
+      logger.info('│ COSMOS_POSTING_TIMEOUT_MS         │ Transaction posting timeout (ms) │');
+      logger.info('├─────────────────────────────────────────────────────────────────────┤');
+      logger.info('│ 💡 Copy env.example to .env and configure your settings           │');
       logger.info('└─────────────────────────────────────────────────────────────────────┘');
     }
     

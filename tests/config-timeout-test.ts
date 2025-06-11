@@ -25,7 +25,7 @@ async function testConfigTimeouts() {
         memo: 'Config Timeout Test',
         cosmosSequence: {
           postingTimeoutMs: 15000,  // 15 seconds for posting
-          defaultTimeoutMs: 45000,  // 45 seconds default
+          drResultTimeout: 45000,   // 45 seconds for DataRequest results (will use SEDA_DR_TIMEOUT_SECONDS if set)
           maxQueueSize: 50          // Smaller queue for testing
         }
       },

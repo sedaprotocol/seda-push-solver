@@ -5,6 +5,17 @@
 
 import type { NetworkConfig } from '../../types';
 
+/**
+ * Get Oracle Program ID from environment or throw error
+ */
+function getRequiredOracleProgramId(): string {
+  const programId = process.env.SEDA_ORACLE_PROGRAM_ID;
+  if (!programId) {
+    throw new Error('SEDA_ORACLE_PROGRAM_ID environment variable is required');
+  }
+  return programId;
+}
+
 // Network configurations for different SEDA environments
 export const SEDA_NETWORK_CONFIGS: Record<'testnet' | 'mainnet' | 'local', NetworkConfig> = {
   testnet: {
@@ -12,13 +23,13 @@ export const SEDA_NETWORK_CONFIGS: Record<'testnet' | 'mainnet' | 'local', Netwo
     rpcEndpoint: 'https://rpc.testnet.seda.xyz',
     explorerEndpoint: 'https://testnet.explorer.seda.xyz',
     dataRequest: {
-      oracleProgramId: 'd9814ceafe4084bd6d9b737be048778dfd81026531cbe4fb361df9c446687607',
-      replicationFactor: 1,
+      oracleProgramId: getRequiredOracleProgramId(),
+      replicationFactor: parseInt(process.env.SEDA_REPLICATION_FACTOR || '1', 10),
       execGasLimit: BigInt(150_000_000_000_000),
       gasPrice: BigInt(10_000),
       consensusOptions: { method: 'none' },
-      timeoutSeconds: 120,
-      pollingIntervalSeconds: 1,
+      timeoutSeconds: parseInt(process.env.SEDA_DR_TIMEOUT_SECONDS || '120', 10),
+      pollingIntervalSeconds: parseInt(process.env.SEDA_DR_POLLING_INTERVAL_SECONDS || '1', 10),
       memo: 'DX Feed Oracle DataRequest'
     }
   },
@@ -28,13 +39,13 @@ export const SEDA_NETWORK_CONFIGS: Record<'testnet' | 'mainnet' | 'local', Netwo
     rpcEndpoint: 'https://rpc.seda.xyz',
     explorerEndpoint: 'https://explorer.seda.xyz',
     dataRequest: {
-      oracleProgramId: 'd9814ceafe4084bd6d9b737be048778dfd81026531cbe4fb361df9c446687607',
-      replicationFactor: 2,
+      oracleProgramId: getRequiredOracleProgramId(),
+      replicationFactor: parseInt(process.env.SEDA_REPLICATION_FACTOR || '2', 10),
       execGasLimit: BigInt(10_000_000_000_000),
       gasPrice: BigInt(10_000_000_000),
       consensusOptions: { method: 'none' },
-      timeoutSeconds: 120,
-      pollingIntervalSeconds: 5,
+      timeoutSeconds: parseInt(process.env.SEDA_DR_TIMEOUT_SECONDS || '120', 10),
+      pollingIntervalSeconds: parseInt(process.env.SEDA_DR_POLLING_INTERVAL_SECONDS || '5', 10),
       memo: 'DX Feed Oracle DataRequest'
     }
   },
@@ -44,13 +55,13 @@ export const SEDA_NETWORK_CONFIGS: Record<'testnet' | 'mainnet' | 'local', Netwo
     rpcEndpoint: 'http://localhost:26657',
     explorerEndpoint: 'http://localhost:3000',
     dataRequest: {
-      oracleProgramId: 'd9814ceafe4084bd6d9b737be048778dfd81026531cbe4fb361df9c446687607',
-      replicationFactor: 1,
+      oracleProgramId: getRequiredOracleProgramId(),
+      replicationFactor: parseInt(process.env.SEDA_REPLICATION_FACTOR || '1', 10),
       execGasLimit: BigInt(10_000_000_000_000),
       gasPrice: BigInt(10_000_000_000),
       consensusOptions: { method: 'none' },
-      timeoutSeconds: 60,
-      pollingIntervalSeconds: 3,
+      timeoutSeconds: parseInt(process.env.SEDA_DR_TIMEOUT_SECONDS || '60', 10),
+      pollingIntervalSeconds: parseInt(process.env.SEDA_DR_POLLING_INTERVAL_SECONDS || '3', 10),
       memo: 'DX Feed Oracle DataRequest (Local)'
     }
   }

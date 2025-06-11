@@ -6,16 +6,16 @@
 import type { SchedulerConfig } from '../../types';
 import type { ILoggingService } from '../../services';
 
-// Default scheduler configuration
+// Default scheduler configuration - all timeouts should be overridden by environment variables
 export const DEFAULT_SCHEDULER_CONFIG: SchedulerConfig = {
   intervalMs: 30000, // 30 seconds
   continuous: true, // Run continuously by default
   maxRetries: 3,
   memo: 'SEDA DataRequest',
   cosmosSequence: {
-    postingTimeoutMs: 20000, // 20 seconds for posting transaction
-    defaultTimeoutMs: 60000, // 60 seconds default timeout
-    maxQueueSize: 100 // Maximum 100 items in sequence queue
+    postingTimeoutMs: 20000, // 20 seconds for posting transaction (fallback if env not set)
+    drResultTimeout: 120000, // 120 seconds for DataRequest results (fallback if env not set)
+    maxQueueSize: 100 // Maximum 100 items in sequence queue (fallback if env not set)
   }
 };
 
@@ -49,12 +49,13 @@ export function loadSchedulerConfigFromEnv(): Partial<SchedulerConfig> {
     cosmosSequence.postingTimeoutMs = parseInt(process.env.COSMOS_POSTING_TIMEOUT_MS, 10);
   }
   
-  if (process.env.COSMOS_DEFAULT_TIMEOUT_MS) {
-    cosmosSequence.defaultTimeoutMs = parseInt(process.env.COSMOS_DEFAULT_TIMEOUT_MS, 10);
-  }
-  
   if (process.env.COSMOS_MAX_QUEUE_SIZE) {
     cosmosSequence.maxQueueSize = parseInt(process.env.COSMOS_MAX_QUEUE_SIZE, 10);
+  }
+  
+  // Use SEDA_DR_TIMEOUT_SECONDS for DataRequest result timeout (same thing as cosmos result timeout)
+  if (process.env.SEDA_DR_TIMEOUT_SECONDS) {
+    cosmosSequence.drResultTimeout = parseInt(process.env.SEDA_DR_TIMEOUT_SECONDS, 10) * 1000; // Convert to ms
   }
 
   // Only add cosmosSequence if we have at least one value
