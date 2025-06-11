@@ -18,6 +18,10 @@ export interface NetworkConfig {
   rpcEndpoint: string;
   explorerEndpoint: string;
   dataRequest: SEDADataRequestConfig;
+  transaction: {
+    gasPrice: bigint;     // Cosmos transaction gas price for posting DataRequest
+    gasLimit: number;     // Cosmos transaction gas limit for posting DataRequest
+  };
 }
 
 export interface SEDADataRequestConfig {

@@ -22,11 +22,15 @@ export const SEDA_NETWORK_CONFIGS: Record<'testnet' | 'mainnet' | 'local', Netwo
     name: 'testnet',
     rpcEndpoint: 'https://rpc.testnet.seda.xyz',
     explorerEndpoint: 'https://testnet.explorer.seda.xyz',
+    transaction: {
+      gasPrice: BigInt(10_000_000_000),           // Transaction gas price for posting DataRequest
+      gasLimit: 300000                    // Transaction gas limit for posting DataRequest
+    },
     dataRequest: {
       oracleProgramId: getRequiredOracleProgramId(),
       replicationFactor: parseInt(process.env.SEDA_REPLICATION_FACTOR || '1', 10),
-      execGasLimit: BigInt(150_000_000_000_000),
-      gasPrice: BigInt(10_000),
+      execGasLimit: BigInt(150_000_000_000_000),  // Oracle execution gas limit
+      gasPrice: BigInt(10_000),                   // Oracle execution gas price
       consensusOptions: { method: 'none' },
       timeoutSeconds: parseInt(process.env.SEDA_DR_TIMEOUT_SECONDS || '120', 10),
       pollingIntervalSeconds: parseInt(process.env.SEDA_DR_POLLING_INTERVAL_SECONDS || '1', 10),
@@ -38,11 +42,15 @@ export const SEDA_NETWORK_CONFIGS: Record<'testnet' | 'mainnet' | 'local', Netwo
     name: 'mainnet',
     rpcEndpoint: 'https://rpc.seda.xyz',
     explorerEndpoint: 'https://explorer.seda.xyz',
+    transaction: {
+      gasPrice: BigInt(10_000_000_000),   // Transaction gas price for posting DataRequest
+      gasLimit: 300000                    // Transaction gas limit for posting DataRequest
+    },
     dataRequest: {
       oracleProgramId: getRequiredOracleProgramId(),
       replicationFactor: parseInt(process.env.SEDA_REPLICATION_FACTOR || '2', 10),
-      execGasLimit: BigInt(10_000_000_000_000),
-      gasPrice: BigInt(10_000_000_000),
+      execGasLimit: BigInt(10_000_000_000_000),   // Oracle execution gas limit
+      gasPrice: BigInt(10_000_000_000),           // Oracle execution gas price
       consensusOptions: { method: 'none' },
       timeoutSeconds: parseInt(process.env.SEDA_DR_TIMEOUT_SECONDS || '120', 10),
       pollingIntervalSeconds: parseInt(process.env.SEDA_DR_POLLING_INTERVAL_SECONDS || '5', 10),
@@ -54,11 +62,15 @@ export const SEDA_NETWORK_CONFIGS: Record<'testnet' | 'mainnet' | 'local', Netwo
     name: 'local',
     rpcEndpoint: 'http://localhost:26657',
     explorerEndpoint: 'http://localhost:3000',
+    transaction: {
+      gasPrice: BigInt(10_000_000_000),   // Transaction gas price for posting DataRequest
+      gasLimit: 300000                    // Transaction gas limit for posting DataRequest
+    },
     dataRequest: {
       oracleProgramId: getRequiredOracleProgramId(),
       replicationFactor: parseInt(process.env.SEDA_REPLICATION_FACTOR || '1', 10),
-      execGasLimit: BigInt(10_000_000_000_000),
-      gasPrice: BigInt(10_000_000_000),
+      execGasLimit: BigInt(10_000_000_000_000),   // Oracle execution gas limit
+      gasPrice: BigInt(10_000_000_000),           // Oracle execution gas price
       consensusOptions: { method: 'none' },
       timeoutSeconds: parseInt(process.env.SEDA_DR_TIMEOUT_SECONDS || '60', 10),
       pollingIntervalSeconds: parseInt(process.env.SEDA_DR_POLLING_INTERVAL_SECONDS || '3', 10),
@@ -88,4 +100,25 @@ export function getNetworkConfig(network: keyof typeof SEDA_NETWORK_CONFIGS): Ne
  */
 export function getRpcEndpoint(network: keyof typeof SEDA_NETWORK_CONFIGS): string {
   return getNetworkConfig(network).rpcEndpoint;
+}
+
+/**
+ * Log gas configuration for debugging
+ */
+export function logGasConfiguration(network: 'testnet' | 'mainnet' | 'local', logger?: { info: (msg: string) => void }): void {
+  const networkConfig = SEDA_NETWORK_CONFIGS[network];
+  const txGasPrice = networkConfig.transaction.gasPrice;
+  const txGasLimit = networkConfig.transaction.gasLimit;
+  const execGasPrice = networkConfig.dataRequest.gasPrice;
+  const execGasLimit = networkConfig.dataRequest.execGasLimit;
+  
+  const logFn = logger?.info || console.log;
+  
+  logFn(`⛽ Gas Configuration for ${network.toUpperCase()}:`);
+  logFn(`   🔷 TRANSACTION GAS (for posting DataRequest):`);
+  logFn(`      💰 Gas Price: ${txGasPrice.toString()} (${(Number(txGasPrice) / 1_000_000).toFixed(2)} uSEDA)`);
+  logFn(`      🔥 Gas Limit: ${txGasLimit.toLocaleString()}`);
+  logFn(`   🔶 EXECUTION GAS (for oracle execution):`);
+  logFn(`      💰 Gas Price: ${execGasPrice.toString()} (${(Number(execGasPrice) / 1_000_000_000).toFixed(4)} SEDA)`);
+  logFn(`      🔥 Gas Limit: ${execGasLimit.toString()} (${(Number(execGasLimit) / 1_000_000_000_000).toFixed(0)}T)`);
 } 

@@ -1,6 +1,6 @@
 /**
- * Async Task Management for SEDA DataRequest Scheduler
- * Handles the launching and coordination of asynchronous DataRequest tasks
+ * Task Manager for SEDA DataRequest Scheduler
+ * Achieves maximum posting speed by completely separating timer intervals from posting execution
  */
 
 import type { ILoggingService } from '../../services';
@@ -16,16 +16,19 @@ import { TaskRegistry } from './task-registry';
 import { TaskExecutor } from './task-executor';
 
 /**
- * Async Task Manager
- * Coordinates the launching and tracking of multiple concurrent DataRequest tasks
- * Now focused on high-level coordination using modular components
+ * Task Manager
+ * Key innovation: Timer intervals are NEVER blocked by posting execution
  */
-export class AsyncTaskManager {
-  private activeTasks = new Map<string, Promise<AsyncTaskResult>>();
+export class TaskManager {
   private taskCounter = 0;
   private sequenceCoordinator: CosmosSequenceCoordinator;
   private registry: TaskRegistry;
   private executor: TaskExecutor;
+  private taskQueue: Array<{
+    taskId: string;
+    requestNumber: number;
+    timestamp: number;
+  }> = [];
 
   constructor(
     private logger: ILoggingService,
@@ -38,28 +41,27 @@ export class AsyncTaskManager {
   }
 
   /**
-   * Initialize the task manager with signer access for sequence coordination
+   * Initialize the task manager
    */
   async initialize(builder: SEDADataRequestBuilder): Promise<void> {
-    // Ensure builder is initialized
     if (!builder.isBuilderInitialized()) {
       await builder.initialize();
     }
 
-    // Get the signer and initialize sequence coordinator
     const signer = (builder as any).signer;
     if (!signer) {
       throw new Error('Builder signer not available for sequence coordinator initialization');
     }
 
     await this.sequenceCoordinator.initialize(signer);
-    this.logger.info('✅ Async task manager initialized with real account sequence');
+    this.logger.info('⚡ Task manager initialized');
   }
 
   /**
-   * Launch a new async DataRequest task
+   * Queue a task and return IMMEDIATELY
+   * This NEVER blocks the timer interval
    */
-  launchTask(
+  queueTask(
     builder: SEDADataRequestBuilder,
     config: SchedulerConfig,
     isRunning: () => boolean,
@@ -70,14 +72,20 @@ export class AsyncTaskManager {
     const taskId = `task-${this.taskCounter}-${Date.now()}`;
     const requestNumber = this.taskCounter;
     
-    this.logger.info(`\n🚀 Launching async DataRequest task #${requestNumber} (${taskId})`);
-    this.logger.info(`📊 Active tasks: ${this.activeTasks.size + 1}`);
+    this.logger.info(`⚡ Queued task #${requestNumber} (${taskId}) - NO BLOCKING!`);
+    
+    // Add to queue (this is instant)
+    this.taskQueue.push({
+      taskId,
+      requestNumber,
+      timestamp: this.getTimestamp()
+    });
 
-    // Register the task in the registry
+    // Register the task
     this.registry.registerTask(taskId, config.memo);
 
-    // Create the async task promise using the executor
-    const taskPromise = this.executor.executeTask(
+    // Start processing the task in the background (fire and forget)
+    this.processTaskInBackground(
       taskId,
       requestNumber,
       builder,
@@ -85,41 +93,76 @@ export class AsyncTaskManager {
       isRunning,
       {
         onSuccess: (result: AsyncTaskResult) => {
-          // Record successful oracle execution
-          statistics.recordSuccess();
+          if (result.result && result.result.type === 'posted') {
+            // This is a posting success - increment posted counter
+            statistics.recordPosted();
+            this.logger.info(`📤 POSTED SUCCESSFULLY: ${result.taskId} (DR: ${result.drId})`);
+          } else if (result.result && result.result.type === 'oracle_completed') {
+            // This is an oracle completion - success counter handled by completion handler
+            this.logger.info(`✅ ORACLE COMPLETED: ${result.taskId} (DR: ${result.drId})`);
+          }
           completionHandler.onSuccess(result);
         },
         onFailure: (result: AsyncTaskResult) => {
-          // Only record failure if this was an oracle execution failure
-          // Posting failures shouldn't count towards oracle statistics
           if (result.drId) {
-            statistics.recordFailure();
+            // Only log oracle failures, failure counter handled by completion handler
+            this.logger.info(`❌ ORACLE FAILED: ${result.taskId} (DR: ${result.drId})`);
+          } else {
+            this.logger.info(`❌ POSTING FAILED: ${result.taskId}`);
           }
           completionHandler.onFailure(result);
         }
       }
     );
-    
-    // Store the task reference
-    this.activeTasks.set(taskId, taskPromise);
-    
-    // Handle final cleanup when task fully completes
-    taskPromise.finally(() => {
-      this.activeTasks.delete(taskId);
-    });
 
     return taskId;
   }
 
   /**
-   * Get count of active tasks
+   * Process task in background without blocking
    */
-  getActiveTaskCount(): number {
-    return this.activeTasks.size;
+  private async processTaskInBackground(
+    taskId: string,
+    requestNumber: number,
+    builder: SEDADataRequestBuilder,
+    config: SchedulerConfig,
+    isRunning: () => boolean,
+    completionHandler: TaskCompletionHandler
+  ): Promise<void> {
+    try {
+      // Execute the task using the executor
+      await this.executor.executeTask(
+        taskId,
+        requestNumber,
+        builder,
+        config,
+        isRunning,
+        completionHandler
+      );
+    } catch (error) {
+      this.logger.error(`❌ Background task processing failed for ${taskId}:`, error);
+    } finally {
+      // Remove from queue when done
+      this.taskQueue = this.taskQueue.filter(task => task.taskId !== taskId);
+    }
   }
 
   /**
-   * Get all DataRequest trackers (active and completed)
+   * Get count of active tasks (both queued and executing)
+   */
+  getActiveTaskCount(): number {
+    return this.taskQueue.length;
+  }
+
+  /**
+   * Get queue size
+   */
+  getQueueSize(): number {
+    return this.taskQueue.length;
+  }
+
+  /**
+   * Get all DataRequest trackers
    */
   getAllDataRequests(): DataRequestTracker[] {
     return this.registry.getAllTasks();
@@ -161,40 +204,36 @@ export class AsyncTaskManager {
   }
 
   /**
-   * Wait for all active tasks to complete
+   * Get queue statistics
    */
-  async waitForAllTasks(): Promise<AsyncTaskResult[]> {
-    const tasks = Array.from(this.activeTasks.values());
-    if (tasks.length === 0) {
-      return [];
-    }
+  getQueueStats() {
+    const now = this.getTimestamp();
+    const queueAges = this.taskQueue.map(task => now - task.timestamp);
     
-    this.logger.info(`⏳ Waiting for ${tasks.length} active tasks to complete...`);
-    
-    // First wait for all tasks to finish
-    const results = await Promise.allSettled(tasks);
-    
-    // Then wait for the sequence coordinator queue to be empty
-    await this.sequenceCoordinator.waitForQueue();
-    
-    return results.map(result => 
-      result.status === 'fulfilled' 
-        ? result.value 
-        : {
-            taskId: 'unknown',
-            success: false,
-            error: result.reason instanceof Error ? result.reason : new Error(String(result.reason)),
-            completedAt: this.getTimestamp(),
-            duration: 0
-          }
-    );
+    return {
+      queueSize: this.taskQueue.length,
+      oldestTaskAge: queueAges.length > 0 ? Math.max(...queueAges) : 0,
+      averageTaskAge: queueAges.length > 0 ? queueAges.reduce((a, b) => a + b, 0) / queueAges.length : 0
+    };
   }
 
   /**
-   * Clear all active tasks (for cleanup)
+   * Wait for all active tasks to complete
+   */
+  async waitForAllTasks(): Promise<void> {
+    while (this.taskQueue.length > 0) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    // Also wait for the sequence coordinator queue
+    await this.sequenceCoordinator.waitForQueue();
+  }
+
+  /**
+   * Clear all active tasks
    */
   clear(): void {
-    this.activeTasks.clear();
+    this.taskQueue = [];
     this.registry.clear();
     this.executor.reset();
     this.sequenceCoordinator.clear();

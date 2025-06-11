@@ -93,7 +93,7 @@ export class SEDADataRequestBuilder {
       const postInput = buildDataRequestInput(drConfig, options);
 
       // Build gas and await options using modular functions
-      const gasOptions = buildGasOptions(drConfig);
+      const gasOptions = buildGasOptions(networkConfig);
       const awaitOptions = buildAwaitOptions(drConfig, options);
 
       // Execute the DataRequest using the modular function

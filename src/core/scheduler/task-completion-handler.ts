@@ -57,7 +57,12 @@ export class SchedulerTaskCompletionHandler implements TaskCompletionHandler {
     
     this.logger.info(`└─────────────────────────────────────────────────────────────────────┘`);
     
-    this.statistics.recordSuccess();
+    // Only increment success counter for oracle completions, not for posting successes
+    if (result.result && result.result.type === 'oracle_completed') {
+      this.statistics.recordSuccess();
+    }
+    // Note: Posted counter is handled in task-manager based on result type
+    
     this.logCurrentStatus();
   }
 
@@ -94,7 +99,11 @@ export class SchedulerTaskCompletionHandler implements TaskCompletionHandler {
     this.logger.info(`│ Duration: ${(result.duration / 1000).toFixed(1)}s`);
     this.logger.info('└─────────────────────────────────────────────────────────────────────┘');
     
-    this.statistics.recordFailure();
+    // Only count oracle failures (when result has drId), not posting failures
+    if (result.drId) {
+      this.statistics.recordFailure();
+    }
+    
     this.logCurrentStatus();
   }
 

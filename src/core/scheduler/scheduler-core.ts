@@ -6,7 +6,7 @@
 import { 
   buildSchedulerConfig, 
   SchedulerStatistics,
-  AsyncTaskManager,
+  TaskManager,
   SchedulerTaskCompletionHandler
 } from './index';
 import type { SchedulerConfig } from '../../types';
@@ -23,7 +23,7 @@ export class SchedulerCore {
   private intervalId: TimerId | null = null;
   private tickerIntervalId: TimerId | null = null;
   private statistics: SchedulerStatistics;
-  private taskManager: AsyncTaskManager;
+  private taskManager: TaskManager;
   private completionHandler: SchedulerTaskCompletionHandler;
   private nextPostTime: number = 0;
   private postCount: number = 0;
@@ -37,8 +37,8 @@ export class SchedulerCore {
     this.config = buildSchedulerConfig(schedulerConfig);
     this.statistics = new SchedulerStatistics();
     
-    // Initialize async task management
-    this.taskManager = new AsyncTaskManager(
+    // Initialize task management
+    this.taskManager = new TaskManager(
       this.logger,
       this.config.cosmosSequence,
       this.timerService?.now.bind(this.timerService) || Date.now
@@ -177,7 +177,7 @@ export class SchedulerCore {
   private launchAsyncDataRequest(): void {
     if (!this.isRunning) return;
 
-    this.taskManager.launchTask(
+    this.taskManager.queueTask(
       this.builder,
       this.config,
       () => this.isRunning,

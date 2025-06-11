@@ -1,21 +1,18 @@
 /**
- * Cosmos Sequence Number Coordinator for SEDA DataRequest Scheduler
- * Manages sequential access to SEDA Signer to prevent account sequence mismatch errors
- * in concurrent async tasks by ensuring only one transaction is submitted at a time
+ * Ultra-Robust Cosmos Sequence Number Coordinator for SEDA DataRequest Scheduler
+ * Provides bulletproof sequence management with atomic allocation, aggressive validation, and comprehensive recovery
  */
 
 import type { ILoggingService } from '../../services';
 import type { Signer } from '@seda-protocol/dev-tools';
-import { getNetworkConfig } from '../network';
 import { SequenceQueryService } from './sequence-query-service';
 import { withTimeout, delay, isSequenceError, isDataRequestExistsError } from '../../helpers';
 
 /**
  * Interface for transaction posting with sequence coordination
- * Only coordinates the posting phase, not the full task lifecycle
  */
 export interface SequencedPosting<T> {
-  postTransaction: (sequenceNumber: number) => Promise<T>; // Just post the transaction
+  postTransaction: (sequenceNumber: number) => Promise<T>;
   taskId: string;
   timeout?: number;
 }
@@ -26,7 +23,7 @@ export interface SequencedPosting<T> {
 export interface PostingResult<T> {
   taskId: string;
   success: boolean;
-  result?: T; // The posted transaction result (drId, blockHeight, etc.)
+  result?: T;
   error?: Error;
   sequence: number;
   startTime: number;
@@ -44,9 +41,25 @@ export interface CosmosSequenceConfig {
 }
 
 /**
- * Cosmos Sequence Coordinator
- * Provides sequential access to SEDA Signer for concurrent async tasks
- * to prevent Cosmos SDK account sequence mismatch errors
+ * Interface for tracking pending sequences with enhanced metadata
+ */
+interface PendingSequence {
+  sequence: number;
+  taskId: string;
+  startTime: number;
+  attempts: number;
+  resolve: (result: PostingResult<any>) => void;
+  reject: (error: Error) => void;
+}
+
+/**
+ * Ultra-Robust Cosmos Sequence Coordinator
+ * Features:
+ * - Atomic sequence number allocation
+ * - Aggressive blockchain validation (every 5 seconds)
+ * - Comprehensive error detection and recovery
+ * - Advanced pending sequence management
+ * - Automatic sequence gap detection and healing
  */
 export class CosmosSequenceCoordinator {
   private executionQueue: Array<{
@@ -54,10 +67,23 @@ export class CosmosSequenceCoordinator {
     resolve: (result: PostingResult<any>) => void;
     reject: (error: Error) => void;
   }> = [];
+  
+  private pendingSequences = new Map<number, PendingSequence>();
+  private allocatedSequences = new Set<number>(); // Track all allocated sequences
   private isProcessing = false;
-  private sequenceNumber: number = 0; // Will be initialized from blockchain
+  private nextSequence: number = 0; // The next sequence to allocate (atomic)
+  private confirmedSequence: number = 0; // Last confirmed sequence from blockchain
+  private lastValidationTime: number = 0;
   private isInitialized = false;
   private queryService: SequenceQueryService;
+  private signer: Signer | null = null;
+  private sequenceAllocationLock = false; // Prevent race conditions
+
+  // Ultra-robust settings
+  private readonly VALIDATION_INTERVAL_MS = 5000; // Validate every 5 seconds (aggressive)
+  private readonly SEQUENCE_RECOVERY_ATTEMPTS = 5; // More recovery attempts
+  private readonly PENDING_TIMEOUT_MS = 30000; // 30 seconds for pending sequences
+  private readonly MAX_SEQUENCE_DRIFT = 5; // Maximum allowed drift before forced sync
 
   constructor(
     private logger: ILoggingService,
@@ -67,34 +93,22 @@ export class CosmosSequenceCoordinator {
   }
 
   /**
-   * Initialize the sequence coordinator with the current account sequence number
+   * Initialize with ultra-robust sequence detection
    */
   async initialize(signer: Signer): Promise<void> {
     if (this.isInitialized) {
       return;
     }
 
-    try {
-      this.logger.info('🔍 Querying account sequence number from blockchain...');
-      
-      // Query the current account sequence number from the blockchain
-      const accountSequence = await this.queryService.queryAccountSequence(signer);
-      this.sequenceNumber = accountSequence;
-      this.isInitialized = true;
-      
-      this.logger.info(`✅ Initialized sequence coordinator with account sequence: ${this.sequenceNumber}`);
-    } catch (error) {
-      this.logger.error('❌ Failed to initialize sequence coordinator:', error);
-      // Fallback to starting from 0 if query fails (new account)
-      this.sequenceNumber = 0;
-      this.isInitialized = true;
-      this.logger.warn('⚠️ Using fallback sequence number: 0 (assuming new account)');
-    }
+    this.signer = signer;
+    await this.performUltraRobustInitialization();
+    this.isInitialized = true;
+    
+    this.logger.info(`🛡️ Ultra-robust sequence coordinator initialized with sequence: ${this.nextSequence}`);
   }
 
   /**
-   * Execute a transaction with sequence coordination
-   * Ensures transactions are executed one at a time to prevent sequence conflicts
+   * Execute a transaction with ultra-robust sequence coordination
    */
   async executeSequenced<T>(execution: SequencedPosting<T>): Promise<PostingResult<T>> {
     if (!this.isInitialized) {
@@ -122,7 +136,7 @@ export class CosmosSequenceCoordinator {
   }
 
   /**
-   * Process the execution queue sequentially
+   * Ultra-robust queue processing with aggressive validation and recovery
    */
   private async processQueue(): Promise<void> {
     if (this.isProcessing) {
@@ -130,39 +144,74 @@ export class CosmosSequenceCoordinator {
     }
 
     this.isProcessing = true;
-    this.logger.info('🚀 Starting sequence coordinator processing');
+    this.logger.info('🛡️ Starting ultra-robust sequence coordinator processing');
 
     while (this.executionQueue.length > 0) {
+      // Only perform validation if enough time has passed
+      if (Date.now() - this.lastValidationTime > this.VALIDATION_INTERVAL_MS) {
+        await this.performAggressiveValidation();
+      }
+
       const queueItem = this.executionQueue.shift();
       if (!queueItem) {
         break;
       }
 
       const { execution, resolve, reject } = queueItem;
-      const sequence = this.sequenceNumber; // Use current sequence number, don't increment yet
+      await this.executeWithUltraRobustSequence(execution, resolve, reject);
+
+      // Remove delay for maximum posting speed - sequence coordination handles safety
+      // await delay(200); // REMOVED: This was causing unnecessary 200ms delays
+    }
+
+    this.isProcessing = false;
+    this.logger.info('✅ Ultra-robust sequence coordinator processing completed');
+  }
+
+  /**
+   * Execute single transaction with ultra-robust sequence handling
+   */
+  private async executeWithUltraRobustSequence(
+    execution: SequencedPosting<any>,
+    resolve: (result: PostingResult<any>) => void,
+    reject: (error: Error) => void
+  ): Promise<void> {
+    let attempts = 0;
+    let lastError: Error | null = null;
+
+    while (attempts < this.SEQUENCE_RECOVERY_ATTEMPTS) {
+      // Atomically allocate sequence number
+      const sequence = await this.atomicAllocateSequence();
       const startTime = Date.now();
 
-      this.logger.info(`🔢 Executing sequenced transaction #${sequence} for task ${execution.taskId}`);
-      this.logger.info(`   🏷️ This transaction will use account sequence: ${sequence}`);
-      this.logger.info(`   📝 Memo will include: "seq:${sequence}"`);
+      // Track this sequence as pending with enhanced metadata
+      const pendingSeq: PendingSequence = {
+        sequence,
+        taskId: execution.taskId,
+        startTime,
+        attempts: attempts + 1,
+        resolve,
+        reject
+      };
+      this.pendingSequences.set(sequence, pendingSeq);
+
+      this.logger.info(`🔢 Executing transaction #${sequence} for task ${execution.taskId} (attempt ${attempts + 1}/${this.SEQUENCE_RECOVERY_ATTEMPTS})`);
 
       try {
-        // Set up timeout
-        const timeout = getNetworkConfig('testnet').dataRequest.timeoutSeconds * 1000;
+        const timeout = execution.timeout || this.config.postingTimeoutMs;
         
-        // Race between execution and timeout
         const result = await withTimeout(
           execution.postTransaction(sequence),
           timeout,
           `Transaction timeout after ${timeout}ms`
         );
 
+        // Success - clean up and resolve
+        this.pendingSequences.delete(sequence);
+        this.allocatedSequences.delete(sequence);
+        this.markSequenceSuccess(sequence);
+        
         const endTime = Date.now();
-        const duration = endTime - startTime;
-
-        // Only increment sequence number AFTER successful posting
-        this.sequenceNumber++;
-
         const executionResult: PostingResult<any> = {
           taskId: execution.taskId,
           success: true,
@@ -170,26 +219,27 @@ export class CosmosSequenceCoordinator {
           sequence,
           startTime,
           endTime,
-          duration
+          duration: endTime - startTime
         };
 
-        this.logger.info(`✅ Sequenced transaction #${sequence} completed for task ${execution.taskId} (${duration}ms)`);
-        this.logger.info(`🔢 Account sequence number incremented to ${this.sequenceNumber} after successful posting`);
-        this.logger.info(`   ⏭️ Next transaction will use sequence: ${this.sequenceNumber}`);
+        this.logger.info(`✅ Ultra-robust sequence #${sequence} completed for task ${execution.taskId}`);
         resolve(executionResult);
+        return;
 
       } catch (error) {
+        this.pendingSequences.delete(sequence);
+        this.allocatedSequences.delete(sequence);
+        lastError = error instanceof Error ? error : new Error(String(error));
+        
         const endTime = Date.now();
         const duration = endTime - startTime;
 
-        // Check if this is a "DataRequestAlreadyExists" error - this actually means posting succeeded
-        if (error instanceof Error && isDataRequestExistsError(error)) {
-          this.logger.warn(`⚠️ DataRequestAlreadyExists error for task ${execution.taskId} - this means posting actually succeeded!`);
+        // Handle special cases
+        if (isDataRequestExistsError(lastError)) {
+          this.logger.warn(`⚠️ DataRequestAlreadyExists for task ${execution.taskId} - treating as success`);
+          this.markSequenceSuccess(sequence);
           
-          // Increment sequence number since the DataRequest was actually posted
-          this.sequenceNumber++;
-          
-          const executionResult: PostingResult<any> = {
+          resolve({
             taskId: execution.taskId,
             success: true,
             result: { success: true, drId: 'unknown-but-posted' },
@@ -197,68 +247,258 @@ export class CosmosSequenceCoordinator {
             startTime,
             endTime,
             duration
-          };
-
-          this.logger.info(`✅ Treating as success - sequence number incremented to ${this.sequenceNumber}`);
-          resolve(executionResult);
-        } else {
-          // DO NOT increment sequence number on real failure - allow retry with same sequence
-          this.logger.error(`❌ Sequenced transaction #${sequence} failed for task ${execution.taskId} (${duration}ms):`, error);
-          this.logger.info(`🔢 Account sequence number ${sequence} not incremented due to posting failure`);
-
-          const executionResult: PostingResult<any> = {
-            taskId: execution.taskId,
-            success: false,
-            error: error instanceof Error ? error : new Error(String(error)),
-            sequence,
-            startTime,
-            endTime,
-            duration
-          };
-
-          // Check if it's a sequence-related error
-          if (error instanceof Error && isSequenceError(error)) {
-            this.logger.warn(`⚠️ Sequence error detected in task ${execution.taskId}: ${error.message}`);
-            // For sequence errors, we don't retry automatically - let the caller handle it
-          }
-
-          resolve(executionResult); // Resolve with error result instead of rejecting
+          });
+          return;
         }
-      }
 
-      // Small delay between transactions to ensure proper sequencing
-      await delay(100);
+        if (isSequenceError(lastError)) {
+          this.logger.warn(`🔄 Sequence error detected (attempt ${attempts + 1}), performing comprehensive recovery...`);
+          await this.performComprehensiveRecovery();
+          attempts++;
+          
+          // Reduced backoff delay for faster recovery
+          const backoffDelay = Math.min(250 * Math.pow(1.5, attempts), 1000); // Faster backoff: 250ms, 375ms, 562ms, max 1s
+          await delay(backoffDelay);
+          continue;
+        }
+
+        // Non-sequence error - don't retry
+        this.logger.error(`❌ Non-sequence error for task ${execution.taskId}: ${lastError.message}`);
+        break;
+      }
     }
 
-    this.isProcessing = false;
-    this.logger.info('✅ Sequence coordinator processing completed');
+    // All attempts failed
+    this.logger.error(`💥 Ultra-robust sequence execution failed for task ${execution.taskId} after ${attempts} attempts`);
+    resolve({
+      taskId: execution.taskId,
+      success: false,
+      error: lastError || new Error('Unknown error'),
+      sequence: this.nextSequence,
+      startTime: Date.now(),
+      endTime: Date.now(),
+      duration: 0
+    });
   }
 
+  /**
+   * Atomically allocate the next sequence number
+   */
+  private async atomicAllocateSequence(): Promise<number> {
+    // Use a more efficient non-blocking approach instead of polling
+    if (this.sequenceAllocationLock) {
+      // If locked, wait for a single promise instead of polling
+      await new Promise<void>((resolve) => {
+        const checkLock = () => {
+          if (!this.sequenceAllocationLock) {
+            resolve();
+          } else {
+            // Use immediate callback instead of delay for faster response
+            setImmediate(checkLock);
+          }
+        };
+        checkLock();
+      });
+    }
 
+    this.sequenceAllocationLock = true;
+    
+    try {
+      // Find next available sequence (skip any that are still pending or allocated)
+      while (this.pendingSequences.has(this.nextSequence) || this.allocatedSequences.has(this.nextSequence)) {
+        this.nextSequence++;
+      }
+
+      const allocatedSequence = this.nextSequence;
+      this.allocatedSequences.add(allocatedSequence);
+      this.nextSequence++;
+
+      this.logger.debug(`🔒 Atomically allocated sequence ${allocatedSequence}, next available: ${this.nextSequence}`);
+      return allocatedSequence;
+      
+    } finally {
+      this.sequenceAllocationLock = false;
+    }
+  }
 
   /**
-   * Get current queue statistics
+   * Mark a sequence as successfully used and update state
+   */
+  private markSequenceSuccess(sequence: number): void {
+    // Update confirmed sequence to track successful submissions
+    this.confirmedSequence = Math.max(this.confirmedSequence, sequence);
+    
+    // Keep nextSequence ahead of confirmed sequence
+    this.nextSequence = Math.max(this.nextSequence, this.confirmedSequence + 1);
+    
+    this.logger.debug(`🔢 Sequence ${sequence} confirmed, next allocation: ${this.nextSequence}`);
+  }
+
+  /**
+   * Perform ultra-robust sequence initialization
+   */
+  private async performUltraRobustInitialization(): Promise<void> {
+    this.logger.info('🛡️ Performing ultra-robust sequence initialization...');
+
+    // Try multiple strategies with retries
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const blockchainSequence = await this.queryService.queryAccountSequence(this.signer!);
+        
+        // Initialize sequences with proper spacing
+        this.confirmedSequence = blockchainSequence;
+        this.nextSequence = blockchainSequence;
+        this.lastValidationTime = Date.now();
+        
+        this.logger.info(`✅ Ultra-robust init: Blockchain sequence ${blockchainSequence}`);
+        
+        // Validate immediately to ensure consistency
+        await this.performAggressiveValidation();
+        return;
+        
+      } catch (error) {
+        this.logger.warn(`⚠️ Blockchain query attempt ${attempt + 1} failed: ${error}`);
+        if (attempt < 2) {
+          await delay(2000); // Wait before retry
+        }
+      }
+    }
+
+    // Fallback with conservative approach
+    this.logger.warn('⚠️ Using ultra-conservative fallback sequence initialization');
+    this.confirmedSequence = 0;
+    this.nextSequence = 0;
+    this.lastValidationTime = Date.now();
+    
+    // Schedule immediate validation
+    setTimeout(() => this.performAggressiveValidation(), 1000);
+  }
+
+  /**
+   * Perform aggressive validation every 5 seconds
+   */
+  private async performAggressiveValidation(): Promise<void> {
+    const now = Date.now();
+    if (now - this.lastValidationTime < this.VALIDATION_INTERVAL_MS) {
+      return; // Too soon to validate again
+    }
+
+    await this.validateWithComprehensiveRecovery();
+  }
+
+  /**
+   * Validate current sequence against blockchain with comprehensive recovery
+   */
+  private async validateWithComprehensiveRecovery(): Promise<void> {
+    try {
+      if (!this.signer) return;
+      
+      const blockchainSequence = await this.queryService.queryAccountSequence(this.signer);
+      this.lastValidationTime = Date.now();
+
+      // Check for significant drift
+      const drift = Math.abs(this.nextSequence - blockchainSequence);
+      
+      if (drift > this.MAX_SEQUENCE_DRIFT) {
+        this.logger.warn(`🚨 CRITICAL sequence drift detected: local=${this.nextSequence}, blockchain=${blockchainSequence}, drift=${drift}`);
+        
+        // Force synchronization for large drifts
+        if (this.nextSequence < blockchainSequence) {
+          this.logger.info(`🔧 FORCE SYNC: Adjusting sequences to blockchain + safety margin`);
+          this.confirmedSequence = blockchainSequence;
+          this.nextSequence = blockchainSequence;
+          
+          // Clear any stale allocated sequences that are now invalid
+          this.allocatedSequences.clear();
+        }
+      } else if (drift > 0) {
+        this.logger.debug(`🔄 Minor sequence drift: local=${this.nextSequence}, blockchain=${blockchainSequence}, drift=${drift}`);
+      }
+
+      // Update confirmed sequence conservatively
+      this.confirmedSequence = Math.max(this.confirmedSequence, blockchainSequence);
+      
+    } catch (error) {
+      this.logger.warn(`⚠️ Sequence validation failed: ${error}`);
+    }
+  }
+
+  /**
+   * Perform comprehensive recovery after sequence errors
+   */
+  private async performComprehensiveRecovery(): Promise<void> {
+    this.logger.info('🔧 Performing comprehensive sequence recovery...');
+    
+    // Step 1: Clean up expired pending sequences
+    this.cleanupExpiredPendingSequences();
+    
+    // Step 2: Force blockchain validation
+    await this.validateWithComprehensiveRecovery();
+    
+    // Step 3: Clear stale allocations
+    this.allocatedSequences.clear();
+    
+    // Step 4: Reset allocation lock if stuck
+    this.sequenceAllocationLock = false;
+    
+    this.logger.info(`🔧 Comprehensive recovery complete: next=${this.nextSequence}, confirmed=${this.confirmedSequence}, pending=${this.pendingSequences.size}`);
+  }
+
+  /**
+   * Clean up expired pending sequences with enhanced logic
+   */
+  private cleanupExpiredPendingSequences(): void {
+    const now = Date.now();
+    const expiredSequences: number[] = [];
+    
+    for (const [seq, pending] of this.pendingSequences.entries()) {
+      if (now - pending.startTime > this.PENDING_TIMEOUT_MS) {
+        this.logger.warn(`⚠️ Cleaning up expired pending sequence ${seq} for task ${pending.taskId} (attempt ${pending.attempts})`);
+        expiredSequences.push(seq);
+      }
+    }
+    
+    // Remove expired sequences
+    expiredSequences.forEach(seq => {
+      this.pendingSequences.delete(seq);
+      this.allocatedSequences.delete(seq);
+    });
+    
+    if (expiredSequences.length > 0) {
+      this.logger.info(`🧹 Cleaned up ${expiredSequences.length} expired sequences`);
+    }
+  }
+
+  /**
+   * Get comprehensive statistics with enhanced metrics
    */
   getStats() {
     return {
       queueSize: this.executionQueue.length,
       isProcessing: this.isProcessing,
-      nextSequenceNumber: this.sequenceNumber,
+      currentSequenceNumber: this.confirmedSequence,
+      nextSequenceNumber: this.nextSequence,
+      lastValidatedSequence: this.confirmedSequence,
+      pendingSequences: this.pendingSequences.size,
+      allocatedSequences: this.allocatedSequences.size,
+      sequenceDrift: Math.abs(this.nextSequence - this.confirmedSequence),
       maxQueueSize: this.config.maxQueueSize,
-      currentSequenceNumber: this.sequenceNumber, // Add current sequence for debugging
-      isInitialized: this.isInitialized
+      isInitialized: this.isInitialized,
+      lastValidationAge: Date.now() - this.lastValidationTime,
+      validationInterval: this.VALIDATION_INTERVAL_MS,
+      allocationLocked: this.sequenceAllocationLock
     };
   }
 
   /**
-   * Get the current sequence number (for debugging)
+   * Get the current confirmed sequence number
    */
   getCurrentSequenceNumber(): number {
-    return this.sequenceNumber;
+    return this.confirmedSequence;
   }
 
   /**
-   * Clear the execution queue (for cleanup)
+   * Clear the execution queue and all pending sequences
    */
   clear(): void {
     // Reject all pending executions
@@ -269,16 +509,20 @@ export class CosmosSequenceCoordinator {
       }
     }
 
+    // Clear all tracking
+    this.pendingSequences.clear();
+    this.allocatedSequences.clear();
     this.isProcessing = false;
-    // Don't reset sequence number on clear - keep the real account sequence
-    this.logger.info('🔄 Cosmos sequence coordinator cleared (sequence number preserved)');
+    this.sequenceAllocationLock = false;
+    
+    this.logger.info('🔄 Ultra-robust sequence coordinator cleared');
   }
 
   /**
-   * Wait for the queue to be empty
+   * Wait for the queue to be completely empty
    */
   async waitForQueue(): Promise<void> {
-    while (this.executionQueue.length > 0 || this.isProcessing) {
+    while (this.executionQueue.length > 0 || this.isProcessing || this.pendingSequences.size > 0 || this.allocatedSequences.size > 0) {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
   }
