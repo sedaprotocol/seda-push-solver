@@ -64,8 +64,8 @@ export interface SchedulerConfig {
     // Timeout for posting DataRequest transaction (posting phase)
     postingTimeoutMs: number;
     
-    // Default timeout for sequence coordinator operations
-    defaultTimeoutMs: number;
+    // Timeout for awaiting DataRequest results
+    drResultTimeout: number;
     
     // Maximum queue size for sequence coordination
     maxQueueSize: number;

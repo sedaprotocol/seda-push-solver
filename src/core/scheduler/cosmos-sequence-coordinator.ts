@@ -39,7 +39,7 @@ export interface PostingResult<T> {
  */
 export interface CosmosSequenceConfig {
   postingTimeoutMs: number;
-  defaultTimeoutMs: number;
+  drResultTimeout: number;
   maxQueueSize: number;
 }
 
