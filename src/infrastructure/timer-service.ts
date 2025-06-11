@@ -50,6 +50,11 @@ export interface ITimerService {
  */
 export class TimerService implements ITimerService {
   private activeTimers = new Set<TimerId>();
+  private logger?: { error: (msg: string, ...args: any[]) => void };
+
+  constructor(logger?: { error: (msg: string, ...args: any[]) => void }) {
+    this.logger = logger;
+  }
 
   setInterval(callback: () => void, ms: number): TimerId {
     const id = setInterval(() => {
@@ -57,7 +62,9 @@ export class TimerService implements ITimerService {
         callback();
       } catch (error) {
         // Log error but continue interval
-        console.error('Timer callback error:', error);
+        if (this.logger) {
+          this.logger.error('Timer callback error:', error);
+        }
       }
     }, ms) as unknown as TimerId;
     
@@ -71,7 +78,9 @@ export class TimerService implements ITimerService {
       try {
         callback();
       } catch (error) {
-        console.error('Timer callback error:', error);
+        if (this.logger) {
+          this.logger.error('Timer callback error:', error);
+        }
       }
     }, ms) as unknown as TimerId;
     

@@ -4,22 +4,26 @@
  * Test script for posting multiple DataRequests to SEDA network
  */
 
-import { loadSEDAConfig, SEDADataRequestBuilder } from '../src';
+import { loadSEDAConfig, SEDADataRequestBuilder } from '../src/core/data-request';
+import { ServiceContainer } from '../src/services';
 
 async function testMultipleDataRequests() {
-  console.log('🧪 Testing Multiple SEDA DataRequests\n');
+  const services = ServiceContainer.createProduction();
+  const logger = services.loggingService;
+  
+  logger.info('🧪 Testing Multiple SEDA DataRequests');
 
   try {
     // Load configuration
     const config = loadSEDAConfig();
-    console.log('✅ Configuration loaded successfully');
-    console.log(`🌐 Network: ${config.network}`);
-    console.log(`🔗 RPC: ${config.rpcEndpoint}`);
+    logger.info('✅ Configuration loaded successfully');
+    logger.info(`🌐 Network: ${config.network}`);
+    logger.info(`🔗 RPC: ${config.rpcEndpoint}`);
 
-    // Create builder
-    const builder = new SEDADataRequestBuilder(config);
+    // Create and initialize builder
+    const builder = new SEDADataRequestBuilder(config, logger);
     await builder.initialize();
-    console.log('✅ Builder initialized successfully');
+    logger.info('✅ Builder initialized successfully');
 
     // Test posting multiple DataRequests
     const numberOfRequests = 3;
@@ -27,10 +31,10 @@ async function testMultipleDataRequests() {
     let totalGasUsed = BigInt(0);
     const overallStartTime = Date.now();
 
-    console.log(`\n🚀 Posting ${numberOfRequests} DataRequests...\n`);
+    logger.info(`\n🚀 Posting ${numberOfRequests} DataRequests...\n`);
 
     for (let i = 1; i <= numberOfRequests; i++) {
-      console.log(`📤 DataRequest ${i}/${numberOfRequests}`);
+      logger.info(`📤 DataRequest ${i}/${numberOfRequests}`);
       
       const startTime = Date.now();
       
@@ -42,13 +46,13 @@ async function testMultipleDataRequests() {
         const duration = Date.now() - startTime;
         const gasUsed = BigInt(result.gasUsed || '0');
         
-        console.log(`✅ DataRequest ${i} completed successfully`);
-        console.log(`   DR ID: ${result.drId}`);
-        console.log(`   Exit Code: ${result.exitCode}`);
-        console.log(`   Block Height: ${result.blockHeight}`);
-        console.log(`   Gas Used: ${result.gasUsed}`);
-        console.log(`   Result: ${result.result || 'No result data'}`);
-        console.log(`   Duration: ${(duration / 1000).toFixed(2)}s`);
+        logger.info(`✅ DataRequest ${i} completed successfully`);
+        logger.info(`   DR ID: ${result.drId}`);
+        logger.info(`   Exit Code: ${result.exitCode}`);
+        logger.info(`   Block Height: ${result.blockHeight}`);
+        logger.info(`   Gas Used: ${result.gasUsed}`);
+        logger.info(`   Result: ${result.result || 'No result data'}`);
+        logger.info(`   Duration: ${(duration / 1000).toFixed(2)}s`);
         
         totalGasUsed += gasUsed;
         
@@ -64,9 +68,9 @@ async function testMultipleDataRequests() {
 
       } catch (error) {
         const duration = Date.now() - startTime;
-        console.log(`❌ DataRequest ${i} failed`);
-        console.log(`   Error: ${error instanceof Error ? error.message : String(error)}`);
-        console.log(`   Duration: ${(duration / 1000).toFixed(2)}s`);
+        logger.error(`❌ DataRequest ${i} failed`);
+        logger.error(`   Error: ${error instanceof Error ? error.message : String(error)}`);
+        logger.error(`   Duration: ${(duration / 1000).toFixed(2)}s`);
         
         results.push({
           requestNumber: i,
@@ -78,7 +82,7 @@ async function testMultipleDataRequests() {
 
       // Delay between requests (except for the last one)
       if (i < numberOfRequests) {
-        console.log('   ⏸️  Waiting 3s before next request...\n');
+        logger.info('   ⏸️  Waiting 3s before next request...\n');
         await new Promise(resolve => setTimeout(resolve, 3000));
       }
     }
@@ -87,16 +91,16 @@ async function testMultipleDataRequests() {
     const successful = results.filter(r => r.success).length;
     const failed = results.filter(r => !r.success).length;
 
-    console.log('\n📊 MULTIPLE DATAREQUESTS SUMMARY');
-    console.log('='.repeat(50));
-    console.log(`📤 Total Requests: ${numberOfRequests}`);
-    console.log(`✅ Successful: ${successful}`);
-    console.log(`❌ Failed: ${failed}`);
-    console.log(`📈 Success Rate: ${((successful / numberOfRequests) * 100).toFixed(1)}%`);
-    console.log(`⏱️  Total Duration: ${(overallDuration / 1000).toFixed(2)}s`);
-    console.log(`⛽ Total Gas Used: ${totalGasUsed.toLocaleString()}`);
-    console.log(`💰 Average Gas per Request: ${(Number(totalGasUsed) / successful).toLocaleString()}`);
-    console.log('='.repeat(50));
+    logger.info('\n📊 MULTIPLE DATAREQUESTS SUMMARY');
+    logger.info('='.repeat(50));
+    logger.info(`📤 Total Requests: ${numberOfRequests}`);
+    logger.info(`✅ Successful: ${successful}`);
+    logger.info(`❌ Failed: ${failed}`);
+    logger.info(`📈 Success Rate: ${((successful / numberOfRequests) * 100).toFixed(1)}%`);
+    logger.info(`⏱️  Total Duration: ${(overallDuration / 1000).toFixed(2)}s`);
+    logger.info(`⛽ Total Gas Used: ${totalGasUsed.toLocaleString()}`);
+    logger.info(`💰 Average Gas per Request: ${(Number(totalGasUsed) / successful).toLocaleString()}`);
+    logger.info('='.repeat(50));
 
     return {
       success: failed === 0,
@@ -109,7 +113,7 @@ async function testMultipleDataRequests() {
     };
 
   } catch (error) {
-    console.error('❌ Multiple requests test failed:', error);
+    logger.error('❌ Multiple requests test failed:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : String(error)
@@ -118,15 +122,23 @@ async function testMultipleDataRequests() {
 }
 
 // Run the test
-testMultipleDataRequests().then(result => {
-  if (result.success) {
-    console.log('\n✅ Multiple DataRequests test completed successfully');
-    process.exit(0);
-  } else {
-    console.log('\n❌ Multiple DataRequests test failed');
-    process.exit(1);
-  }
-}).catch(error => {
-  console.error('💥 Test script failed:', error);
-  process.exit(1);
-}); 
+if (import.meta.main) {
+  testMultipleDataRequests()
+    .then(result => {
+      const services = ServiceContainer.createProduction();
+      const logger = services.loggingService;
+      if (result.success) {
+        logger.info('\n✅ Multiple DataRequests test completed successfully');
+        process.exit(0);
+      } else {
+        logger.error('\n❌ Multiple DataRequests test failed');
+        process.exit(1);
+      }
+    })
+    .catch(error => {
+      const services = ServiceContainer.createProduction();
+      const logger = services.loggingService;
+      logger.error('💥 Test script failed:', error);
+      process.exit(1);
+    });
+} 

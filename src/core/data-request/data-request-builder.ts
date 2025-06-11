@@ -4,16 +4,16 @@
  */
 
 import { Signer } from '@seda-protocol/dev-tools';
-import { getNetworkConfig } from '../../network';
+import { getNetworkConfig } from '../network';
 import { 
   buildDataRequestInput, 
   buildGasOptions, 
   buildAwaitOptions
-} from '../input-builder';
-import { executeDataRequest } from '../executor';
-import { initializeSigner } from '../signer';
-import type { SEDAConfig, DataRequestResult, DataRequestOptions } from '../../../types';
-import type { ILoggingService } from '../../../services';
+} from './input-builder';
+import { executeDataRequest } from './executor';
+import { initializeSigner } from './signer';
+import type { SEDAConfig, DataRequestResult, DataRequestOptions } from '../../types';
+import type { ILoggingService } from '../../services';
 
 /**
  * SEDA DataRequest Builder
@@ -27,24 +27,10 @@ export class SEDADataRequestBuilder {
 
   constructor(
     config: SEDAConfig, 
-    logger?: ILoggingService
+    logger: ILoggingService
   ) {
     this.config = config;
-    
-    // Use provided logger or create a simple fallback
-    if (logger) {
-      this.logger = logger;
-    } else {
-      // Simple fallback logger for backward compatibility
-      this.logger = {
-        info: (msg: string, ...args: any[]) => console.log(msg, ...args),
-        error: (msg: string, ...args: any[]) => console.error(msg, ...args),
-        warn: (msg: string, ...args: any[]) => console.warn(msg, ...args),
-        debug: (msg: string, ...args: any[]) => console.debug(msg, ...args),
-        setLogLevel: () => {},
-        getLogLevel: () => 2 // INFO level
-      };
-    }
+    this.logger = logger;
     
     if (!this.config.mnemonic) {
       throw new Error('Mnemonic is required in SEDA configuration');

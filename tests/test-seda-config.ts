@@ -1,163 +1,133 @@
 #!/usr/bin/env bun
 
 /**
- * Test script for SEDA configuration validation and basic functionality
+ * SEDA Configuration Test
+ * Tests network configuration loading and validation
  */
 
-import { 
-  loadSEDAConfig, 
-  SEDADataRequestBuilder
-} from '../src';
+import { loadSEDAConfig, SEDADataRequestBuilder } from '../src/core/data-request';
+import { getNetworkConfig, SEDA_NETWORK_CONFIGS } from '../src/core/network';
+import { ServiceContainer } from '../src/services';
 
-import {
-  getDataRequestConfig,
-  validateDataRequestConfig
-} from '../src/core/network';
-
+/**
+ * Test SEDA configuration loading and network setup
+ */
 async function testSEDAConfiguration() {
-  console.log('🧪 Testing SEDA Configuration\n');
+  const services = ServiceContainer.createProduction();
+  const logger = services.loggingService;
+  
+  logger.info('\n🧪 Testing SEDA Configuration System');
+  logger.info('='.repeat(50));
 
   try {
-    // Test 1: Load SEDA Configuration
-    console.log('📋 Step 1: Loading SEDA Configuration...');
+    // Test 1: Load configuration from environment
+    logger.info('\n📋 Test 1: Environment Configuration Loading');
     const config = loadSEDAConfig();
     
-    console.log('✅ Configuration loaded successfully');
-    console.log(`   🌐 Network: ${config.network}`);
-    console.log(`   🔗 RPC Endpoint: ${config.rpcEndpoint}`);
-    console.log(`   🔑 Has Mnemonic: ${config.mnemonic ? 'Yes' : 'No'}`);
-
-    // Test 2: Validate DataRequest Configuration
-    console.log('\n🔍 Step 2: Validating DataRequest Configuration...');
-    const drConfig = getDataRequestConfig(config.network);
+    if (!config.network || !config.rpcEndpoint) {
+      throw new Error('Configuration validation failed - missing required fields');
+    }
     
-    console.log('✅ DataRequest configuration retrieved');
-    console.log(`   🎯 Oracle Program ID: ${drConfig.oracleProgramId}`);
-    console.log(`   🔄 Replication Factor: ${drConfig.replicationFactor}`);
-    console.log(`   ⚡ Gas Limit: ${drConfig.execGasLimit.toLocaleString()}`);
-    console.log(`   💰 Gas Price: ${drConfig.gasPrice}`);
-    console.log(`   ⏰ Timeout: ${drConfig.timeoutSeconds}s`);
-    console.log(`   📡 Polling Interval: ${drConfig.pollingIntervalSeconds}s`);
-    console.log(`   🤝 Consensus Method: ${drConfig.consensusOptions.method}`);
-
-    // Validate the configuration
-    validateDataRequestConfig(drConfig);
-
-    // Test 3: Create Builder Instance
-    console.log('\n🔧 Step 3: Creating DataRequest Builder...');
-    const builder = new SEDADataRequestBuilder(config);
+    logger.info(`✅ Network: ${config.network}`);
+    logger.info(`✅ RPC Endpoint: ${config.rpcEndpoint}`);
+    logger.info(`✅ Has Mnemonic: ${config.mnemonic ? 'Yes' : 'No'}`);
     
-    console.log('✅ Builder created successfully');
-    console.log(`   📊 Builder initialized: ${builder.isBuilderInitialized()}`);
-    console.log(`   ⚙️  Configuration valid: Yes`);
-
-    // Test 4: Builder Configuration Access
-    console.log('\n🔍 Step 4: Validating Builder Configuration...');
-    const builderConfig = builder.getConfig();
+    // Test 2: Network configuration validation
+    logger.info('\n📋 Test 2: Network Configuration Validation');
+    const networkConfig = getNetworkConfig(config.network);
     
-    console.log('✅ Builder configuration retrieved');
-    console.log(`   📊 Network Match: ${builderConfig.network === config.network ? 'Yes' : 'No'}`);
-    console.log(`   🔗 RPC Match: ${builderConfig.rpcEndpoint === config.rpcEndpoint ? 'Yes' : 'No'}`);
-
-    console.log('\n🎉 All configuration tests passed successfully!');
+    if (!networkConfig.dataRequest.oracleProgramId) {
+      throw new Error('Oracle Program ID not configured');
+    }
     
-    return {
-      success: true,
-      config,
-      drConfig,
-      builderConfig
-    };
-
+    logger.info(`✅ Oracle Program ID: ${networkConfig.dataRequest.oracleProgramId}`);
+    logger.info(`✅ Replication Factor: ${networkConfig.dataRequest.replicationFactor}`);
+    logger.info(`✅ Gas Limit: ${networkConfig.dataRequest.execGasLimit.toLocaleString()}`);
+    
+    // Test 3: Builder initialization
+    logger.info('\n📋 Test 3: Builder Initialization');
+    const builder = new SEDADataRequestBuilder(config, logger);
+    
+    if (!builder) {
+      throw new Error('Builder creation failed');
+    }
+    
+    logger.info('✅ Builder created successfully');
+    logger.info(`✅ Builder initialized: ${builder.isBuilderInitialized()}`);
+    
+    // Test 4: Configuration structure validation
+    logger.info('\n📋 Test 4: Configuration Structure Validation');
+    testConfigurationStructure();
+    logger.info('✅ Configuration structure validation passed');
+    
+    logger.info('\n🎉 All SEDA configuration tests passed!');
+    return { success: true };
+    
   } catch (error) {
-    console.error('❌ Configuration test failed:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error)
+    logger.error('❌ Configuration test failed:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : String(error) 
     };
   }
 }
 
-// Test configuration structure validation
+/**
+ * Test the structure of network configurations
+ */
 function testConfigurationStructure() {
-  console.log('\n🔍 Testing Configuration Structure...');
-
-  try {
-    const requiredEnvVars = [
-      'SEDA_MNEMONIC',
-      'SEDA_NETWORK',
-      'SEDA_RPC_ENDPOINT'
-    ];
-
-    console.log('📝 Checking environment variables...');
+  const requiredNetworks = ['testnet', 'mainnet', 'local'];
+  
+  for (const network of requiredNetworks) {
+    const config = SEDA_NETWORK_CONFIGS[network as keyof typeof SEDA_NETWORK_CONFIGS];
     
-    const missingVars = requiredEnvVars.filter(varName => {
-      const value = process.env[varName];
-      const exists = value && value.trim().length > 0;
-      console.log(`   ${exists ? '✅' : '❌'} ${varName}: ${exists ? 'Set' : 'Missing'}`);
-      return !exists;
-    });
-
-    if (missingVars.length > 0) {
-      console.log(`\n⚠️  Missing environment variables: ${missingVars.join(', ')}`);
-      console.log('   This is expected if running without proper setup');
-    } else {
-      console.log('\n✅ All required environment variables are set');
+    if (!config) {
+      throw new Error(`Missing configuration for network: ${network}`);
     }
-
-    return {
-      success: true,
-      missingVars
-    };
-
-  } catch (error) {
-    console.error('❌ Structure test failed:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : String(error)
-    };
+    
+    // Validate required fields
+    if (!config.name || !config.rpcEndpoint || !config.dataRequest) {
+      throw new Error(`Invalid configuration structure for network: ${network}`);
+    }
+    
+    // Validate DataRequest configuration
+    const dr = config.dataRequest;
+    if (!dr.oracleProgramId || !dr.execGasLimit || !dr.gasPrice) {
+      throw new Error(`Invalid DataRequest configuration for network: ${network}`);
+    }
   }
 }
 
-// Run the tests
+/**
+ * Run all tests
+ */
 async function runTests() {
-  console.log('🧪 SEDA Configuration Tests\n');
-  console.log('='.repeat(50));
-
-  // Test structure first
-  const structureResult = testConfigurationStructure();
+  const services = ServiceContainer.createProduction();
+  const logger = services.loggingService;
   
-  // Test configuration loading
+  logger.info('🚀 Starting SEDA Configuration Tests');
+  
   const configResult = await testSEDAConfiguration();
-
-  console.log('\n' + '='.repeat(50));
-  console.log('📊 TEST SUMMARY');
-  console.log('='.repeat(50));
   
-  if (structureResult.success && configResult.success) {
-    console.log('✅ All tests passed successfully');
-    console.log('\n🚀 Next Steps:');
-    console.log('  1. Ensure SEDA_MNEMONIC is set with valid mnemonic');
-    console.log('  2. Ensure account has sufficient testnet tokens');
-    console.log('  3. Run actual DataRequest tests with test:datarequest');
-    
-    process.exit(0);
+  if (configResult.success) {
+    logger.info('\n✅ All tests completed successfully!');
+    return true;
   } else {
-    console.log('❌ Some tests failed');
-    
-    if (!structureResult.success) {
-      console.log(`   Structure test: ${structureResult.error}`);
-    }
-    
-    if (!configResult.success) {
-      console.log(`   Configuration test: ${configResult.error}`);
-    }
-    
-    process.exit(1);
+    logger.error('\n❌ Tests failed!');
+    return false;
   }
 }
 
-// Run if executed directly
-runTests().catch(error => {
-  console.error('💥 Test script failed:', error);
-  process.exit(1);
-}); 
+// Run tests if executed directly
+if (import.meta.main) {
+  runTests()
+    .then(success => {
+      process.exit(success ? 0 : 1);
+    })
+    .catch(error => {
+      const services = ServiceContainer.createProduction();
+      const logger = services.loggingService;
+      logger.error('💥 Test execution failed:', error);
+      process.exit(1);
+    });
+} 
