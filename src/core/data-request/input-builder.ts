@@ -41,13 +41,13 @@ export function buildDataRequestInput(
 }
 
 /**
- * Build gas options from DataRequest configuration
- * @param drConfig The SEDA DataRequest configuration containing gas settings
+ * Build gas options from network transaction configuration
+ * @param networkConfig The network configuration containing transaction gas settings
  * @returns GasOptions object for transaction gas configuration
  */
-export function buildGasOptions(drConfig: SEDADataRequestConfig): GasOptions {
+export function buildGasOptions(networkConfig: any): GasOptions {
   return {
-    gasPrice: drConfig.gasPrice.toString()
+    gasPrice: networkConfig.transaction.gasPrice.toString()
   };
 }
 

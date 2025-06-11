@@ -30,16 +30,16 @@ export {
 
 // Export task management components
 export {
-  AsyncTaskManager
-} from './async-task-manager';
-
-export {
   TaskRegistry
 } from './task-registry';
 
 export {
   TaskExecutor
 } from './task-executor';
+
+export {
+  TaskManager
+} from './task-manager';
 
 // Export scheduler core
 export {

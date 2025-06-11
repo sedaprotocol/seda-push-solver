@@ -9,6 +9,7 @@
 
 import { loadSEDAConfig, SEDADataRequestBuilder } from '../src';
 import { ServiceContainer } from '../src/services';
+import { logGasConfiguration } from '../src/core/network';
 
 async function runDemo() {
   // Initialize logging service
@@ -32,6 +33,10 @@ async function runDemo() {
     logger.info(`│ RPC Endpoint: ${config.rpcEndpoint}`);
     logger.info(`│ Has Mnemonic: ${config.mnemonic ? 'Yes' : 'No'}`);
     logger.info('└─────────────────────────────────────────────────────────────────────┘');
+
+    // Display gas configuration
+    logGasConfiguration(config.network);
+    logger.info('');
 
     if (!config.mnemonic) {
       logger.info('\n┌─────────────────────────────────────────────────────────────────────┐');

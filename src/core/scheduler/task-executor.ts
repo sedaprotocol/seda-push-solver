@@ -1,6 +1,6 @@
 /**
  * Task Executor for DataRequest Operations
- * Handles the execution of individual DataRequest tasks with sequence coordination
+ * Truly separates posting from oracle awaiting for maximum speed
  */
 
 import type { ILoggingService } from '../../services';
@@ -19,7 +19,7 @@ import type { AsyncTaskResult, TaskCompletionHandler } from './types';
 import type { TaskRegistry } from './task-registry';
 
 /**
- * Executes individual DataRequest tasks with proper sequence coordination
+ * Task Executor - separates posting from oracle awaiting
  */
 export class TaskExecutor {
   private memoGenerator: UniqueMemoGenerator;
@@ -34,7 +34,7 @@ export class TaskExecutor {
   }
 
   /**
-   * Execute a complete DataRequest task with sequence coordination
+   * Execute a DataRequest task with TRUE parallel posting and awaiting
    */
   async executeTask(
     taskId: string,
@@ -48,15 +48,19 @@ export class TaskExecutor {
     
     try {
       this.logger.info(`\n${'='.repeat(73)}`);
-      this.logger.info(`📤 Async DataRequest #${requestNumber} (${taskId}) | ${new Date().toLocaleTimeString()}`);
+      this.logger.info(`🚀 DataRequest #${requestNumber} (${taskId}) | ${new Date().toLocaleTimeString()}`);
       this.logger.info('='.repeat(73));
+      this.logger.info(`⏱️  TASK START: Beginning execution at ${new Date(startTime).toLocaleTimeString()}`);
 
-      // Get network configuration for building inputs and query config
+      // Get network configuration
       const builderConfig = builder.getConfig();
       const networkConfig = getNetworkConfig(builderConfig.network);
 
-      // Phase 1: Post the DataRequest with sequence coordination
-      const postingResult = await this.executePosting(
+      // Phase 1: POST ONLY (coordinated by sequence)
+      const postingStartTime = this.getTimestamp();
+      this.logger.info(`📋 PHASE 1: Starting posting phase at ${new Date(postingStartTime).toLocaleTimeString()}`);
+      
+      const postingResult = await this.executePostingOnly(
         taskId,
         builder,
         config,
@@ -64,11 +68,17 @@ export class TaskExecutor {
         isRunning
       );
 
+      const postingEndTime = this.getTimestamp();
+      const postingDuration = postingEndTime - postingStartTime;
+      
       if (!postingResult.success || !postingResult.result) {
+        this.logger.error(`❌ PHASE 1 FAILED: Posting failed after ${postingDuration}ms (${(postingDuration/1000).toFixed(2)}s)`);
         return this.handlePostingFailure(taskId, postingResult, startTime, completionHandler);
       }
 
-      // Phase 2: DataRequest posted successfully
+      this.logger.info(`✅ PHASE 1 COMPLETE: Posting succeeded in ${postingDuration}ms (${(postingDuration/1000).toFixed(2)}s)`);
+
+      // Phase 2: IMMEDIATE return after successful posting
       const postedData = postingResult.result;
       this.logPostingSuccess(taskId, postedData, startTime);
       
@@ -81,8 +91,30 @@ export class TaskExecutor {
         postingResult.sequence
       );
 
-      // Phase 3: Wait for oracle result
-      return await this.executeOracleAwaiting(
+      // Create and call completion handler for POSTING SUCCESS immediately
+      const postingCompletionTime = this.getTimestamp();
+      const postingCompletionDuration = postingCompletionTime - startTime;
+      const postingSuccessResult: AsyncTaskResult = {
+        taskId,
+        success: true,
+        result: { type: 'posted', drId: postedData.drId },
+        drId: postedData.drId,
+        blockHeight: Number(postedData.blockHeight),
+        completedAt: postingCompletionTime,
+        duration: postingCompletionDuration,
+        sequenceNumber: postingResult.sequence
+      };
+
+      this.logger.info(`🎯 POSTING SUCCESS: Task ${taskId} posted in ${postingCompletionDuration}ms (${(postingCompletionDuration/1000).toFixed(2)}s) - Oracle awaiting will continue in background`);
+
+      // CALL COMPLETION HANDLER FOR POSTING SUCCESS (this should increment posted counter)
+      completionHandler.onSuccess(postingSuccessResult);
+
+      // Phase 3: Start oracle awaiting IN PARALLEL (fire and forget)
+      const oracleStartTime = this.getTimestamp();
+      this.logger.info(`📋 PHASE 2: Starting oracle awaiting in background at ${new Date(oracleStartTime).toLocaleTimeString()}`);
+      
+      this.startOracleAwaitingInParallel(
         taskId,
         postedData,
         networkConfig,
@@ -91,16 +123,22 @@ export class TaskExecutor {
         postingResult.sequence,
         completionHandler
       );
+
+      // Return the posting success result
+      return postingSuccessResult;
         
     } catch (error) {
+      const errorTime = this.getTimestamp();
+      const errorDuration = errorTime - startTime;
+      this.logger.error(`💥 TASK ERROR: Task ${taskId} failed after ${errorDuration}ms (${(errorDuration/1000).toFixed(2)}s):`, error);
       return this.handleGeneralFailure(taskId, error, startTime, completionHandler);
     }
   }
 
   /**
-   * Execute the posting phase with sequence coordination
+   * Execute posting ONLY - no awaiting
    */
-  private async executePosting(
+  private async executePostingOnly(
     taskId: string,
     builder: SEDADataRequestBuilder,
     config: SchedulerConfig,
@@ -110,60 +148,201 @@ export class TaskExecutor {
     
     const sequencedPosting: SequencedPosting<{ drId: string; blockHeight: bigint; txHash: string }> = {
       taskId,
-      timeout: 20000, // 20 seconds for posting
+      timeout: process.env.COSMOS_POSTING_TIMEOUT_MS ? parseInt(process.env.COSMOS_POSTING_TIMEOUT_MS) : 20000,
       postTransaction: async (sequenceNumber: number) => {
-        this.logger.info(`🔢 Posting DataRequest transaction for task ${taskId} with sequence ${sequenceNumber}`);
+        const postStartTime = this.getTimestamp();
+        this.logger.info(`📤 POST START: DataRequest ${taskId} with sequence ${sequenceNumber} at ${new Date(postStartTime).toLocaleTimeString()}`);
         
-        // Generate unique memo using the sequence number
+        // Generate unique memo
         const uniqueMemoData = this.memoGenerator.generateUniqueMemo(
           config.memo || 'DataRequest',
           sequenceNumber
         );
         
-        // Post transaction only (no waiting for results yet)
+        // Post transaction ONLY - no oracle awaiting
         const retryResult = await executeWithRetry(
           async () => {
-            // Ensure builder is initialized
             if (!builder.isBuilderInitialized()) {
               await builder.initialize();
             }
 
-            // Build the post input
             const postInput = buildDataRequestInput(networkConfig.dataRequest, { memo: uniqueMemoData.memo });
-            const gasOptions = buildGasOptions(networkConfig.dataRequest);
-            
-            // Get the signer from the builder
+            const gasOptions = buildGasOptions(networkConfig);
             const signer = (builder as any).signer;
+            
             if (!signer) {
               throw new Error('Builder signer not available');
             }
             
-            // Use the split function to ONLY post the transaction
-            return await postDataRequestTransaction(
+            const txStartTime = this.getTimestamp();
+            this.logger.info(`🔄 TX START: Posting transaction for ${taskId} at ${new Date(txStartTime).toLocaleTimeString()}`);
+            
+            // ONLY post the transaction - return immediately
+            const result = await postDataRequestTransaction(
               signer,
               postInput,
               gasOptions,
               networkConfig,
               this.logger
             );
+            
+            const txEndTime = this.getTimestamp();
+            const txDuration = txEndTime - txStartTime;
+            this.logger.info(`✅ TX COMPLETE: Transaction posted for ${taskId} in ${txDuration}ms (${(txDuration/1000).toFixed(2)}s)`);
+            
+            return result;
           },
           config.maxRetries,
-          0, // requestNumber not needed for retry logging
+          0,
           isRunning,
           this.logger
         );
-
-        // Handle retry result
+        
+        const postEndTime = this.getTimestamp();
+        const postDuration = postEndTime - postStartTime;
+        
         if (retryResult.success && retryResult.result) {
+          this.logger.info(`🎯 POST COMPLETE: DataRequest ${taskId} posted successfully in ${postDuration}ms (${(postDuration/1000).toFixed(2)}s)`);
           return retryResult.result;
         } else {
+          this.logger.error(`❌ POST FAILED: DataRequest ${taskId} failed after ${postDuration}ms (${(postDuration/1000).toFixed(2)}s)`);
           throw retryResult.lastError || new Error('Failed to post DataRequest transaction');
         }
       }
     };
 
-    this.logger.info(`🎯 Coordinating DataRequest posting for task ${taskId}`);
-    return await this.sequenceCoordinator.executeSequenced(sequencedPosting);
+    const coordinationStartTime = this.getTimestamp();
+    this.logger.info(`⚡ COORDINATION START: Coordinating DataRequest ${taskId} at ${new Date(coordinationStartTime).toLocaleTimeString()}`);
+    
+    const result = await this.sequenceCoordinator.executeSequenced(sequencedPosting);
+    
+    const coordinationEndTime = this.getTimestamp();
+    const coordinationDuration = coordinationEndTime - coordinationStartTime;
+    this.logger.info(`🚀 COORDINATION COMPLETE: DataRequest ${taskId} coordination finished in ${coordinationDuration}ms (${(coordinationDuration/1000).toFixed(2)}s)`);
+    
+    return result;
+  }
+
+  /**
+   * Start oracle awaiting in parallel (fire and forget)
+   */
+  private startOracleAwaitingInParallel(
+    taskId: string,
+    postedData: { drId: string; blockHeight: bigint; txHash: string },
+    networkConfig: any,
+    builderConfig: any,
+    taskStartTime: number,
+    sequenceNumber: number,
+    completionHandler: TaskCompletionHandler
+  ): void {
+    // Start oracle awaiting in background - don't await this!
+    this.executeOracleAwaitingAsync(
+      taskId,
+      postedData,
+      networkConfig,
+      builderConfig,
+      taskStartTime,
+      sequenceNumber,
+      completionHandler
+    ).catch(error => {
+      this.logger.error(`❌ Background oracle awaiting failed for ${taskId}:`, error);
+    });
+
+    this.logger.info(`🔥 PARALLEL: Started oracle awaiting for ${taskId} in background`);
+  }
+
+  /**
+   * Execute oracle awaiting asynchronously (background process)
+   */
+  private async executeOracleAwaitingAsync(
+    taskId: string,
+    postedData: { drId: string; blockHeight: bigint; txHash: string },
+    networkConfig: any,
+    builderConfig: any,
+    taskStartTime: number,
+    sequenceNumber: number,
+    completionHandler: TaskCompletionHandler
+  ): Promise<void> {
+    try {
+      const awaitOptions = {
+        timeoutSeconds: networkConfig.dataRequest.timeoutSeconds,
+        pollingIntervalSeconds: networkConfig.dataRequest.pollingIntervalSeconds
+      };
+
+      const queryConfig = { rpc: builderConfig.rpcEndpoint };
+
+      this.logger.info(`⏳ BACKGROUND: Awaiting oracle execution for ${postedData.drId}...`);
+
+      // Wait for oracle execution
+      const executionResult = await awaitDataRequestResult(
+        queryConfig,
+        postedData.drId,
+        postedData.blockHeight,
+        awaitOptions,
+        networkConfig,
+        this.logger
+      );
+      
+      const completedAt = this.getTimestamp();
+      const totalDuration = completedAt - taskStartTime;
+
+      // Update registry
+      this.registry.markAsCompleted(taskId);
+
+      // Create oracle success result
+      const oracleSuccessResult: AsyncTaskResult = {
+        taskId,
+        success: true,
+        result: { type: 'oracle_completed', ...executionResult },
+        drId: executionResult.drId,
+        blockHeight: Number(executionResult.blockHeight),
+        completedAt,
+        duration: totalDuration,
+        sequenceNumber
+      };
+
+      // Call completion handler for ORACLE SUCCESS
+      completionHandler.onSuccess(oracleSuccessResult);
+      
+    } catch (error) {
+      this.handleOracleFailureAsync(taskId, postedData, error, taskStartTime, sequenceNumber, networkConfig, completionHandler);
+    }
+  }
+
+  /**
+   * Handle oracle failure in background
+   */
+  private handleOracleFailureAsync(
+    taskId: string,
+    postedData: { drId: string; blockHeight: bigint; txHash: string },
+    error: any,
+    taskStartTime: number,
+    sequenceNumber: number,
+    networkConfig: any,
+    completionHandler: TaskCompletionHandler
+  ): void {
+    const completedAt = this.getTimestamp();
+    const totalDuration = completedAt - taskStartTime;
+    
+    this.logger.error(`❌ BACKGROUND: Oracle execution failed for ${taskId}:`, error);
+    
+    // Update registry
+    this.registry.markAsFailed(taskId, error instanceof Error ? error : new Error(String(error)));
+
+    // Create failure result
+    const failureResult: AsyncTaskResult = {
+      taskId,
+      success: false,
+      error: error instanceof Error ? error : new Error(String(error)),
+      drId: postedData.drId,
+      blockHeight: Number(postedData.blockHeight),
+      completedAt,
+      duration: totalDuration,
+      sequenceNumber
+    };
+    
+    // Call completion handler
+    completionHandler.onFailure(failureResult);
   }
 
   /**
@@ -178,7 +357,6 @@ export class TaskExecutor {
     const completedAt = this.getTimestamp();
     const duration = completedAt - startTime;
     
-    // Update registry with failure info
     this.registry.markAsFailed(
       taskId,
       postingResult.error || new Error('Failed to post DataRequest transaction'),
@@ -194,9 +372,7 @@ export class TaskExecutor {
       sequenceNumber: postingResult.sequence
     };
     
-    // Call completion handler for posting failure
     completionHandler.onFailure(failureResult);
-    
     return failureResult;
   }
 
@@ -208,121 +384,13 @@ export class TaskExecutor {
     postedData: { drId: string; blockHeight: bigint; txHash: string },
     startTime: number
   ): void {
-    const postingDuration = Date.now() - startTime;
+    const postingDuration = this.getTimestamp() - startTime;
 
-    this.logger.info(`✅ DataRequest posted successfully for task ${taskId}`);
+    this.logger.info(`⚡ POST SUCCESS: ${taskId}`);
     this.logger.info(`   📋 Request ID: ${postedData.drId}`);
     this.logger.info(`   📦 Block Height: ${postedData.blockHeight}`);
-    this.logger.info(`   🔗 Transaction: ${postedData.txHash}`);
     this.logger.info(`   ⏱️ Posting Duration: ${postingDuration}ms`);
-    this.logger.info(`   🔍 Now waiting for oracle execution...`);
-  }
-
-  /**
-   * Execute oracle result awaiting
-   */
-  private async executeOracleAwaiting(
-    taskId: string,
-    postedData: { drId: string; blockHeight: bigint; txHash: string },
-    networkConfig: any,
-    builderConfig: any,
-    taskStartTime: number,
-    sequenceNumber: number,
-    completionHandler: TaskCompletionHandler
-  ): Promise<AsyncTaskResult> {
-    try {
-      // Use specific polling parameters from network config
-      const awaitOptions = {
-        timeoutSeconds: networkConfig.dataRequest.timeoutSeconds,
-        pollingIntervalSeconds: networkConfig.dataRequest.pollingIntervalSeconds
-      };
-
-      // Query configuration for awaiting results
-      const queryConfig = { rpc: builderConfig.rpcEndpoint };
-
-      this.logger.info(`⏳ Awaiting oracle execution for DataRequest ${postedData.drId}...`);
-      this.logger.info(`   ⏱️ Timeout: ${awaitOptions.timeoutSeconds}s, Polling: ${awaitOptions.pollingIntervalSeconds}s`);
-
-      // Wait for the DataRequest execution to complete
-      const executionResult = await awaitDataRequestResult(
-        queryConfig,
-        postedData.drId,
-        postedData.blockHeight,
-        awaitOptions,
-        networkConfig,
-        this.logger
-      );
-      
-      const completedAt = this.getTimestamp();
-      const totalDuration = completedAt - taskStartTime;
-
-      // Update registry with completion info
-      this.registry.markAsCompleted(taskId);
-
-      // Create success result
-      const successResult: AsyncTaskResult = {
-        taskId,
-        success: true,
-        result: executionResult,
-        drId: executionResult.drId,
-        blockHeight: Number(executionResult.blockHeight),
-        completedAt,
-        duration: totalDuration,
-        sequenceNumber
-      };
-
-      // Call completion handler for oracle success
-      completionHandler.onSuccess(successResult);
-      
-      return successResult;
-      
-    } catch (error) {
-      return this.handleOracleFailure(taskId, postedData, error, taskStartTime, sequenceNumber, networkConfig, completionHandler);
-    }
-  }
-
-  /**
-   * Handle oracle execution failure
-   */
-  private handleOracleFailure(
-    taskId: string,
-    postedData: { drId: string; blockHeight: bigint; txHash: string },
-    error: any,
-    taskStartTime: number,
-    sequenceNumber: number,
-    networkConfig: any,
-    completionHandler: TaskCompletionHandler
-  ): AsyncTaskResult {
-    const completedAt = this.getTimestamp();
-    const totalDuration = completedAt - taskStartTime;
-    
-    this.logger.error(`❌ Oracle execution failed for ${taskId}:`, error);
-    this.logger.info(`   📋 DataRequest ${postedData.drId} was posted successfully but oracle execution timed out or failed`);
-    this.logger.info(`   💡 The DataRequest may still be executing - check the explorer manually`);
-    
-    if (networkConfig.explorerEndpoint) {
-      this.logger.info(`   🔗 Manual Check: ${networkConfig.explorerEndpoint}/data-requests/${postedData.drId}/${postedData.blockHeight}`);
-    }
-    
-    // Update registry with failure info
-    this.registry.markAsFailed(taskId, error instanceof Error ? error : new Error(String(error)));
-
-    // Create failure result
-    const failureResult: AsyncTaskResult = {
-      taskId,
-      success: false,
-      error: error instanceof Error ? error : new Error(String(error)),
-      drId: postedData.drId,
-      blockHeight: Number(postedData.blockHeight),
-      completedAt,
-      duration: totalDuration,
-      sequenceNumber
-    };
-    
-    // Call completion handler for oracle failure
-    completionHandler.onFailure(failureResult);
-    
-    return failureResult;
+    this.logger.info(`   🔥 Oracle execution started in parallel`);
   }
 
   /**
@@ -337,9 +405,7 @@ export class TaskExecutor {
     const completedAt = this.getTimestamp();
     const duration = completedAt - startTime;
     
-    this.logger.error(`❌ Async task ${taskId} failed:`, error);
-    
-    // Update registry
+    this.logger.error(`❌ Task ${taskId} failed:`, error);
     this.registry.markAsFailed(taskId, error instanceof Error ? error : new Error(String(error)));
     
     const failureResult: AsyncTaskResult = {
@@ -350,9 +416,7 @@ export class TaskExecutor {
       duration
     };
     
-    // Call completion handler for general failure
     completionHandler.onFailure(failureResult);
-    
     return failureResult;
   }
 
@@ -364,7 +428,7 @@ export class TaskExecutor {
   }
 
   /**
-   * Reset memo generator (for cleanup)
+   * Reset memo generator
    */
   reset(): void {
     this.memoGenerator.reset();

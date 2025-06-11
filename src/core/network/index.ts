@@ -7,7 +7,8 @@
 export {
   SEDA_NETWORK_CONFIGS,
   getNetworkConfig,
-  getRpcEndpoint
+  getRpcEndpoint,
+  logGasConfiguration
 } from './network-config';
 
 // Export DataRequest configuration functions

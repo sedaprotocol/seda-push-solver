@@ -8,13 +8,13 @@ import type { ILoggingService } from '../../services';
 
 // Default scheduler configuration - all timeouts should be overridden by environment variables
 export const DEFAULT_SCHEDULER_CONFIG: SchedulerConfig = {
-  intervalMs: 30000, // 30 seconds
+  intervalMs: process.env.SCHEDULER_INTERVAL_MS ? parseInt(process.env.SCHEDULER_INTERVAL_MS, 10) : 15000, // 15 seconds - optimized for faster posting
   continuous: true, // Run continuously by default
   maxRetries: 3,
   memo: 'SEDA DataRequest',
   cosmosSequence: {
-    postingTimeoutMs: 20000, // 20 seconds for posting transaction (fallback if env not set)
-    drResultTimeout: 120000, // 120 seconds for DataRequest results (fallback if env not set)
+    postingTimeoutMs: parseInt(process.env.COSMOS_POSTING_TIMEOUT_MS!), // 20 seconds for posting transaction (fallback if env not set)
+    drResultTimeout: parseInt(process.env.SEDA_DR_TIMEOUT_SECONDS!) * 1000, // 120 seconds for DataRequest results (fallback if env not set)
     maxQueueSize: 100 // Maximum 100 items in sequence queue (fallback if env not set)
   }
 };
