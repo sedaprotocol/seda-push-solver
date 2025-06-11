@@ -2,40 +2,27 @@
  * SEDA DataRequest Scheduler
  * 
  * Provides scheduling functionality to continuously post DataRequests to the SEDA network
- * at regular intervals. Includes retry logic, statistics tracking, and graceful shutdown.
+ * at regular intervals. Now uses a modular core for better maintainability.
  */
 
-import { SEDADataRequestBuilder } from './push-solver';
-import { 
-  buildSchedulerConfig, 
-  formatSchedulerConfig,
-  SchedulerStatistics,
-  AsyncTaskManager,
-  SchedulerTaskCompletionHandler,
-  type AsyncTaskResult
-} from './core/scheduler';
+import { SEDADataRequestBuilder } from './core/data-request';
+import { formatSchedulerConfig, buildSchedulerConfig } from './core/scheduler';
+import { SchedulerCore } from './core/scheduler/scheduler-core';
 import type { SchedulerConfig, SchedulerStats } from './types';
-import type { ITimerService, IProcessService, TimerId } from './infrastructure';
+import type { ITimerService, IProcessService } from './infrastructure';
 import type { ILoggingService } from './services';
 import { loadSEDAConfig } from './core/data-request';
 
 /**
  * SEDA DataRequest Scheduler
  * 
- * Manages the automated posting of DataRequests to the SEDA network at regular intervals.
- * Now supports non-blocking async execution that doesn't block the setInterval loop.
+ * Main scheduler interface that manages the automated posting of DataRequests to the SEDA network.
+ * Now uses a modular core for better separation of concerns.
  */
 export class SEDADataRequestScheduler {
-  private config: SchedulerConfig;
+  private core: SchedulerCore;
   private builder: SEDADataRequestBuilder;
-  private isRunning: boolean = false;
-  private intervalId: TimerId | null = null;
-  private tickerIntervalId: TimerId | null = null;
-  private statistics: SchedulerStatistics;
-  private taskManager: AsyncTaskManager;
-  private completionHandler: SchedulerTaskCompletionHandler;
-  private nextPostTime: number = 0;
-  private postCount: number = 0;
+  private config: SchedulerConfig;
 
   /**
    * Create a new scheduler instance
@@ -50,30 +37,28 @@ export class SEDADataRequestScheduler {
     private timerService?: ITimerService,
     private processService?: IProcessService
   ) {
+    // Build the complete configuration
     this.config = buildSchedulerConfig(schedulerConfig);
-    this.statistics = new SchedulerStatistics();
-    
-    // Initialize async task management
-    this.taskManager = new AsyncTaskManager(
-      this.logger,
-      this.config.cosmosSequence,
-      this.timerService?.now.bind(this.timerService) || Date.now
-    );
-    
-    // Initialize task completion handler
-    this.completionHandler = new SchedulerTaskCompletionHandler(
-      this.logger,
-      this.statistics,
-      this.config,
-      () => this.isRunning,
-      () => this.taskManager.getActiveTaskCount(),
-      this.timerService
-    );
     
     // Initialize SEDA builder
     const sedaConfig = loadSEDAConfig();
     this.builder = new SEDADataRequestBuilder(sedaConfig, this.logger);
     
+    // Initialize scheduler core
+    this.core = new SchedulerCore(
+      this.builder,
+      schedulerConfig,
+      this.logger,
+      this.timerService
+    );
+    
+    this.logInitialization(sedaConfig);
+  }
+
+  /**
+   * Log initialization information
+   */
+  private logInitialization(sedaConfig: any): void {
     this.logger.info('\n┌─────────────────────────────────────────────────────────────────────┐');
     this.logger.info('│                    🔧 Scheduler Initialized                         │');
     this.logger.info('├─────────────────────────────────────────────────────────────────────┤');
@@ -84,15 +69,13 @@ export class SEDADataRequestScheduler {
   }
 
   /**
-   * Initialize the scheduler (set up signer)
+   * Initialize the scheduler (set up signer and core components)
    */
   async initialize(): Promise<void> {
     this.logger.info('\n🔐 Initializing SEDA signer...');
     await this.builder.initialize();
     
-    this.logger.info('🔢 Initializing sequence coordinator with account sequence...');
-    await this.taskManager.initialize(this.builder);
-    
+    await this.core.initialize();
     this.logger.info('✅ Scheduler initialization complete\n');
   }
 
@@ -100,11 +83,6 @@ export class SEDADataRequestScheduler {
    * Start the scheduler
    */
   async start(): Promise<void> {
-    if (this.isRunning) {
-      this.logger.warn('⚠️  Scheduler is already running');
-      return;
-    }
-
     this.logger.info('┌─────────────────────────────────────────────────────────────────────┐');
     this.logger.info('│                    🚀 SEDA DataRequest Scheduler                    │');
     this.logger.info('├─────────────────────────────────────────────────────────────────────┤');
@@ -115,223 +93,74 @@ export class SEDADataRequestScheduler {
     this.logger.info(`│ Max Retries: ${this.config.maxRetries}`);
     this.logger.info('└─────────────────────────────────────────────────────────────────────┘');
     
-    this.isRunning = true;
-    this.statistics.reset();
-
-    // Launch first async task immediately (non-blocking)
-    this.launchAsyncDataRequest();
-    this.postCount = 1; // First post happened
-    this.nextPostTime = (this.timerService?.now() || Date.now()) + this.config.intervalMs; // Next post time
-
-    if (this.config.continuous) {
-      // Schedule subsequent requests using timer service - each tick launches a new async task
-      if (this.timerService) {
-        this.intervalId = this.timerService.setInterval(() => {
-          if (this.isRunning) {
-            this.launchAsyncDataRequest();
-            this.postCount++;
-            this.nextPostTime = (this.timerService?.now() || Date.now()) + this.config.intervalMs;
-          }
-        }, this.config.intervalMs);
-      } else {
-        // Fallback to built-in setInterval - NO MORE ASYNC/AWAIT HERE!
-        this.intervalId = setInterval(() => {
-          if (this.isRunning) {
-            this.launchAsyncDataRequest();
-            this.postCount++;
-            this.nextPostTime = Date.now() + this.config.intervalMs;
-          }
-        }, this.config.intervalMs) as unknown as TimerId;
-      }
-
-      // Start countdown ticker
-      this.startCountdownTicker();
-
-      this.logger.info(`\n🔄 Scheduler running continuously (${this.config.intervalMs / 1000}s intervals)`);
-      this.logger.info('   Press Ctrl+C to stop gracefully');
-      this.logger.info('   🚀 Each interval tick launches a new async DataRequest task');
-      
-      // Return immediately in continuous mode - don't wait for tasks!
-      return;
-    } else {
-      this.logger.info('\n✅ Single DataRequest mode - stopping after completion');
-      // Wait for the single task to complete, then stop
-      const results = await this.taskManager.waitForAllTasks();
-      this.stop();
-    }
+    await this.core.start();
   }
 
   /**
    * Stop the scheduler
    */
   stop(): void {
-    if (!this.isRunning) {
-      this.logger.warn('⚠️  Scheduler is not running');
-      return;
-    }
-
     this.logger.info('\n┌─────────────────────────────────────────────────────────────────────┐');
     this.logger.info('│                      🛑 Stopping Scheduler                         │');
     this.logger.info('└─────────────────────────────────────────────────────────────────────┘');
     
-    this.isRunning = false;
-    
-    // Clear main interval
-    if (this.intervalId) {
-      if (this.timerService) {
-        this.timerService.clearInterval(this.intervalId);
-      } else {
-        clearInterval(this.intervalId);
-      }
-      this.intervalId = null;
-    }
-
-    // Clear ticker interval
-    if (this.tickerIntervalId) {
-      if (this.timerService) {
-        this.timerService.clearInterval(this.tickerIntervalId);
-      } else {
-        clearInterval(this.tickerIntervalId);
-      }
-      this.tickerIntervalId = null;
-    }
-
-    // Log active tasks that are still running
-    const activeTasks = this.taskManager.getActiveTaskCount();
-    if (activeTasks > 0) {
-      this.logger.info(`⏳ ${activeTasks} async tasks still running, they will complete in the background`);
-    }
-
-    this.statistics.printReport(this.logger);
-    this.logger.info('✅ Scheduler stopped gracefully');
-  }
-
-  /**
-   * Launch a new async DataRequest task (non-blocking)
-   */
-  private launchAsyncDataRequest(): void {
-    if (!this.isRunning) return;
-
-    this.taskManager.launchTask(
-      this.builder,
-      this.config,
-      () => this.isRunning,
-      this.completionHandler,
-      this.statistics
-    );
+    this.core.stop();
   }
 
   /**
    * Get current statistics
    */
   getStats(): SchedulerStats {
-    const baseStats = this.statistics.getStats();
-    const memoStats = this.taskManager.getMemoGeneratorStats();
-    const sequenceStats = this.taskManager.getSequenceCoordinatorStats();
-    
-    return {
-      ...baseStats,
-      activeTasks: this.taskManager.getActiveTaskCount(),
-      memoGenerator: {
-        uptimeMs: memoStats.uptimeMs
-      },
-      sequenceCoordinator: {
-        queueSize: sequenceStats.queueSize,
-        isProcessing: sequenceStats.isProcessing,
-        nextSequenceNumber: sequenceStats.nextSequenceNumber
-      }
-    };
+    return this.core.getStats();
   }
 
   /**
    * Check if scheduler is running
    */
   isSchedulerRunning(): boolean {
-    return this.isRunning;
+    return this.core.isSchedulerRunning();
   }
 
   /**
    * Get count of active async tasks
    */
   getActiveTaskCount(): number {
-    return this.taskManager.getActiveTaskCount();
+    return this.core.getActiveTaskCount();
   }
 
   /**
    * Wait for all active tasks to complete (useful for testing or shutdown)
    */
-  async waitForAllTasks(): Promise<AsyncTaskResult[]> {
-    return this.taskManager.waitForAllTasks();
-  }
-
-  /**
-   * Start countdown ticker
-   */
-  private startCountdownTicker(): void {
-    if (this.timerService) {
-      this.tickerIntervalId = this.timerService.setInterval(() => {
-        if (this.isRunning) {
-          this.logCountdown();
-        }
-      }, 1000); // Log every second
-    } else {
-      // Fallback to built-in setInterval
-      this.tickerIntervalId = setInterval(() => {
-        if (this.isRunning) {
-          this.logCountdown();
-        }
-      }, 1000) as unknown as TimerId;
-    }
-  }
-
-  /**
-   * Log countdown to next DataRequest post
-   */
-  private logCountdown(): void {
-    const now = this.timerService?.now() || Date.now();
-    const secondsLeft = Math.max(0, Math.ceil((this.nextPostTime - now) / 1000));
-    
-    if (secondsLeft > 0) {
-      const stats = this.getStats();
-      const successRate = stats.totalRequests > 0 ? 
-        `${((stats.successfulRequests / stats.totalRequests) * 100).toFixed(0)}%` : '0%';
-      
-      this.logger.info(
-        `⏰ Next DataRequest post in: ${secondsLeft}s | ` +
-        `🔄 Active: ${stats.activeTasks || 0} | ` +
-        `📤 Posted: ${stats.postedRequests} | ` +
-        `✅ Success: ${stats.successfulRequests} (${successRate}) | ` +
-        `🔢 Queue: ${stats.sequenceCoordinator?.queueSize || 0}`
-      );
-    }
+  async waitForAllTasks() {
+    return this.core.waitForAllTasks();
   }
 
   /**
    * Get all DataRequest details (active and completed)
    */
   getAllDataRequests() {
-    return this.taskManager.getAllDataRequests();
+    return this.core.getAllDataRequests();
   }
 
   /**
    * Get only active DataRequest details
    */
   getActiveDataRequests() {
-    return this.taskManager.getActiveDataRequests();
+    return this.core.getActiveDataRequests();
   }
 
   /**
    * Get DataRequest details by task ID
    */
   getDataRequest(taskId: string) {
-    return this.taskManager.getDataRequest(taskId);
+    return this.core.getDataRequest(taskId);
   }
 
   /**
    * Get DataRequest details by status
    */
   getDataRequestsByStatus(status: 'posting' | 'posted' | 'completed' | 'failed') {
-    return this.taskManager.getDataRequestsByStatus(status);
+    return this.core.getDataRequestsByStatus(status);
   }
 }
 

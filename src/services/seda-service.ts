@@ -54,18 +54,13 @@ export class SEDAService implements ISEDAService {
     // Dynamic import to avoid issues with module loading
     const { buildSigningConfig, Signer } = await import('@seda-protocol/dev-tools');
     
-    console.log('🔐 Initializing SEDA signing configuration...');
-    
     const signingConfig = buildSigningConfig({
       mnemonic: config.mnemonic!,
       rpc: config.rpcEndpoint
       // contract field omitted - will auto-detect or use SEDA_CORE_CONTRACT env var
     });
     
-    const signer = await Signer.fromPartial(signingConfig);
-    console.log('✅ SEDA signing configuration initialized');
-    
-    return signer;
+    return await Signer.fromPartial(signingConfig);
   }
 
   async postAndAwaitDataRequest(
@@ -91,7 +86,6 @@ export class MockSEDAService implements ISEDAService {
   private mockResults: Map<string, any> = new Map();
 
   async createSigner(config: SEDAConfig): Promise<Signer> {
-    console.log('🧪 Mock: Creating SEDA signer...');
     // Return a mock signer object
     return { 
       address: 'mock-address',
@@ -105,8 +99,6 @@ export class MockSEDAService implements ISEDAService {
     gasOptions: GasOptions,
     awaitOptions: { timeoutSeconds: number; pollingIntervalSeconds: number }
   ) {
-    console.log('🧪 Mock: Posting DataRequest...');
-    
     // Return mock result matching the actual SEDA protocol response
     return {
       version: '1.0.0',

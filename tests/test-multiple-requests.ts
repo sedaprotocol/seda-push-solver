@@ -4,7 +4,7 @@
  * Test script for posting multiple DataRequests to SEDA network
  */
 
-import { loadSEDAConfig, SEDADataRequestBuilder } from '../src/push-solver';
+import { loadSEDAConfig, SEDADataRequestBuilder } from '../src';
 
 async function testMultipleDataRequests() {
   console.log('🧪 Testing Multiple SEDA DataRequests\n');

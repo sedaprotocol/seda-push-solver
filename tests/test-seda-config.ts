@@ -7,7 +7,7 @@
 import { 
   loadSEDAConfig, 
   SEDADataRequestBuilder
-} from '../src/push-solver';
+} from '../src';
 
 import {
   getDataRequestConfig,

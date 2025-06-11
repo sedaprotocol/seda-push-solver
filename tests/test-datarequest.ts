@@ -4,7 +4,7 @@
  * Test script for posting a single DataRequest to SEDA network
  */
 
-import { loadSEDAConfig, SEDADataRequestBuilder } from '../src/push-solver';
+import { loadSEDAConfig, SEDADataRequestBuilder } from '../src';
 
 async function testDataRequest() {
   console.log('🧪 Testing SEDA DataRequest Posting\n');

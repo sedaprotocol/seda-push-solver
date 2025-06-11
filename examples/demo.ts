@@ -7,7 +7,7 @@
  * to post generic DataRequests to the SEDA network.
  */
 
-import { loadSEDAConfig, SEDADataRequestBuilder } from '../src/push-solver';
+import { loadSEDAConfig, SEDADataRequestBuilder } from '../src';
 import { ServiceContainer } from '../src/services';
 
 async function runDemo() {
