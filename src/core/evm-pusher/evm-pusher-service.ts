@@ -1,8 +1,9 @@
 /**
  * EVM Pusher Service
- * Main orchestrator for the multi-chain EVM batch pushing system
+ * Main orchestrator for pushing SEDA batches to multiple EVM chains
  */
 
+import { EventEmitter } from 'events';
 import type { ILoggingService } from '../../services/logging-service';
 import type { IBatchService } from '../../services/batch-service';
 import type { IDataRequestTracker } from '../../services/data-request-tracker';
@@ -14,10 +15,9 @@ import type {
 } from '../../types/evm-types';
 import { ChainManager, type IChainManager } from './chain-manager';
 import { buildEVMPusherConfig, validateEVMPusherConfig } from '../network/evm-config';
-import { EventEmitter } from 'events';
 
 /**
- * Interface for EVM Pusher Service operations
+ * Interface for EVM pusher service
  */
 export interface IEVMPusherService {
   /**
@@ -77,8 +77,7 @@ export interface IEVMPusherService {
 }
 
 /**
- * EVM Pusher Service Implementation
- * Coordinates batch discovery, chain management, and pushing operations
+ * Production implementation of EVM pusher service
  */
 export class EVMPusherService extends EventEmitter implements IEVMPusherService {
   private config: EVMPusherConfig;
@@ -86,28 +85,28 @@ export class EVMPusherService extends EventEmitter implements IEVMPusherService 
   private initialized = false;
   private running = false;
   private shutdownRequested = false;
-  
+
   // Background processing
   private processingInterval?: NodeJS.Timeout;
   private lastProcessingTime?: number;
-  
-  // Batch queue and state
+
+  // Batch tracking
   private batchQueue = new Set<bigint>();
   private processedBatches = new Set<bigint>();
   private failedBatches = new Map<bigint, { attempts: number; lastError: string; nextRetryAt: number }>();
-  
+
   // Statistics
   private statistics = {
     totalBatchesProcessed: 0,
+    totalProcessingTime: 0,
     successfulPushes: 0,
     failedPushes: 0,
-    totalProcessingTime: 0,
     batchesDiscovered: 0
   };
 
   constructor(
     private batchService: IBatchService,
-    private completionTracker: IDataRequestTracker,
+    private dataRequestTracker: IDataRequestTracker,
     private logger: ILoggingService
   ) {
     super();
@@ -136,8 +135,8 @@ export class EVMPusherService extends EventEmitter implements IEVMPusherService 
       // Initialize chain manager
       await this.chainManager.initialize();
       
-      // Set up completion tracker event handlers
-      this.setupCompletionTrackerEvents();
+      // Set up data request tracker event handlers
+      this.setupDataRequestTrackerEvents();
       
       this.initialized = true;
       this.logger.info('✅ EVM Pusher Service initialized successfully');
@@ -308,55 +307,54 @@ export class EVMPusherService extends EventEmitter implements IEVMPusherService 
     this.logger.info('🔄 Shutting down EVM Pusher Service...');
 
     try {
-      // Stop service if running
-      if (this.running) {
-        await this.stop();
-      }
+      // Stop the service first
+      await this.stop();
       
       // Shutdown chain manager
       if (this.initialized) {
         await this.chainManager.shutdown();
       }
       
-      // Clear state
+      // Clear all state
       this.batchQueue.clear();
       this.processedBatches.clear();
       this.failedBatches.clear();
       
-      this.initialized = false;
       this.logger.info('✅ EVM Pusher Service shutdown complete');
       this.emit('service-shutdown');
       
     } catch (error) {
-      this.logger.error(`❌ EVM Pusher Service shutdown failed: ${error}`);
+      this.logger.error(`❌ Error during EVM Pusher Service shutdown: ${error}`);
       throw error;
     }
   }
 
   private startBackgroundProcessing(): void {
+    if (this.processingInterval) {
+      clearInterval(this.processingInterval);
+    }
+
     const intervalMs = this.config.batchPolling.intervalMs;
-    
     this.logger.info(`⏰ Starting background processing with ${intervalMs}ms interval`);
-    
+
     this.processingInterval = setInterval(async () => {
-      if (this.shutdownRequested || !this.running) {
+      if (!this.running || this.shutdownRequested) {
         return;
       }
-      
+
       try {
         await this.performBackgroundProcessing();
       } catch (error) {
         this.logger.error(`❌ Background processing error: ${error}`);
-        this.emit('service-error', error);
       }
     }, intervalMs);
   }
 
   private async performBackgroundProcessing(): Promise<void> {
-    const startTime = Date.now();
+    this.lastProcessingTime = Date.now();
     
     try {
-      // Discover new batches
+      // Discover new batches ready for pushing
       await this.discoverPendingBatches();
       
       // Process queued batches
@@ -368,31 +366,54 @@ export class EVMPusherService extends EventEmitter implements IEVMPusherService 
       // Clean up old state
       this.cleanupOldState();
       
-      this.lastProcessingTime = Date.now();
-      const duration = this.lastProcessingTime - startTime;
-      
-      this.logger.debug(`🔄 Background processing completed in ${duration}ms`);
-      
     } catch (error) {
-      this.logger.error(`❌ Background processing failed: ${error}`);
-      throw error;
+      this.logger.error(`❌ Error in background processing: ${error}`);
     }
   }
 
   private async discoverPendingBatches(): Promise<void> {
     try {
-      // Get batches that are ready for pushing from completion tracker
-      const readyBatches = await this.completionTracker.getBatchesReadyForPushing();
+      // Get completed DataRequests from tracker
+      const trackedDataRequests = this.dataRequestTracker.getTrackedDataRequests();
       
-      for (const batchInfo of readyBatches) {
-        if (!this.processedBatches.has(batchInfo.batchNumber) && 
-            !this.batchQueue.has(batchInfo.batchNumber)) {
+      // For each tracked DataRequest, check if it's been assigned to a batch
+      for (const drId of trackedDataRequests) {
+        const completionInfo = this.dataRequestTracker.getCompletionInfo(drId);
+        
+        if (completionInfo?.status === 'batch_assigned' && completionInfo.batchInfo) {
+          const batchNumber = completionInfo.batchInfo.batchNumber;
           
-          this.batchQueue.add(batchInfo.batchNumber);
-          this.statistics.batchesDiscovered++;
-          
-          this.logger.info(`📥 Discovered new batch for pushing: ${batchInfo.batchNumber}`);
-          this.emit('batch-discovered', batchInfo);
+          if (!this.processedBatches.has(batchNumber) && 
+              !this.batchQueue.has(batchNumber)) {
+            
+            this.batchQueue.add(batchNumber);
+            this.statistics.batchesDiscovered++;
+            
+            this.logger.info(`📥 Discovered new batch for pushing: ${batchNumber}`);
+            this.emit('batch-discovered', completionInfo.batchInfo);
+          }
+        }
+      }
+      
+      // Also check for recent batches from batch service
+      const latestBatch = await this.batchService.getLatestBatch();
+      if (latestBatch) {
+        const latestBatchNumber = latestBatch.batchNumber;
+        const startBatch = latestBatchNumber - BigInt(this.config.batchPolling.batchWindow);
+        const endBatch = latestBatchNumber;
+        
+        const recentBatches = await this.batchService.getBatchRange(startBatch, endBatch);
+        
+        for (const batchInfo of recentBatches) {
+          if (!this.processedBatches.has(batchInfo.batchNumber) && 
+              !this.batchQueue.has(batchInfo.batchNumber)) {
+            
+            this.batchQueue.add(batchInfo.batchNumber);
+            this.statistics.batchesDiscovered++;
+            
+            this.logger.info(`📥 Discovered batch from recent scan: ${batchInfo.batchNumber}`);
+            this.emit('batch-discovered', batchInfo);
+          }
         }
       }
       
@@ -544,17 +565,21 @@ export class EVMPusherService extends EventEmitter implements IEVMPusherService 
     // For now, using direct method calls for simplicity
   }
 
-  private setupCompletionTrackerEvents(): void {
-    // Listen for batch ready events from completion tracker
-    this.completionTracker.on('batch-ready-for-pushing', (batchInfo: BatchTrackingInfo) => {
-      if (!this.processedBatches.has(batchInfo.batchNumber) && 
-          !this.batchQueue.has(batchInfo.batchNumber)) {
+  private setupDataRequestTrackerEvents(): void {
+    // Set up event handlers for DataRequest completion events
+    this.dataRequestTracker.onCompletion(async (event) => {
+      if (event.status === 'batch_assigned' && event.batchInfo) {
+        const batchNumber = event.batchInfo.batchNumber;
         
-        this.batchQueue.add(batchInfo.batchNumber);
-        this.statistics.batchesDiscovered++;
-        
-        this.logger.info(`📥 Batch ${batchInfo.batchNumber} ready for pushing via event`);
-        this.emit('batch-discovered', batchInfo);
+        if (!this.processedBatches.has(batchNumber) && 
+            !this.batchQueue.has(batchNumber)) {
+          
+          this.batchQueue.add(batchNumber);
+          this.statistics.batchesDiscovered++;
+          
+          this.logger.info(`📥 Batch ${batchNumber} ready for pushing via event`);
+          this.emit('batch-discovered', event.batchInfo);
+        }
       }
     });
   }
@@ -574,7 +599,7 @@ export class MockEVMPusherService extends EventEmitter implements IEVMPusherServ
 
   constructor(
     private batchService: IBatchService,
-    private completionTracker: IDataRequestTracker,
+    private dataRequestTracker: IDataRequestTracker,
     private logger: ILoggingService
   ) {
     super();
