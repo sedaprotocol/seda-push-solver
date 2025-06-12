@@ -2,8 +2,6 @@
 
 A TypeScript project for posting and scheduling DataRequests to the SEDA oracle network. This is a generic tool that works with any Oracle Program deployed on SEDA.
 
-## ✅ **Status: Production Ready**
-
 This project has been thoroughly tested against the SEDA testnet. DataRequests are posted correctly and processed by the network with full scheduling capabilities.
 
 ## Features

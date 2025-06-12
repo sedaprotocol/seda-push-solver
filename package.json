@@ -15,6 +15,9 @@
     "test:multiple": "bun run tests/test-multiple-requests.ts",
     "test:all": "bun test && bun run tests/test-seda-config.ts && bun run tests/test-datarequest.ts",
     "build": "tsc --noEmit",
+    "build:bundle": "bun build src/runner.ts --target=bun --outfile dist/bundle.js",
+    "build:binary": "bun run build:bundle && bun build dist/bundle.js --compile --outfile dist/seda-pusher",
+    "build:optimized": "bun build src/runner.ts --target=bun --minify --outfile dist/bundle-min.js && bun build dist/bundle-min.js --compile --outfile dist/seda-pusher-optimized",
     "lint": "tsc --noEmit"
   },
   "keywords": [
