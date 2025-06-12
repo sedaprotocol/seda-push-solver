@@ -432,7 +432,7 @@ export class MockContractInterface implements IContractInterface {
     // Store batch info
     const batchInfo: ContractBatchInfo = {
       batchNumber: batch.batchNumber,
-      merkleRoot: batch.merkleRoot,
+      merkleRoot: batch.merkleRoot || batch.dataResultRoot || '0x' + '0'.repeat(64),
       blockNumber: BigInt(1000000),
       txHash: `0x${'0'.repeat(64)}`,
       confirmations: 5,

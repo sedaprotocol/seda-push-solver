@@ -13,14 +13,13 @@ import type {
   ISEDAChainService
 } from './index';
 
-import { 
-  SEDAService, 
-  ConfigService, 
-  LoggingService,
-  BatchService,
-  DataRequestTracker,
-  SEDAChainService
-} from './index';
+// Import directly from individual files to avoid circular dependencies
+import { SEDAService } from './seda-service';
+import { ConfigService } from './config-service';
+import { LoggingService } from './logging-service';
+import { BatchService } from './batch-service';
+import { DataRequestTracker } from './data-request-tracker';
+import { SEDAChainService } from './seda-chain-service';
 
 import type { IEVMPusherService } from '../core/evm-pusher';
 

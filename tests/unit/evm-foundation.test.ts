@@ -79,16 +79,28 @@ function testBatchService() {
     console.log('   ✅ Mock BatchService created');
     
     // Test mock service functionality
-    const mockBatch: BatchTrackingInfo = {
+    const mockBatch = {
       batchNumber: BigInt(123),
       batchId: '0x123',
-      merkleRoot: '0xabcdef',
+      blockHeight: BigInt(1000),
+      dataResultRoot: '0xabcdef',
+      currentDataResultRoot: '0xabcdef',
+      validatorRoot: '0xabcdef',
       signatures: [],
-      sedaBlockHeight: BigInt(1000),
       dataRequestIds: ['dr1', 'dr2'],
+      totalDataRequests: 2,
+      isSigned: false,
+      chainInfo: {
+        network: 'testnet',
+        blockHeight: BigInt(1000),
+        timestamp: Date.now()
+      },
+      // Legacy support
+      merkleRoot: '0xabcdef',
+      sedaBlockHeight: BigInt(1000),
       chainStatus: new Map(),
       discoveredAt: Date.now()
-    };
+    } as BatchTrackingInfo;
     
     mockBatchService.setMockBatch(mockBatch);
     mockBatchService.setMockDataRequestMapping('dr1', BigInt(123));
@@ -137,10 +149,13 @@ async function testServiceIntegration() {
     const mockEVMService = new MockEVMService(logger);
     
     // Create a mock batch
-    const mockBatch: BatchTrackingInfo = {
+    const mockBatch = {
       batchNumber: BigInt(456),
       batchId: '0x456',
-      merkleRoot: '0xfedcba',
+      blockHeight: BigInt(2000),
+      dataResultRoot: '0xfedcba',
+      currentDataResultRoot: '0xfedcba',
+      validatorRoot: '0xfedcba',
       signatures: [{
         validatorAddress: 'validator1',
         signature: Buffer.from('signature'),
@@ -148,11 +163,20 @@ async function testServiceIntegration() {
         votingPowerPercentage: 50,
         proof: []
       }],
-      sedaBlockHeight: BigInt(2000),
       dataRequestIds: ['dr3', 'dr4'],
+      totalDataRequests: 2,
+      isSigned: true,
+      chainInfo: {
+        network: 'testnet',
+        blockHeight: BigInt(2000),
+        timestamp: Date.now()
+      },
+      // Legacy support
+      merkleRoot: '0xfedcba',
+      sedaBlockHeight: BigInt(2000),
       chainStatus: new Map(),
       discoveredAt: Date.now()
-    };
+    } as BatchTrackingInfo;
     
     // Set up mock data
     mockBatchService.setMockBatch(mockBatch);
