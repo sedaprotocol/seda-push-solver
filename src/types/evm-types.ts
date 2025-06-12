@@ -80,23 +80,46 @@ export interface BatchTrackingInfo {
   /** SEDA batch ID (hex string) */
   batchId: string;
   
-  /** Merkle root of the batch */
-  merkleRoot: string;
+  /** Block height when batch was created on SEDA */
+  blockHeight: bigint;
+  
+  /** Data result root of the batch */
+  dataResultRoot: string;
+  
+  /** Current data result root */
+  currentDataResultRoot: string;
+  
+  /** Validator root */
+  validatorRoot: string;
   
   /** Batch signatures from validators */
   signatures: BatchSignature[];
   
-  /** Height when batch was created on SEDA */
-  sedaBlockHeight: bigint;
-  
   /** DataRequest IDs included in this batch */
   dataRequestIds: string[];
   
+  /** Total number of DataRequests in batch */
+  totalDataRequests: number;
+  
+  /** Whether batch is signed */
+  isSigned: boolean;
+  
+  /** Chain information */
+  chainInfo: {
+    network: string;
+    blockHeight: bigint;
+    timestamp: number;
+  };
+  
+  /** Legacy support - TODO: Remove after migration */
+  merkleRoot?: string;
+  sedaBlockHeight?: bigint;
+  
   /** Push status per chain */
-  chainStatus: Map<number, ChainBatchStatus>;
+  chainStatus?: Map<number, ChainBatchStatus>;
   
   /** When this batch was discovered */
-  discoveredAt: number;
+  discoveredAt?: number;
 }
 
 export interface ChainBatchStatus {

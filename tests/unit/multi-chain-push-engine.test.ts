@@ -15,7 +15,7 @@ import {
 } from '../../src/core/evm-pusher';
 import { MockLoggingService } from '../../src/services/logging-service';
 import { MockBatchService } from '../../src/services/batch-service';
-import { MockDataRequestCompletionTracker } from '../../src/services/dataquest-completion-tracker';
+import { MockDataRequestTracker } from '../../src/services/data-request-tracker';
 import { buildEVMPusherConfig } from '../../src/core/network/evm-config';
 import type { BatchTrackingInfo, EVMChainConfig } from '../../src/types/evm-types';
 
@@ -51,7 +51,10 @@ const testChainConfig: EVMChainConfig = {
 const testBatch: BatchTrackingInfo = {
   batchId: 'test-batch-123',
   batchNumber: BigInt(42),
-  merkleRoot: '0x' + 'a'.repeat(64),
+  blockHeight: BigInt(1000000),
+  dataResultRoot: '0x' + 'b'.repeat(64),
+  currentDataResultRoot: '0x' + 'c'.repeat(64),
+  validatorRoot: '0x' + 'd'.repeat(64),
   signatures: [
     {
       validatorAddress: 'validator1',
@@ -68,8 +71,17 @@ const testBatch: BatchTrackingInfo = {
       proof: [Buffer.from('proof2', 'hex')]
     }
   ],
-  sedaBlockHeight: BigInt(1000000),
   dataRequestIds: ['dr-1', 'dr-2', 'dr-3', 'dr-4', 'dr-5'],
+  totalDataRequests: 5,
+  isSigned: true,
+  chainInfo: {
+    network: 'testnet',
+    blockHeight: BigInt(1000000),
+    timestamp: Date.now()
+  },
+  // Legacy support
+  merkleRoot: '0x' + 'a'.repeat(64),
+  sedaBlockHeight: BigInt(1000000),
   chainStatus: new Map(),
   discoveredAt: Date.now()
 };
@@ -203,7 +215,7 @@ function testEVMPusherService() {
   try {
     const logger = new MockLoggingService();
     const batchService = new MockBatchService(logger);
-    const completionTracker = new MockDataRequestCompletionTracker(logger);
+    const completionTracker = new MockDataRequestTracker(logger);
     
     // Test mock EVM pusher service
     const mockService = new MockEVMPusherService(batchService, completionTracker, logger);
@@ -245,7 +257,7 @@ async function testMultiChainIntegration() {
   try {
     const logger = new MockLoggingService();
     const batchService = new MockBatchService(logger);
-    const completionTracker = new MockDataRequestCompletionTracker(logger);
+    const completionTracker = new MockDataRequestTracker(logger);
     
     // Test full integration flow with mock services
     const pusherService = new MockEVMPusherService(batchService, completionTracker, logger);

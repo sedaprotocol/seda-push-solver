@@ -17,7 +17,7 @@ import type { BatchTrackingInfo } from '../../src/types/evm-types';
 import type {
   CompletedDataRequest,
   DataRequestBatchAssignment
-} from '../../src/services/dataquest-completion-tracker';
+} from '../../src/services/data-request-tracker';
 
 import type { AsyncTaskResult } from '../../src/core/scheduler/types';
 import { SchedulerStatistics } from '../../src/core/scheduler/statistics';

@@ -5,7 +5,7 @@
 
 import type { ILoggingService } from '../../services/logging-service';
 import type { ITimerService } from '../../infrastructure/timer-service';
-import type { IDataRequestCompletionTracker } from '../../services/dataquest-completion-tracker';
+import type { IDataRequestTracker } from '../../services/data-request-tracker';
 import type { SchedulerStatistics } from './statistics';
 import type { SchedulerConfig } from '../../types';
 import type { AsyncTaskResult, TaskCompletionHandler } from './types';
@@ -18,7 +18,7 @@ export class EVMTaskCompletionHandler implements TaskCompletionHandler {
     private logger: ILoggingService,
     private statistics: SchedulerStatistics,
     private config: SchedulerConfig,
-    private completionTracker: IDataRequestCompletionTracker,
+    private completionTracker: IDataRequestTracker,
     private isRunning: () => boolean,
     private getActiveTaskCount: () => number,
     private timerService?: ITimerService
@@ -93,7 +93,7 @@ export class EVMTaskCompletionHandler implements TaskCompletionHandler {
     try {
       // Only track successful DataRequests that have completed oracle processing
       if (result.success && result.drId && result.blockHeight !== undefined) {
-        await this.completionTracker.trackCompletion(result);
+        await this.completionTracker.trackDataRequest(result.drId);
         this.logger.debug(`📋 Tracked DataRequest ${result.drId} for EVM batch processing`);
       }
     } catch (error) {
@@ -120,7 +120,7 @@ export class EVMTaskCompletionHandler implements TaskCompletionHandler {
     const activeTasks = this.getActiveTaskCount();
     
     // Get completion tracker stats
-    const completionStats = this.completionTracker.getStatistics();
+    const completionStats = this.completionTracker.getTrackingStatistics();
     
     this.logger.info(`📊 Scheduler Status:`);
     this.logger.info(`   🏃 Running: ${isRunning} | Active Tasks: ${activeTasks}`);
@@ -128,13 +128,13 @@ export class EVMTaskCompletionHandler implements TaskCompletionHandler {
     this.logger.info(`   🎯 Success Rate: ${this.statistics.getSuccessRate()}%`);
     
     // Add EVM batch tracking status
-    if (completionStats.totalCompletions > 0) {
-      this.logger.info(`   📋 EVM Tracking: ${completionStats.pendingAssignments} pending, ${completionStats.batchAssignments} assigned`);
+    if (completionStats.totalTracked > 0) {
+      this.logger.info(`   📋 EVM Tracking: ${completionStats.pending} pending, ${completionStats.batchAssigned} assigned`);
       
-      if (completionStats.averageAssignmentTimeMs > 0) {
-        const avgTimeStr = completionStats.averageAssignmentTimeMs < 60000
-          ? `${Math.round(completionStats.averageAssignmentTimeMs / 1000)}s`
-          : `${Math.round(completionStats.averageAssignmentTimeMs / 60000)}m`;
+      if (completionStats.avgBatchAssignmentTimeMs > 0) {
+        const avgTimeStr = completionStats.avgBatchAssignmentTimeMs < 60000
+          ? `${Math.round(completionStats.avgBatchAssignmentTimeMs / 1000)}s`
+          : `${Math.round(completionStats.avgBatchAssignmentTimeMs / 60000)}m`;
         this.logger.info(`   ⏱️  Avg Batch Assignment Time: ${avgTimeStr}`);
       }
     }
@@ -166,7 +166,7 @@ export function createEVMTaskCompletionHandler(
   logger: ILoggingService,
   statistics: SchedulerStatistics,
   config: SchedulerConfig,
-  completionTracker: IDataRequestCompletionTracker,
+  completionTracker: IDataRequestTracker,
   isRunning: () => boolean,
   getActiveTaskCount: () => number,
   timerService?: ITimerService

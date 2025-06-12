@@ -41,14 +41,22 @@ export { BatchService, MockBatchService } from './batch-service';
 export type { IEVMService } from './evm-service';
 export { EVMService, MockEVMService } from './evm-service';
 
-// Export DataRequest completion tracking
-export type { 
-  IDataRequestCompletionTracker,
-  CompletedDataRequest,
-  DataRequestBatchAssignment,
-  CompletionTrackerStatistics
-} from './dataquest-completion-tracker';
+// Phase 2: SEDA Chain Integration Services
 export { 
-  DataRequestCompletionTracker, 
-  MockDataRequestCompletionTracker 
-} from './dataquest-completion-tracker'; 
+  SEDAChainService, 
+  MockSEDAChainService, 
+  type ISEDAChainService, 
+  type SEDAChainConfig, 
+  type DataRequestResult, 
+  type BatchInfo 
+} from './seda-chain-service';
+
+export { 
+  DataRequestTracker, 
+  MockDataRequestTracker, 
+  type IDataRequestTracker, 
+  type DataRequestCompletionInfo, 
+  type CompletionTrackingOptions, 
+  type DataRequestCompletionEvent, 
+  type CompletionEventHandler 
+} from './data-request-tracker'; 

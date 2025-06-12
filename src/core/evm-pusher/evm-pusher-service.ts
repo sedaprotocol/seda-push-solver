@@ -5,7 +5,7 @@
 
 import type { ILoggingService } from '../../services/logging-service';
 import type { IBatchService } from '../../services/batch-service';
-import type { IDataRequestCompletionTracker } from '../../services/dataquest-completion-tracker';
+import type { IDataRequestTracker } from '../../services/data-request-tracker';
 import type {
   EVMPusherConfig,
   BatchTrackingInfo,
@@ -107,7 +107,7 @@ export class EVMPusherService extends EventEmitter implements IEVMPusherService 
 
   constructor(
     private batchService: IBatchService,
-    private completionTracker: IDataRequestCompletionTracker,
+    private completionTracker: IDataRequestTracker,
     private logger: ILoggingService
   ) {
     super();
@@ -574,7 +574,7 @@ export class MockEVMPusherService extends EventEmitter implements IEVMPusherServ
 
   constructor(
     private batchService: IBatchService,
-    private completionTracker: IDataRequestCompletionTracker,
+    private completionTracker: IDataRequestTracker,
     private logger: ILoggingService
   ) {
     super();
