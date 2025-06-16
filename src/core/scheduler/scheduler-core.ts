@@ -9,6 +9,7 @@ import {
   TaskManager,
   SchedulerTaskCompletionHandler
 } from './index';
+import { EvmEnhancedCompletionHandler } from './evm-enhanced-completion-handler';
 import type { SchedulerConfig } from '../../types';
 import type { ITimerService, TimerId } from '../../infrastructure';
 import type { ILoggingService } from '../../services';
@@ -24,7 +25,7 @@ export class SchedulerCore {
   private tickerIntervalId: TimerId | null = null;
   private statistics: SchedulerStatistics;
   private taskManager: TaskManager;
-  private completionHandler: SchedulerTaskCompletionHandler;
+  private completionHandler: EvmEnhancedCompletionHandler;
   private nextPostTime: number = 0;
   private postCount: number = 0;
 
@@ -44,8 +45,8 @@ export class SchedulerCore {
       this.timerService?.now.bind(this.timerService) || Date.now
     );
     
-    // Initialize task completion handler
-    this.completionHandler = new SchedulerTaskCompletionHandler(
+    // Initialize EVM-enhanced task completion handler
+    this.completionHandler = new EvmEnhancedCompletionHandler(
       this.logger,
       this.statistics,
       this.config,
