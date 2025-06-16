@@ -9,6 +9,11 @@ import type { DataRequestResult, NetworkConfig } from '../../types';
 import type { ILoggingService } from '../../services';
 import { hexBEToNumber } from '../../helpers/hex-converter';
 
+// Import SEDA chain services for real batch handling
+import { QueryClient, createProtobufRpcClient } from "@cosmjs/stargate";
+import { Comet38Client } from "@cosmjs/tendermint-rpc";
+import { sedachain } from "@seda-protocol/proto-messages";
+
 /**
  * Post a DataRequest transaction to the SEDA network (just posting, no waiting)
  * This is the phase that should be coordinated by sequence to prevent conflicts
@@ -111,6 +116,38 @@ export async function awaitDataRequestResult(
   }
   logger.info('└─────────────────────────────────────────────────────────────────────┘');
   
+  // NEW: Fetch batch assignment and batch information from actual SEDA chain
+  logger.info('\n🔍 Fetching batch assignment and batch information from SEDA chain...');
+  try {
+    const batch = await fetchRealBatchFromSedaChain(drId, blockHeight, queryConfig, logger);
+    
+    if (batch) {
+      console.log('batch', batch);
+      // Log the batch information
+      logger.info('\n┌─────────────────────────────────────────────────────────────────────┐');
+      logger.info('│                           📦 Real Batch Information                 │');
+      logger.info('├─────────────────────────────────────────────────────────────────────┤');
+      logger.info(`│ Batch Number: ${batch.batchNumber}`);
+      logger.info(`│ Batch ID: ${batch.batchId}`);
+      logger.info(`│ Block Height: ${batch.blockHeight}`);
+      logger.info(`│ Current Data Result Root: ${batch.currentDataResultRoot}`);
+      logger.info(`│ Data Result Root: ${batch.dataResultRoot}`);
+      logger.info(`│ Validator Root: ${batch.validatorRoot}`);
+      if (batch.dataResultEntries) {
+        logger.info(`│ Data Result Entries: ${batch.dataResultEntries.length} entries`);
+      }
+      if (batch.batchSignatures) {
+        logger.info(`│ Validator Signatures: ${batch.batchSignatures.length} signatures`);
+      }
+      if (batch.validatorEntries) {
+        logger.info(`│ Validator Entries: ${batch.validatorEntries.length} validators`);
+      }
+      logger.info('└─────────────────────────────────────────────────────────────────────┘');
+    }
+  } catch (error) {
+    logger.warn(`⚠️ Could not fetch batch information: ${error instanceof Error ? error.message : error}`);
+  }
+  
   return {
     drId: result.drId,
     exitCode: result.exitCode,
@@ -118,6 +155,166 @@ export async function awaitDataRequestResult(
     blockHeight: Number(result.blockHeight),
     gasUsed: result.gasUsed.toString()
   };
+}
+
+/**
+ * Create protobuf RPC client for SEDA chain queries
+ */
+async function createSedaQueryClient(rpc: string) {
+  const cometClient = await Comet38Client.connect(rpc);
+  const queryClient = new QueryClient(cometClient);
+  return createProtobufRpcClient(queryClient);
+}
+
+/**
+ * Simple batch info structure for our needs
+ */
+interface SimpleBatch {
+  batchNumber: bigint;
+  batchId: string;
+  blockHeight: bigint;
+  currentDataResultRoot: string;
+  dataResultRoot: string;
+  validatorRoot: string;
+  dataResultEntries?: any[];
+  batchSignatures?: any[];
+  validatorEntries?: any[];
+}
+
+/**
+ * Get DataResult to find batch assignment
+ */
+async function getDataResult(
+  drId: string,
+  blockHeight: bigint,
+  queryConfig: QueryConfig,
+  logger: ILoggingService
+): Promise<{ batchAssignment: bigint } | null> {
+  try {
+    const protoClient = await createSedaQueryClient(queryConfig.rpc);
+    const client = new sedachain.batching.v1.QueryClientImpl(protoClient);
+    
+    logger.info(`📋 Querying DataResult for ${drId} at height ${blockHeight}...`);
+    
+    const response = await client.DataResult({ 
+      dataRequestId: drId, 
+      dataRequestHeight: blockHeight 
+    });
+    
+    if (!response.batchAssignment || !response.dataResult) {
+      logger.warn(`⚠️ DataResult not found for ${drId}`);
+      return null;
+    }
+    
+    logger.info(`✅ DataResult found - assigned to batch ${response.batchAssignment.batchNumber}`);
+    
+    return {
+      batchAssignment: response.batchAssignment.batchNumber
+    };
+    
+  } catch (error) {
+    logger.error(`❌ Failed to get DataResult: ${error instanceof Error ? error.message : error}`);
+    return null;
+  }
+}
+
+/**
+ * Get batch information directly from SEDA chain
+ */
+async function getBatch(
+  batchNumber: bigint,
+  queryConfig: QueryConfig,
+  logger: ILoggingService
+): Promise<SimpleBatch | null> {
+  try {
+    const protoClient = await createSedaQueryClient(queryConfig.rpc);
+    const client = new sedachain.batching.v1.QueryClientImpl(protoClient);
+    
+    logger.info(`📦 Querying batch ${batchNumber} from SEDA chain...`);
+    
+    const response = await client.Batch({ 
+      batchNumber, 
+      latestSigned: false 
+    });
+    
+    if (!response.batch) {
+      logger.warn(`⚠️ Batch ${batchNumber} not found`);
+      return null;
+    }
+    
+    const { batch, batchSignatures, dataResultEntries, validatorEntries } = response;
+    
+    logger.info(`✅ Batch ${batchNumber} fetched successfully!`);
+    
+    return {
+      batchNumber: batch.batchNumber,
+      batchId: Buffer.from(batch.batchId).toString('hex'),
+      blockHeight: batch.blockHeight,
+      currentDataResultRoot: batch.currentDataResultRoot,
+      dataResultRoot: batch.dataResultRoot,
+      validatorRoot: batch.validatorRoot,
+      dataResultEntries: dataResultEntries?.entries || [],
+      batchSignatures: batchSignatures || [],
+      validatorEntries: validatorEntries || []
+    };
+    
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('not found')) {
+      logger.warn(`⚠️ Batch ${batchNumber} not found on chain`);
+      return null;
+    }
+    logger.error(`❌ Failed to get batch ${batchNumber}: ${error instanceof Error ? error.message : error}`);
+    return null;
+  }
+}
+
+/**
+ * Fetch real batch information from SEDA chain using existing QueryConfig connection
+ */
+async function fetchRealBatchFromSedaChain(
+  drId: string,
+  blockHeight: bigint,
+  queryConfig: QueryConfig,
+  logger: ILoggingService,
+  maxRetries: number = 10,
+  pollingIntervalMs: number = 3000
+): Promise<SimpleBatch | null> {
+  try {
+    // Step 1: Get DataResult with batch assignment
+    const dataResult = await getDataResult(drId, blockHeight, queryConfig, logger);
+    
+    if (!dataResult) {
+      return null;
+    }
+    
+    const { batchAssignment } = dataResult;
+    
+    // Step 2: Poll for batch completion and fetch batch details
+    logger.info(`⏳ Polling for batch ${batchAssignment} completion...`);
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      logger.info(`🔄 Batch polling attempt ${attempt}/${maxRetries} for batch ${batchAssignment}...`);
+      
+      const batch = await getBatch(batchAssignment, queryConfig, logger);
+      
+      if (batch) {
+        logger.info(`✅ Batch ${batchAssignment} fetched successfully from SEDA chain!`);
+        return batch;
+      }
+      
+      if (attempt < maxRetries) {
+        logger.info(`⏱️ Batch ${batchAssignment} not ready yet, waiting ${pollingIntervalMs}ms...`);
+        await new Promise(resolve => setTimeout(resolve, pollingIntervalMs));
+      }
+    }
+    
+    logger.error(`❌ Failed to fetch batch ${batchAssignment} after ${maxRetries} attempts`);
+    return null;
+
+  } catch (error) {
+    logger.error(`❌ Failed to fetch batch information: ${error instanceof Error ? error.message : error}`);
+    return null;
+  }
 }
 
 /**
