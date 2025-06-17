@@ -1,97 +1,19 @@
 /**
- * Core Type Definitions for SEDA DataRequest System
- * Centralized location for all interfaces and types used throughout the application
+ * Centralized Type Exports
+ * All type definitions used throughout the application
  */
 
-// Network type definition
-export type NetworkType = 'testnet' | 'mainnet' | 'local';
+// SEDA types
+export * from './seda-types';
 
-// SEDA Configuration Types
-export interface SEDAConfig {
-  rpcEndpoint: string;
-  network: NetworkType;
-  mnemonic?: string;
-}
+// EVM types  
+export * from './evm-types';
 
-export interface NetworkConfig {
-  name: string;
-  rpcEndpoint: string;
-  explorerEndpoint: string;
-  dataRequest: SEDADataRequestConfig;
-  transaction: {
-    gasPrice: bigint;     // Cosmos transaction gas price for posting DataRequest
-    gasLimit: number;     // Cosmos transaction gas limit for posting DataRequest
-  };
-}
+// Batch types
+export * from './batch-types';
 
-export interface SEDADataRequestConfig {
-  oracleProgramId: string;
-  replicationFactor: number;
-  execGasLimit: bigint;
-  gasPrice: bigint;
-  consensusOptions: any;
-  timeoutSeconds: number;
-  pollingIntervalSeconds: number;
-  memo: string;
-  maxBatchRetries: number;
-  batchPollingIntervalMs: number;
-}
+// Scheduler types
+export * from './scheduler-types';
 
-// DataRequest Operation Types
-export interface DataRequestResult {
-  drId: string;
-  exitCode: number;
-  result?: string | null;
-  blockHeight?: number;
-  gasUsed?: string;
-}
-
-export interface DataRequestOptions {
-  memo?: string;
-  customTimeout?: number;
-}
-
-// Scheduler Configuration Types
-export interface SchedulerConfig {
-  // Interval between DataRequests (in milliseconds)
-  intervalMs: number;
-  
-  // Whether to run continuously or stop after one request
-  continuous: boolean;
-  
-  // Maximum number of retries for failed requests
-  maxRetries: number;
-  
-  // Custom memo for DataRequests
-  memo?: string;
-  
-  // Cosmos sequence coordinator timeouts
-  cosmosSequence: {
-    // Timeout for posting DataRequest transaction (posting phase)
-    postingTimeoutMs: number;
-    
-    // Timeout for awaiting DataRequest results
-    drResultTimeout: number;
-    
-    // Maximum queue size for sequence coordination
-    maxQueueSize: number;
-  };
-}
-
-// Scheduler Statistics Types
-export interface SchedulerStats {
-  totalRequests: number; // Total oracle executions completed (success + failed)
-  postedRequests: number; // Total DataRequests successfully posted to blockchain
-  successfulRequests: number; // Oracle executions that completed successfully
-  failedRequests: number; // Oracle executions that failed or timed out
-  startTime: number;
-  activeTasks?: number; // Optional for backward compatibility - tracks currently running async tasks
-  memoGenerator?: {
-    uptimeMs: number;
-  };
-  sequenceCoordinator?: {
-    queueSize: number;
-    isProcessing: boolean;
-    nextSequenceNumber: number;
-  };
-} 
+// Re-export hex types for convenience
+export type { HexString } from '../utils/hex'; 
