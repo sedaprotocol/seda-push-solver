@@ -55,8 +55,8 @@ export class EvmNetworkManager {
     batch: SignedBatch
   ): Promise<NetworkBatchStatus> {
     try {
-      this.logger.info(`🔍 Checking batch ${batch.batchNumber} on ${network.displayName}...`);
-      
+      this.logger.debug(`🔍 Checking batch ${batch.batchNumber} on ${network.displayName}`);
+
       // First, discover the prover contract address
       const proverAddress = await this.proverDiscovery.discoverProverAddress(network);
       
@@ -68,7 +68,7 @@ export class EvmNetworkManager {
           error: 'Failed to discover prover contract address'
         };
       }
-      
+
       // Check the last batch height from the prover contract
       const lastBatchHeight = await this.proverDiscovery.getLastBatchHeight(network, proverAddress);
       
@@ -93,11 +93,18 @@ export class EvmNetworkManager {
         };
       } else {
         this.logger.info(`❌ ${network.displayName}: Batch ${batch.batchNumber} MISSING (last height: ${lastBatchHeight})`);
-        
+
         // Attempt to post the missing batch
         this.logger.info(`🚀 Attempting to post missing batch ${batch.batchNumber} to ${network.displayName}...`);
-        
+
         const postResult = await this.batchPoster.postBatch(network, batch, proverAddress);
+        
+        if (postResult.success && postResult.txHash) {
+          this.logger.info(`🎉 Successfully posted batch ${batch.batchNumber} to ${network.displayName}`);
+          this.logger.info(`📤 TX Hash: ${postResult.txHash}`);
+        } else if (postResult.error) {
+          this.logger.error(`❌ Failed to post batch ${batch.batchNumber} to ${network.displayName}: ${postResult.error}`);
+        }
         
         return {
           networkName: network.displayName,
@@ -108,12 +115,12 @@ export class EvmNetworkManager {
           error: postResult.error
         };
       }
-      
+
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
       this.logger.warn(`⚠️ Failed to check/post batch on ${network.displayName}: ${errorMsg}`);
       
-      return {
+      return { 
         networkName: network.displayName,
         batchExists: false,
         lastBatchHeight: null,
@@ -133,33 +140,38 @@ export class EvmNetworkManager {
       return [];
     }
     
-    this.logger.info(`\n🌐 Checking and posting batch ${batch.batchNumber} on ${enabledNetworks.length} EVM networks in parallel...`);
-    this.logger.info('┌─────────────────────────────────────────────────────────────────────┐');
-    this.logger.info('│                    🔍 EVM Batch Check & Post                        │');
-    this.logger.info('├─────────────────────────────────────────────────────────────────────┤');
-    
+    this.logger.info(`🌐 Checking batch ${batch.batchNumber} on ${enabledNetworks.length} EVM networks`);
+
     // Check and post to all networks in parallel
     const results = await Promise.all(
       enabledNetworks.map(network => 
         this.checkAndPostBatchOnNetwork(network, batch)
       )
     );
-    
-    // Log summary
+
+    // Count results and generate summary
     const existsCount = results.filter(r => r.batchExists).length;
-    const postedCount = results.filter(r => r.posted).length;
+    const postedCount = results.filter(r => r.posted === true).length;
     const errorCount = results.filter(r => r.error).length;
-    
-    this.logger.info('├─────────────────────────────────────────────────────────────────────┤');
-    this.logger.info(`│ Summary: ${existsCount}/${enabledNetworks.length} networks have batch ${batch.batchNumber}`);
+    const successfulPosts = results.filter(r => r.posted === true && r.txHash);
+
+    // Summary logging
+    this.logger.info(`📊 Batch ${batch.batchNumber} status: ${existsCount}/${enabledNetworks.length} networks have batch`);
     if (postedCount > 0) {
-      this.logger.info(`│ Posted: ${postedCount} networks received batch posting attempts`);
+      this.logger.info(`🚀 Posted to ${postedCount} networks`);
+      
+      // Log all successful transaction hashes
+      if (successfulPosts.length > 0) {
+        this.logger.info(`📋 Transaction Hashes:`);
+        successfulPosts.forEach(result => {
+          this.logger.info(`   ${result.networkName}: ${result.txHash}`);
+        });
+      }
     }
     if (errorCount > 0) {
-      this.logger.info(`│ Errors: ${errorCount} networks failed to respond`);
+      this.logger.info(`❌ Errors on ${errorCount} networks`);
     }
-    this.logger.info('└─────────────────────────────────────────────────────────────────────┘');
-    
+
     return results;
   }
 

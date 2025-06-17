@@ -64,7 +64,8 @@ export class BatchPoster {
       );
 
       this.logger.info(`✅ Successfully posted batch ${batch.batchNumber} to ${network.displayName}`);
-      this.logger.info(`   🔗 Transaction hash: ${txHash}`);
+      this.logger.info(`🔗 TX Hash: ${txHash}`);
+      this.logger.info(`🌐 Explorer: ${this.getExplorerUrl(network, txHash)}`);
       
       return { success: true, txHash };
       
@@ -113,9 +114,7 @@ export class BatchPoster {
     signatures?: HexString[];
     proofs?: Array<{ signer: HexString; votingPower: number; merkleProof: HexString[] }>;
   }> {
-    this.logger.info(`🔐 Processing signatures for batch posting...`);
-    this.logger.info(`   📝 Signatures available: ${batch.batchSignatures!.length}`);
-    this.logger.info(`   👥 Validators available: ${batch.validatorEntries!.length}`);
+    this.logger.debug(`🔐 Processing ${batch.batchSignatures!.length} signatures (${batch.validatorEntries!.length} validators)`);
 
     // Generate merkle tree for validators
     const merkleGenerator = new MerkleProofGenerator(this.logger);
@@ -145,7 +144,7 @@ export class BatchPoster {
           validatorProofs.push(result.data.proof);
           ethereumSignatures.push(result.data.ethereumSignature);
           
-          this.logger.info(`✅ Processed signature from validator (power: ${result.data.votingPower})`);
+          this.logger.debug(`✅ Processed signature (power: ${result.data.votingPower})`);
         } else {
           this.logger.warn(`⚠️ Failed to process signature: ${result.error}`);
         }
@@ -154,14 +153,11 @@ export class BatchPoster {
       }
     }
 
-    this.logger.info(`🔐 Signature processing complete:`);
-    this.logger.info(`   ✅ Valid signatures: ${processedSignatures.length}`);
-    this.logger.info(`   ⚖️ Total voting power: ${totalVotingPower}`);
-    this.logger.info(`   📊 Required threshold: ${CONSENSUS_PERCENTAGE} (66.67%)`);
+    const powerPercent = (totalVotingPower / 1_000_000).toFixed(2);
+    this.logger.info(`🔐 Processed ${processedSignatures.length} signatures (${powerPercent}% voting power)`);
 
     // Check consensus threshold
     if (totalVotingPower < CONSENSUS_PERCENTAGE) {
-      const powerPercent = (totalVotingPower / 1_000_000).toFixed(2);
       return { 
         success: false, 
         error: `Insufficient voting power: ${powerPercent}% < 66.67% consensus threshold` 
@@ -279,48 +275,82 @@ export class BatchPoster {
     signatures: HexString[],
     proofs: any[]
   ): Promise<string> {
+    this.logger.debug(`📡 Posting batch ${evmBatch.batchHeight} to ${network.displayName}`);
+
     // Validate and format private key
-    const cleanPrivateKey = evmPrivateKey.startsWith('0x') ? evmPrivateKey.slice(2) : evmPrivateKey;
-    if (!/^[0-9a-fA-F]{64}$/.test(cleanPrivateKey)) {
-      throw new Error(`Invalid private key format. Expected 64 hex characters, got: ${cleanPrivateKey.length} characters`);
-    }
-    
-    const formattedPrivateKey = `0x${cleanPrivateKey}` as HexString;
+    const formattedPrivateKey = this.formatPrivateKey(evmPrivateKey!);
     const account = privateKeyToAccount(formattedPrivateKey);
     
-    this.logger.info(`📋 Posting batch to ${network.displayName}:`);
-    this.logger.info(`   🔢 Batch Height: ${evmBatch.batchHeight}`);
-    this.logger.info(`   📦 Block Height: ${evmBatch.blockHeight}`);
-    this.logger.info(`   📝 Signatures: ${signatures.length}`);
-    this.logger.info(`   🔐 Proofs: ${proofs.length}`);
-
     // Create clients
-    const transport = http(network.rpcUrl);
-    const walletClient = createWalletClient({ account, transport });
-    const publicClient = createPublicClient({ transport });
-
-    // Simulate transaction
-    this.logger.info(`🔍 Simulating batch posting transaction...`);
-    const simulation = await publicClient.simulateContract({
-      account,
-      address: proverAddress as HexString,
-              abi: ABI_SECP256K1_PROVER_V1,
-      functionName: 'postBatch',
-      args: [evmBatch, signatures, proofs],
+    const publicClient = createPublicClient({
+      chain: { id: network.chainId, name: network.displayName, nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 }, rpcUrls: { default: { http: [network.rpcUrl] } } },
+      transport: http(network.rpcUrl)
     });
 
-    this.logger.info(`✅ Simulation successful, executing transaction...`);
+    const walletClient = createWalletClient({
+      account,
+      chain: { id: network.chainId, name: network.displayName, nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 }, rpcUrls: { default: { http: [network.rpcUrl] } } },
+      transport: http(network.rpcUrl)
+    });
 
-    // Execute transaction
-    const txHash = await walletClient.writeContract(simulation.request);
-    this.logger.info(`📡 Transaction submitted: ${txHash}`);
+    this.logger.debug(`🔍 Simulating transaction on ${network.displayName}...`);
+
+    // Simulate the transaction first
+    try {
+      await publicClient.simulateContract({
+        account,
+        address: proverAddress as `0x${string}`,
+        abi: ABI_SECP256K1_PROVER_V1,
+        functionName: 'postBatch',
+        args: [evmBatch, signatures, proofs]
+      });
+    } catch (error) {
+      throw new Error(`Simulation failed: ${getErrorMessage(error)}`);
+    }
+
+    this.logger.debug(`✅ Simulation successful, executing on ${network.displayName}...`);
+
+    // Execute the transaction
+    const txHash = await walletClient.writeContract({
+      address: proverAddress as `0x${string}`,
+      abi: ABI_SECP256K1_PROVER_V1,
+      functionName: 'postBatch',
+      args: [evmBatch, signatures, proofs]
+    });
 
     // Wait for confirmation
     const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
-    this.logger.info(`📦 Block number: ${receipt.blockNumber}`);
-    this.logger.info(`⛽ Gas used: ${receipt.gasUsed}`);
+    
+    this.logger.debug(`📦 Block: ${receipt.blockNumber}, Gas: ${receipt.gasUsed}`);
 
     return txHash;
+  }
+
+  /**
+   * Format and validate private key for viem
+   */
+  private formatPrivateKey(privateKey: string): `0x${string}` {
+    if (!privateKey) {
+      throw new Error('Private key is required for EVM operations');
+    }
+
+    // Remove any whitespace
+    const cleanKey = privateKey.trim();
+    
+    // Remove 0x prefix if present
+    const keyWithoutPrefix = cleanKey.startsWith('0x') ? cleanKey.slice(2) : cleanKey;
+    
+    // Validate hex format and length (64 characters = 32 bytes)
+    if (keyWithoutPrefix.length !== 64) {
+      throw new Error(`Invalid private key length. Expected 64 hex characters, got: ${keyWithoutPrefix.length}`);
+    }
+    
+    if (!/^[0-9a-fA-F]+$/.test(keyWithoutPrefix)) {
+      throw new Error(`Invalid private key format. Must contain only hex characters (0-9, a-f, A-F)`);
+    }
+    
+    // Return with 0x prefix (lowercase for consistency)
+    return `0x${keyWithoutPrefix.toLowerCase()}` as `0x${string}`;
   }
 
   /**
@@ -338,5 +368,36 @@ export class BatchPoster {
     }
     
     return errorMessage;
+  }
+
+  /**
+   * Get block explorer URL for transaction
+   */
+  private getExplorerUrl(network: EvmNetworkConfig, txHash: string): string {
+    // First, check if explorerUrl is configured in the network config
+    if (network.explorerUrl) {
+      return `${network.explorerUrl}${txHash}`;
+    }
+    
+    // Fallback to hardcoded explorer URLs for backward compatibility
+    const defaultExplorers = {
+      // Mainnet
+      1: 'https://etherscan.io/tx/',
+      8453: 'https://basescan.org/tx/',
+      137: 'https://polygonscan.com/tx/',
+      42161: 'https://arbiscan.io/tx/',
+      10: 'https://optimistic.etherscan.io/tx/',
+      
+      // Testnets
+      11155111: 'https://sepolia.etherscan.io/tx/',
+      5: 'https://goerli.etherscan.io/tx/',
+      84532: 'https://sepolia.basescan.org/tx/',
+      80001: 'https://mumbai.polygonscan.com/tx/',
+      421613: 'https://goerli.arbiscan.io/tx/',
+      420: 'https://goerli-optimism.etherscan.io/tx/'
+    };
+    
+    const baseUrl = defaultExplorers[network.chainId as keyof typeof defaultExplorers];
+    return baseUrl ? `${baseUrl}${txHash}` : `Chain ${network.chainId}: ${txHash}`;
   }
 } 

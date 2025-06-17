@@ -236,18 +236,30 @@ export class HealthService implements HealthServiceInterface {
       return;
     }
 
+    let lastHealthStatus = 'unknown';
+
     this.periodicCheckTimer = this.timerService.setInterval(async () => {
       try {
         const health = await this.getOverallHealth();
-        if (health.status !== 'healthy') {
-          this.loggingService.warn(`🏥 System health: ${health.status}`);
+        
+        // Only log when status changes or on unhealthy status
+        if (health.status !== lastHealthStatus) {
+          if (health.status === 'healthy') {
+            this.loggingService.info('🏥 System health: healthy');
+          } else {
+            this.loggingService.warn(`🏥 System health: ${health.status}`);
+          }
+          lastHealthStatus = health.status;
+        } else if (health.status !== 'healthy') {
+          // Log unhealthy status occasionally to maintain visibility
+          this.loggingService.debug(`🏥 System health: ${health.status}`);
         }
       } catch (error) {
         this.loggingService.error(`🏥 Health check failed: ${error}`);
       }
     }, intervalMs);
 
-    this.loggingService.info(`🏥 Started periodic health checks (${intervalMs}ms interval)`);
+    this.loggingService.info(`🏥 Started health monitoring (${intervalMs}ms intervals)`);
   }
 
   stopPeriodicChecks(): void {

@@ -153,6 +153,7 @@ export const evmNetworks: EvmNetworkConfig[] = (() => {
     const rpcUrl = process.env[`${prefix}_RPC_URL`];
     const contractAddress = process.env[`${prefix}_CONTRACT_ADDRESS`];
     const chainId = process.env[`${prefix}_CHAIN_ID`];
+    const explorerUrl = process.env[`${prefix}_EXPLORER_URL`];
     
     // Only include networks that have essential configuration
     if (rpcUrl && contractAddress && chainId) {
@@ -165,7 +166,8 @@ export const evmNetworks: EvmNetworkConfig[] = (() => {
         chainId: parseInt(chainId),
         contractAddress,
         gas,
-        enabled: process.env[`${prefix}_ENABLED`] !== 'false'
+        enabled: process.env[`${prefix}_ENABLED`] !== 'false',
+        explorerUrl
       });
     }
   }
