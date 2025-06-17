@@ -9,7 +9,7 @@ import type { SEDAConfig, SchedulerConfig, NetworkType } from '../types';
  * Interface for configuration operations
  * Allows mocking environment variables and configuration loading
  */
-export interface IConfigService {
+export interface ConfigServiceInterface {
   /**
    * Get environment variable value
    */
@@ -44,7 +44,7 @@ export interface IConfigService {
 /**
  * Production implementation using actual environment variables
  */
-export class ConfigService implements IConfigService {
+export class ConfigService implements ConfigServiceInterface {
   getEnvVar(key: string): string | undefined {
     return process.env[key];
   }

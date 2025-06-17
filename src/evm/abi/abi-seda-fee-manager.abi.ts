@@ -1,4 +1,4 @@
-export const abiSedaFeeManager = [
+export const ABI_SEDA_FEE_MANAGER = [
 	{
 		inputs: [],
 		name: "ArrayLengthMismatch",

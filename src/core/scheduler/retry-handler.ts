@@ -3,7 +3,7 @@
  * Provides configurable retry logic with exponential backoff and timeout handling
  */
 
-import type { ILoggingService } from '../../services';
+import type { LoggingServiceInterface } from '../../services';
 import { delay } from '../../helpers';
 
 /**
@@ -43,7 +43,7 @@ export async function executeWithRetry<T>(
   maxRetries: number,
   requestNumber: number,
   isRunning: () => boolean,
-  logger?: ILoggingService
+  logger?: LoggingServiceInterface
 ): Promise<{ success: boolean; result?: T; lastError?: any }> {
   let retries = 0;
   

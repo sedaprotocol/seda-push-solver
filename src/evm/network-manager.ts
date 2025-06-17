@@ -5,7 +5,7 @@
 
 import { getEnabledEvmNetworks } from '../../config';
 import type { EvmNetworkConfig } from '../../config';
-import type { ILoggingService } from '../services';
+import type { LoggingServiceInterface } from '../services';
 import type { SignedBatch, NetworkBatchStatus } from '../types';
 import { ProverDiscovery } from './prover-discovery';
 import { BatchPoster } from './batch-poster';
@@ -17,7 +17,7 @@ export class EvmNetworkManager {
   private proverDiscovery: ProverDiscovery;
   private batchPoster: BatchPoster;
 
-  constructor(private logger: ILoggingService) {
+  constructor(private logger: LoggingServiceInterface) {
     this.proverDiscovery = new ProverDiscovery(logger);
     this.batchPoster = new BatchPoster(logger);
   }

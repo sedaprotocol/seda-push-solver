@@ -47,9 +47,7 @@ export {
 } from './scheduler-core';
 
 // Export task completion handling
-export {
-  SchedulerTaskCompletionHandler
-} from './task-completion-handler';
+export { SchedulerTaskCompletionHandler } from './task-completion-handler';
 
 // Export unique memo generation
 export {

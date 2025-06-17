@@ -3,13 +3,13 @@
  * Extracted from production source to tests/mocks
  */
 
-import type { ILoggingService } from '../../src/services/logging-service';
+import type { LoggingServiceInterface } from '../../src/services/logging-service';
 import { LogLevel } from '../../src/services/logging-service';
 
 /**
  * Mock implementation for testing
  */
-export class MockLoggingService implements ILoggingService {
+export class MockLoggingService implements LoggingServiceInterface {
   private logLevel: LogLevel = LogLevel.INFO;
   private logs: Array<{ level: string; message: string; args: any[] }> = [];
 

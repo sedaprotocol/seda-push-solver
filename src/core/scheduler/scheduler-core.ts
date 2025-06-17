@@ -9,10 +9,9 @@ import {
   TaskManager,
   SchedulerTaskCompletionHandler
 } from './index';
-import { EvmEnhancedCompletionHandler } from './evm-enhanced-completion-handler';
 import type { SchedulerConfig } from '../../types';
-import type { ITimerService, TimerId } from '../../infrastructure';
-import type { ILoggingService } from '../../services';
+import type { TimerServiceInterface, TimerId } from '../../infrastructure';
+import type { LoggingService } from '../../services';
 import type { SEDADataRequestBuilder } from '../data-request';
 
 /**
@@ -25,15 +24,15 @@ export class SchedulerCore {
   private tickerIntervalId: TimerId | null = null;
   private statistics: SchedulerStatistics;
   private taskManager: TaskManager;
-  private completionHandler: EvmEnhancedCompletionHandler;
+  private completionHandler: SchedulerTaskCompletionHandler;
   private nextPostTime: number = 0;
   private postCount: number = 0;
 
   constructor(
     private builder: SEDADataRequestBuilder,
     schedulerConfig: Partial<SchedulerConfig>,
-    private logger: ILoggingService,
-    private timerService?: ITimerService
+    private logger: LoggingService,
+    private timerService?: TimerServiceInterface
   ) {
     this.config = buildSchedulerConfig(schedulerConfig);
     this.statistics = new SchedulerStatistics();
@@ -45,8 +44,8 @@ export class SchedulerCore {
       this.timerService?.now.bind(this.timerService) || Date.now
     );
     
-    // Initialize EVM-enhanced task completion handler
-    this.completionHandler = new EvmEnhancedCompletionHandler(
+    // Initialize task completion handler
+    this.completionHandler = new SchedulerTaskCompletionHandler(
       this.logger,
       this.statistics,
       this.config,

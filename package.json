@@ -1,5 +1,5 @@
 {
-  "name": "dxfeed-pusher",
+  "name": "seda-push-solver",
   "version": "1.0.0",
   "description": "SEDA DataRequest scheduler - Generic oracle data pusher for SEDA network",
   "main": "src/index.ts",

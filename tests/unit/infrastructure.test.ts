@@ -4,18 +4,21 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
-import { 
-  ProcessService, 
-  MockProcessService,
-  TimerService, 
-  MockTimerService,
+import {
+  ProcessService,
+  TimerService,
   HealthService,
-  MockHealthService,
   InfrastructureContainer,
   getInfrastructure,
   setInfrastructure,
   resetInfrastructure
 } from '../../src/infrastructure';
+import {
+  MockProcessService,
+  MockTimerService,
+  MockHealthService,
+  MockInfrastructureContainer
+} from '../mocks';
 import { LoggingService } from '../../src/services';
 
 describe('Infrastructure Services', () => {
@@ -252,16 +255,16 @@ describe('Infrastructure Services', () => {
       expect(container.healthService).toBeDefined();
     });
 
-    it('should create test container with mocks', () => {
-      const container = InfrastructureContainer.createTest(mockLoggingService);
-      
+        it('should create test container with mocks', () => {
+      const container = MockInfrastructureContainer.createTest(mockLoggingService);
+
       expect(container.processService).toBeInstanceOf(MockProcessService);
       expect(container.timerService).toBeInstanceOf(MockTimerService);
       expect(container.healthService).toBeInstanceOf(MockHealthService);
     });
 
     it('should manage global infrastructure instance', () => {
-      const container = InfrastructureContainer.createTest(mockLoggingService);
+      const container = InfrastructureContainer.createProduction(mockLoggingService);
       
       setInfrastructure(container);
       const retrieved = getInfrastructure();
@@ -276,8 +279,8 @@ describe('Infrastructure Services', () => {
 
   describe('Integration', () => {
     it('should work together in a complete infrastructure setup', async () => {
-      const container = InfrastructureContainer.createTest(mockLoggingService);
-      setInfrastructure(container);
+      const container = MockInfrastructureContainer.createTest(mockLoggingService);
+      setInfrastructure(container as any);
 
       const { processService, timerService, healthService } = getInfrastructure();
 

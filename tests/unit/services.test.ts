@@ -4,14 +4,17 @@
 
 import {
   ServiceContainer,
-  MockSEDAService,
-  MockConfigService,
-  MockLoggingService,
   getServices,
   setServices,
   resetToProductionServices,
   LogLevel
 } from '../../src/services';
+import {
+  MockSEDAService,
+  MockConfigService,
+  MockLoggingService,
+  MockServiceContainer
+} from '../mocks';
 
 console.log('🧪 Testing Service Layer\n');
 
@@ -24,7 +27,7 @@ console.log('   Logging Service:', productionContainer.loggingService.constructo
 
 // Test mock service container
 console.log('\n✅ Test service container');
-const testContainer = ServiceContainer.createTest();
+const testContainer = MockServiceContainer.createTest();
 console.log('   SEDA Service:', testContainer.sedaService.constructor.name);
 console.log('   Config Service:', testContainer.configService.constructor.name);
 console.log('   Logging Service:', testContainer.loggingService.constructor.name);
@@ -34,8 +37,9 @@ console.log('\n✅ Global service management');
 const originalServices = getServices();
 console.log('   Original services type:', originalServices.constructor.name);
 
-// Switch to test services
-setServices(testContainer);
+// Switch to test services (use production container for global state test)
+const testContainerForGlobal = ServiceContainer.createProduction();
+setServices(testContainerForGlobal);
 const testServices = getServices();
 console.log('   Test services type:', testServices.constructor.name);
 

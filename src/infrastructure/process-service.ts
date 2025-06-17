@@ -3,7 +3,7 @@
  * Abstracts process lifecycle, signal handling, and graceful shutdown
  */
 
-import type { ILoggingService } from '../services';
+import type { LoggingService } from '../services';
 
 /**
  * Process information interface
@@ -24,7 +24,7 @@ export interface ProcessInfo {
 /**
  * Interface for process management operations
  */
-export interface IProcessService {
+export interface ProcessServiceInterface {
   /**
    * Register a shutdown handler that will be called on graceful shutdown
    */
@@ -59,13 +59,13 @@ export interface IProcessService {
 /**
  * Production process service implementation
  */
-export class ProcessService implements IProcessService {
+export class ProcessService implements ProcessServiceInterface {
   private shutdownHandlers: Array<() => Promise<void> | void> = [];
   private isShuttingDownFlag = false;
   private signalHandlersActive = false;
   private startTime = Date.now();
 
-  constructor(private loggingService: ILoggingService) {}
+  constructor(private loggingService: LoggingService) {}
 
   onShutdown(handler: () => Promise<void> | void): void {
     this.shutdownHandlers.push(handler);

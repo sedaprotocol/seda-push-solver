@@ -4,7 +4,7 @@
  */
 
 import type { SchedulerConfig } from '../../types';
-import type { ILoggingService } from '../../services';
+import type { LoggingServiceInterface } from '../../services';
 
 // Default scheduler configuration - all timeouts should be overridden by environment variables
 export const DEFAULT_SCHEDULER_CONFIG: SchedulerConfig = {
@@ -87,7 +87,7 @@ export function buildSchedulerConfig(
 /**
  * Format scheduler configuration for display
  */
-export function formatSchedulerConfig(config: SchedulerConfig, logger: ILoggingService): void {
+export function formatSchedulerConfig(config: SchedulerConfig, logger: LoggingServiceInterface): void {
   logger.info('🔧 SEDA DataRequest Scheduler Configuration:');
   logger.info(`   ⏱️  Interval: ${config.intervalMs / 1000}s`);
   logger.info(`   🔄 Continuous: ${config.continuous}`);

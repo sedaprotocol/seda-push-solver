@@ -3,7 +3,7 @@
  * Manages the state and history of DataRequest tasks
  */
 
-import type { ILoggingService } from '../../services';
+import type { LoggingService } from '../../services';
 import type { DataRequestTracker } from './types';
 
 /**
@@ -13,7 +13,7 @@ export class TaskRegistry {
   private dataRequestRegistry = new Map<string, DataRequestTracker>();
 
   constructor(
-    private logger: ILoggingService,
+    private logger: LoggingService,
     private getTimestamp: () => number = Date.now
   ) {}
 

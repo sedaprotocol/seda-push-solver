@@ -1,4 +1,4 @@
-export const abiSedaCoreV1 = [
+export const ABI_SEDA_CORE_V1 = [
 	{
 		inputs: [],
 		stateMutability: "nonpayable",

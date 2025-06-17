@@ -3,7 +3,7 @@
  * Truly separates posting from oracle awaiting for maximum speed
  */
 
-import type { ILoggingService } from '../../services';
+import type { LoggingServiceInterface } from '../../services';
 import type { SEDADataRequestBuilder } from '../data-request';
 import type { SchedulerConfig } from '../../types';
 import { executeWithRetry } from './retry-handler';
@@ -25,7 +25,7 @@ export class TaskExecutor {
   private memoGenerator: UniqueMemoGenerator;
 
   constructor(
-    private logger: ILoggingService,
+    private logger: LoggingServiceInterface,
     private sequenceCoordinator: CosmosSequenceCoordinator,
     private registry: TaskRegistry,
     private getTimestamp: () => number = Date.now

@@ -6,14 +6,12 @@
 import type { NetworkConfig } from '../../types';
 
 /**
- * Get Oracle Program ID from environment with fallback for testing
+ * Get Oracle Program ID from environment (required)
  */
 function getRequiredOracleProgramId(): string {
   const programId = process.env.SEDA_ORACLE_PROGRAM_ID;
   if (!programId) {
-    // Provide a test fallback instead of throwing immediately
-    // This allows tests to run, but production will still fail appropriately
-    return 'test-oracle-program-id-for-testing-only';
+    throw new Error('SEDA_ORACLE_PROGRAM_ID environment variable is required');
   }
   return programId;
 }

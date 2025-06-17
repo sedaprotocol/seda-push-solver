@@ -1,4 +1,4 @@
-export const iProver = [
+export const I_PROVER = [
 	{
 		anonymous: false,
 		inputs: [

@@ -5,7 +5,7 @@
 
 import { ExtendedSecp256k1Signature, Secp256k1 } from '@cosmjs/crypto';
 import { keccak256, encodePacked, toHex } from 'viem';
-import type { ILoggingService } from '../services';
+import type { LoggingServiceInterface } from '../services';
 import type { SignedBatch, ProcessedSignature, ValidatorEntry, BatchSignature } from '../types';
 import { HexUtils, type HexString } from '../utils/hex';
 import { BYTE_LENGTHS, ETHEREUM_RECOVERY_OFFSET } from './constants';
@@ -32,7 +32,7 @@ export interface SignatureProcessingResult {
  * Processor for cryptographic signature operations
  */
 export class SignatureProcessor {
-  constructor(private logger: ILoggingService) {}
+  constructor(private logger: LoggingServiceInterface) {}
 
   /**
    * Recover secp256k1 public key from signature and message

@@ -3,6 +3,9 @@
  * All type definitions used throughout the application
  */
 
+// Configuration types
+export * from './config-types';
+
 // SEDA types
 export * from './seda-types';
 

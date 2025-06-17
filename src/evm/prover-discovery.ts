@@ -5,9 +5,9 @@
 
 import { http, createPublicClient } from 'viem';
 import type { EvmNetworkConfig } from '../../config';
-import type { ILoggingService } from '../services';
-import { iSedaCore } from './abi/i-seda-core.abi';
-import { iProver } from './abi/i-prover.abi';
+import type { LoggingServiceInterface } from '../services';
+import { I_SEDA_CORE } from './abi/i-seda-core.abi';
+import { I_PROVER } from './abi/i-prover.abi';
 
 // Cache for discovered prover contract addresses
 const proverAddressCache = new Map<string, string>();
@@ -16,7 +16,7 @@ const proverAddressCache = new Map<string, string>();
  * Discovery service for prover contract addresses
  */
 export class ProverDiscovery {
-  constructor(private logger: ILoggingService) {}
+  constructor(private logger: LoggingServiceInterface) {}
 
   /**
    * Discover the prover contract address for a specific EVM network
@@ -40,7 +40,7 @@ export class ProverDiscovery {
       // Call getSedaProver on the SEDA Core contract
       const proverAddress = await publicClient.readContract({
         address: network.contractAddress as `0x${string}`,
-        abi: iSedaCore,
+        abi: I_SEDA_CORE,
         functionName: 'getSedaProver',
         args: []
       }) as string;
@@ -71,7 +71,7 @@ export class ProverDiscovery {
       // Get the last batch height from the prover contract
       const lastBatchHeight = await publicClient.readContract({
         address: proverAddress as `0x${string}`,
-        abi: iProver,
+        abi: I_PROVER,
         functionName: 'getLastBatchHeight',
         args: []
       }) as bigint;

@@ -4,7 +4,7 @@
  */
 
 import type { SchedulerStats } from '../../types';
-import type { ILoggingService } from '../../services';
+import type { LoggingServiceInterface } from '../../services';
 
 /**
  * Statistics Manager for the SEDA DataRequest Scheduler
@@ -94,7 +94,7 @@ export class SchedulerStatistics {
   /**
    * Print comprehensive statistics report
    */
-  printReport(logger?: ILoggingService): void {
+  printReport(logger?: LoggingServiceInterface): void {
     const runtime = this.getRuntimeMinutes();
     
     if (logger) {

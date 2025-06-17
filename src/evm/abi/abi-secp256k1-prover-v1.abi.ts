@@ -1,4 +1,4 @@
-export const abiSecp256k1ProverV1 = [
+export const ABI_SECP256K1_PROVER_V1 = [
 	{
 		inputs: [],
 		stateMutability: "nonpayable",

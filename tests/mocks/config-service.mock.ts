@@ -3,13 +3,13 @@
  * Extracted from production source to tests/mocks
  */
 
-import type { IConfigService } from '../../src/services/config-service';
+import type { ConfigServiceInterface } from '../../src/services/config-service';
 import type { SEDAConfig, SchedulerConfig, NetworkType } from '../../src/types';
 
 /**
  * Mock implementation for testing
  */
-export class MockConfigService implements IConfigService {
+export class MockConfigService implements ConfigServiceInterface {
   private mockEnvVars: Map<string, string> = new Map();
 
   /**

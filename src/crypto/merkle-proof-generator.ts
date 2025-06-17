@@ -5,7 +5,7 @@
 
 import { SimpleMerkleTree } from '@openzeppelin/merkle-tree';
 import { keccak256, encodePacked, toHex } from 'viem';
-import type { ILoggingService } from '../services';
+import type { LoggingServiceInterface } from '../services';
 import type { ValidatorEntry } from '../types';
 import { HexUtils, type HexString } from '../utils/hex';
 import { SECP256K1_DOMAIN_SEPARATOR } from './constants';
@@ -14,7 +14,7 @@ import { SECP256K1_DOMAIN_SEPARATOR } from './constants';
  * Generator for merkle trees and proofs
  */
 export class MerkleProofGenerator {
-  constructor(private logger: ILoggingService) {}
+  constructor(private logger: LoggingServiceInterface) {}
 
   /**
    * Build validator merkle tree from validator entries

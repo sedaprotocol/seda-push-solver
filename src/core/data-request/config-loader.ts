@@ -24,7 +24,10 @@ export function loadSEDAConfig(): SEDAConfig {
   } catch (error) {
     // Fallback for testing when environment variables are not set
     const network = (process.env.SEDA_NETWORK || 'testnet') as 'testnet' | 'mainnet' | 'local';
-    const mnemonic = process.env.SEDA_MNEMONIC || 'test mnemonic for testing purposes only';
+    const mnemonic = process.env.SEDA_MNEMONIC;
+  if (!mnemonic) {
+    throw new Error('SEDA_MNEMONIC environment variable is required');
+  }
     
     // Get default RPC endpoint for the network
     const defaultEndpoints = {

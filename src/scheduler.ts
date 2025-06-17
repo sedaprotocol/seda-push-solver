@@ -9,8 +9,8 @@ import { SEDADataRequestBuilder } from './core/data-request';
 import { formatSchedulerConfig, buildSchedulerConfig } from './core/scheduler';
 import { SchedulerCore } from './core/scheduler/scheduler-core';
 import type { SchedulerConfig, SchedulerStats } from './types';
-import type { ITimerService, IProcessService } from './infrastructure';
-import type { ILoggingService } from './services';
+import type { TimerServiceInterface, ProcessServiceInterface } from './infrastructure';
+import type { LoggingService } from './services';
 import { loadSEDAConfig } from './core/data-request';
 
 /**
@@ -33,9 +33,9 @@ export class SEDADataRequestScheduler {
    */
   constructor(
     schedulerConfig: Partial<SchedulerConfig> = {},
-    private logger: ILoggingService,
-    private timerService?: ITimerService,
-    private processService?: IProcessService
+    private logger: LoggingService,
+      private timerService?: TimerServiceInterface,
+  private processService?: ProcessServiceInterface
   ) {
     // Build the complete configuration
     this.config = buildSchedulerConfig(schedulerConfig);
@@ -169,8 +169,8 @@ export class SEDADataRequestScheduler {
  */
 export async function startScheduler(
   overrides: Partial<SchedulerConfig> = {},
-  timerService?: ITimerService,
-  processService?: IProcessService
+  timerService?: TimerServiceInterface,
+  processService?: ProcessServiceInterface
 ): Promise<SEDADataRequestScheduler> {
   // Use injected services or create defaults
   const { ServiceContainer } = await import('./services');

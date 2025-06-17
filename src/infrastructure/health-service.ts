@@ -3,8 +3,8 @@
  * Provides system health checks, performance monitoring, and service status tracking
  */
 
-import type { ILoggingService } from '../services';
-import type { ITimerService, TimerId } from './timer-service';
+import type { LoggingServiceInterface } from '../services';
+import type { TimerServiceInterface, TimerId } from './timer-service';
 
 /**
  * Health check result status
@@ -62,7 +62,7 @@ export type HealthCheckFunction = () => Promise<HealthCheckResult>;
 /**
  * Interface for health monitoring operations
  */
-export interface IHealthService {
+export interface HealthServiceInterface {
   /**
    * Register a health check
    */
@@ -112,7 +112,7 @@ export interface IHealthService {
 /**
  * Production health service implementation
  */
-export class HealthService implements IHealthService {
+export class HealthService implements HealthServiceInterface {
   private checks = new Map<string, HealthCheckFunction>();
   private lastResults = new Map<string, HealthCheckResult>();
   private periodicCheckTimer: TimerId | null = null;
@@ -129,8 +129,8 @@ export class HealthService implements IHealthService {
   private errorHistory: Array<{ timestamp: number; error: string }> = [];
 
   constructor(
-    private loggingService: ILoggingService,
-    private timerService: ITimerService
+    private loggingService: LoggingServiceInterface,
+    private timerService: TimerServiceInterface
   ) {}
 
   registerCheck(name: string, checkFn: HealthCheckFunction): void {

@@ -5,7 +5,7 @@
 import { expect, test, describe } from 'bun:test';
 import { loadSEDAConfig } from '../../src/core/data-request';
 import { SEDADataRequestBuilder } from '../../src/core/data-request';
-import { MockLoggingService } from '../../src/services/logging-service';
+import { MockLoggingService } from '../mocks';
 
 // Mock the batch handling functions for testing
 async function mockAwaitDataRequestResult(
