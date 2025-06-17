@@ -8,6 +8,7 @@
 import { startScheduler } from './scheduler';
 import { ServiceContainer } from './services';
 import { InfrastructureContainer } from './infrastructure';
+import { getErrorMessage } from './helpers/error-utils';
 
 async function main() {
   // Initialize service containers
@@ -76,7 +77,7 @@ async function main() {
       logger.info('└─────────────────────────────────────────────────────────────────────┘');
     }
     
-    logger.error(`\n❌ Error: ${error instanceof Error ? error.message : error}`);
+    logger.error(`\n❌ Error: ${getErrorMessage(error)}`);
     process.exit(1);
   }
 }

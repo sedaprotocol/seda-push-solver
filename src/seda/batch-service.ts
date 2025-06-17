@@ -9,6 +9,7 @@ import { Comet38Client } from "@cosmjs/tendermint-rpc";
 import { sedachain } from "@seda-protocol/proto-messages";
 import type { SignedBatch } from '../types';
 import type { LoggingServiceInterface } from '../services';
+import { getErrorMessage } from '../helpers/error-utils';
 
 export class SedaBatchService {
   constructor(
@@ -68,7 +69,7 @@ export class SedaBatchService {
       return null;
 
     } catch (error) {
-      this.logger.error(`❌ Failed to fetch batch information: ${error instanceof Error ? error.message : error}`);
+      this.logger.error(`❌ Failed to fetch batch information: ${getErrorMessage(error)}`);
       return null;
     }
   }
@@ -109,7 +110,7 @@ export class SedaBatchService {
       };
       
     } catch (error) {
-      this.logger.error(`❌ Failed to get DataResult: ${error instanceof Error ? error.message : error}`);
+      this.logger.error(`❌ Failed to get DataResult: ${getErrorMessage(error)}`);
       return null;
     }
   }
@@ -166,7 +167,7 @@ export class SedaBatchService {
         this.logger.warn(`⚠️ Batch ${batchNumber} not found on chain`);
         return null;
       }
-      this.logger.error(`❌ Failed to get batch ${batchNumber}: ${error instanceof Error ? error.message : error}`);
+      this.logger.error(`❌ Failed to get batch ${batchNumber}: ${getErrorMessage(error)}`);
       return null;
     }
   }
@@ -218,7 +219,7 @@ export class SedaBatchService {
       };
       
     } catch (error) {
-      this.logger.error(`❌ Failed to get latest signed batch: ${error instanceof Error ? error.message : error}`);
+      this.logger.error(`❌ Failed to get latest signed batch: ${getErrorMessage(error)}`);
       return null;
     }
   }

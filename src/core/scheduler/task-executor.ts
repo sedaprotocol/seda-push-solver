@@ -1,6 +1,6 @@
 /**
  * Task Executor for DataRequest Operations
- * Truly separates posting from oracle awaiting for maximum speed
+ * Efficiently separates posting from oracle awaiting for optimal performance
  */
 
 import type { LoggingServiceInterface } from '../../services';

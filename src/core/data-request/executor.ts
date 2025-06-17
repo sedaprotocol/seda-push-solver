@@ -7,6 +7,7 @@ import { postDataRequest, awaitDataResult, Signer } from '@seda-protocol/dev-too
 import type { PostDataRequestInput, GasOptions, QueryConfig } from '@seda-protocol/dev-tools';
 import type { DataRequestResult, NetworkConfig } from '../../types';
 import type { LoggingServiceInterface } from '../../services';
+import { getErrorMessage } from '../../helpers/error-utils';
 import { HexUtils } from '../../utils/hex';
 import { SedaBatchService } from '../../seda/batch-service';
 import { EvmBatchManager } from '../../evm/batch-manager';
@@ -159,7 +160,7 @@ export async function awaitDataRequestResult(
       }
     }
   } catch (error) {
-    logger.warn(`⚠️ Could not fetch batch information: ${error instanceof Error ? error.message : error}`);
+    logger.warn(`⚠️ Could not fetch batch information: ${getErrorMessage(error)}`);
   }
   
   return {

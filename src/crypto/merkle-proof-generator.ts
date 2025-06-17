@@ -9,6 +9,7 @@ import type { LoggingServiceInterface } from '../services';
 import type { ValidatorEntry } from '../types';
 import { HexUtils, type HexString } from '../utils/hex';
 import { SECP256K1_DOMAIN_SEPARATOR } from './constants';
+import { getErrorMessage } from '../helpers/error-utils';
 
 /**
  * Generator for merkle trees and proofs
@@ -152,7 +153,7 @@ export class MerkleProofGenerator {
       return proofElements.length > 0;
       
     } catch (error) {
-      this.logger.warn(`⚠️ Proof verification failed: ${error instanceof Error ? error.message : error}`);
+              this.logger.warn(`⚠️ Proof verification failed: ${getErrorMessage(error)}`);
       return false;
     }
   }

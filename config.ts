@@ -1,6 +1,6 @@
 /**
  * SEDA Push Solver - Root Configuration
- * Consolidated configuration for SEDA network and EVM chains
+ * Centralized configuration for SEDA network and EVM chains
  * 
  * Required Environment Variables:
  * - SEDA_MNEMONIC: 24-word mnemonic phrase for SEDA network access
@@ -16,7 +16,7 @@
  * - COSMOS_MAX_QUEUE_SIZE: Maximum queue size for sequence coordination
  * - SEDA_DR_TIMEOUT_SECONDS: DataRequest execution timeout
  * - SEDA_DR_POLLING_INTERVAL_SECONDS: Polling interval for DataRequest results
- * - LOG_LEVEL: Logging level (info/debug/warn/error)
+ * - LOG_LEVEL: Logging level (info/warn/error)
  * 
  * EVM Network Environment Variables (per network):
  * - <NETWORK_PREFIX>_RPC_URL: RPC endpoint for the EVM network

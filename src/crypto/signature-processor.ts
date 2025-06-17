@@ -9,6 +9,7 @@ import type { LoggingServiceInterface } from '../services';
 import type { SignedBatch, ProcessedSignature, ValidatorEntry, BatchSignature } from '../types';
 import { HexUtils, type HexString } from '../utils/hex';
 import { BYTE_LENGTHS, ETHEREUM_RECOVERY_OFFSET } from './constants';
+import { getErrorMessage } from '../helpers/error-utils';
 
 // Signature processing constants
 const CONSENSUS_PERCENTAGE = 66_666_666; // 66.666666%, represented as parts per 100,000,000
@@ -131,7 +132,7 @@ export class SignatureProcessor {
       };
 
     } catch (error) {
-      this.logger.warn(`⚠️ Failed to process signature: ${error instanceof Error ? error.message : error}`);
+      this.logger.warn(`⚠️ Failed to process signature: ${getErrorMessage(error)}`);
       return null;
     }
   }
