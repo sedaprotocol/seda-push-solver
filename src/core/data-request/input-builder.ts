@@ -63,6 +63,8 @@ export function buildAwaitOptions(
 ) {
   return {
     timeoutSeconds: options.customTimeout || drConfig.timeoutSeconds,
-    pollingIntervalSeconds: drConfig.pollingIntervalSeconds
+    pollingIntervalSeconds: drConfig.pollingIntervalSeconds,
+    maxBatchRetries: drConfig.maxBatchRetries || 10,
+    batchPollingIntervalMs: drConfig.batchPollingIntervalMs || 3000
   };
 } 
