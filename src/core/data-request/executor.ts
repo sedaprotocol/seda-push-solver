@@ -62,7 +62,7 @@ export async function awaitDataRequestResult(
   queryConfig: QueryConfig,
   drId: string,
   blockHeight: bigint,
-  awaitOptions: { timeoutSeconds: number; pollingIntervalSeconds: number },
+  awaitOptions: { timeoutSeconds: number; pollingIntervalSeconds: number, maxBatchRetries: number, batchPollingIntervalMs: number },
   networkConfig: NetworkConfig,
   logger: ILoggingService
 ): Promise<DataRequestResult> {
@@ -119,7 +119,7 @@ export async function awaitDataRequestResult(
   // NEW: Fetch batch assignment and batch information from actual SEDA chain
   logger.info('\n🔍 Fetching batch assignment and batch information from SEDA chain...');
   try {
-    const batch = await fetchRealBatchFromSedaChain(drId, blockHeight, queryConfig, logger);
+    const batch = await fetchRealBatchFromSedaChain(drId, blockHeight, queryConfig, logger, awaitOptions.maxBatchRetries, awaitOptions.batchPollingIntervalMs);
     
     if (batch) {
       console.log('batch', batch);
@@ -325,7 +325,7 @@ export async function executeDataRequest(
   signer: Signer, 
   postInput: PostDataRequestInput, 
   gasOptions: GasOptions, 
-  awaitOptions: { timeoutSeconds: number; pollingIntervalSeconds: number },
+  awaitOptions: { timeoutSeconds: number; pollingIntervalSeconds: number, maxBatchRetries: number, batchPollingIntervalMs: number },
   networkConfig: NetworkConfig,
   logger: ILoggingService
 ): Promise<DataRequestResult> {

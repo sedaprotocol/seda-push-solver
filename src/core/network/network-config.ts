@@ -36,7 +36,9 @@ export const SEDA_NETWORK_CONFIGS: Record<'testnet' | 'mainnet' | 'local', Netwo
       consensusOptions: { method: 'none' },
       timeoutSeconds: parseInt(process.env.SEDA_DR_TIMEOUT_SECONDS || '120', 10),
       pollingIntervalSeconds: parseInt(process.env.SEDA_DR_POLLING_INTERVAL_SECONDS || '1', 10),
-      memo: 'DX Feed Oracle DataRequest'
+      memo: 'DX Feed Oracle DataRequest',
+      maxBatchRetries: parseInt(process.env.SEDA_MAX_BATCH_RETRIES || '10', 10),
+      batchPollingIntervalMs: parseInt(process.env.SEDA_BATCH_POLLING_INTERVAL_MS || '3000', 10)
     }
   },
   
@@ -56,7 +58,9 @@ export const SEDA_NETWORK_CONFIGS: Record<'testnet' | 'mainnet' | 'local', Netwo
       consensusOptions: { method: 'none' },
       timeoutSeconds: parseInt(process.env.SEDA_DR_TIMEOUT_SECONDS || '120', 10),
       pollingIntervalSeconds: parseInt(process.env.SEDA_DR_POLLING_INTERVAL_SECONDS || '5', 10),
-      memo: 'DX Feed Oracle DataRequest'
+      memo: 'DX Feed Oracle DataRequest',
+      maxBatchRetries: parseInt(process.env.SEDA_MAX_BATCH_RETRIES || '15', 10),
+      batchPollingIntervalMs: parseInt(process.env.SEDA_BATCH_POLLING_INTERVAL_MS || '5000', 10)
     }
   },
   
@@ -76,7 +80,9 @@ export const SEDA_NETWORK_CONFIGS: Record<'testnet' | 'mainnet' | 'local', Netwo
       consensusOptions: { method: 'none' },
       timeoutSeconds: parseInt(process.env.SEDA_DR_TIMEOUT_SECONDS || '60', 10),
       pollingIntervalSeconds: parseInt(process.env.SEDA_DR_POLLING_INTERVAL_SECONDS || '3', 10),
-      memo: 'DX Feed Oracle DataRequest (Local)'
+      memo: process.env.SEDA_DR_MEMO || 'DX Feed Oracle DataRequest (Local)',
+      maxBatchRetries: parseInt(process.env.SEDA_MAX_BATCH_RETRIES || '10', 10),
+      batchPollingIntervalMs: parseInt(process.env.SEDA_BATCH_POLLING_INTERVAL_MS || '3000', 10)
     }
   }
 };

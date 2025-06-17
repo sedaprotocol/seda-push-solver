@@ -33,6 +33,8 @@ export interface SEDADataRequestConfig {
   timeoutSeconds: number;
   pollingIntervalSeconds: number;
   memo: string;
+  maxBatchRetries: number;
+  batchPollingIntervalMs: number;
 }
 
 // DataRequest Operation Types
