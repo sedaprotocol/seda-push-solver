@@ -7,6 +7,7 @@ import { getEnabledEvmNetworks } from '../../config';
 import type { EvmNetworkConfig } from '../../config';
 import type { LoggingServiceInterface } from '../services';
 import type { SignedBatch, NetworkBatchStatus } from '../types';
+import { getErrorMessage } from '../helpers/error-utils';
 import { ProverDiscovery } from './prover-discovery';
 import { BatchPoster } from './batch-poster';
 
@@ -24,7 +25,7 @@ export class EvmNetworkManager {
 
   /**
    * Initialize EVM network prover addresses (optional optimization)
-   * Pre-discovers all prover contract addresses to speed up batch checking
+   * Pre-discovers all prover contract addresses to optimize batch checking
    */
   async initializeNetworkProvers(): Promise<void> {
     const enabledNetworks = getEnabledEvmNetworks();
@@ -190,7 +191,7 @@ export class EvmNetworkManager {
         } catch (error) {
           return { 
             network: network.displayName, 
-            status: `error: ${error instanceof Error ? error.message : error}` 
+            status: `error: ${getErrorMessage(error)}` 
           };
         }
       })

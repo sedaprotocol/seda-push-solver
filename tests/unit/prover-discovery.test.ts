@@ -57,7 +57,7 @@ describe('Prover Contract Discovery', () => {
     console.log('📈 Caching Benefits:');
     console.log('   🔄 First call: Core Contract → getSedaProver() → Cache Address');
     console.log('   ⚡ Subsequent calls: Use Cached Address (no network call)');
-    console.log('   🏁 Faster batch checking after initial discovery');
+    console.log('   🏁 Efficient batch checking after initial discovery');
     
     console.log('\n🔑 Cache Key Format:');
     console.log('   Key: `${network.name}-${network.contractAddress}`');

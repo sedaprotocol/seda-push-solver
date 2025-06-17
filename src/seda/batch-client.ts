@@ -9,6 +9,7 @@ import { sedachain } from "@seda-protocol/proto-messages";
 import type { QueryConfig } from '@seda-protocol/dev-tools';
 import type { LoggingServiceInterface } from '../services';
 import type { SignedBatch } from '../types';
+import { getErrorMessage } from '../helpers/error-utils';
 
 /**
  * Client for SEDA batch operations
@@ -56,7 +57,7 @@ export class BatchClient {
       };
       
     } catch (error) {
-      this.logger.error(`❌ Failed to get DataResult: ${error instanceof Error ? error.message : error}`);
+      this.logger.error(`❌ Failed to get DataResult: ${getErrorMessage(error)}`);
       return null;
     }
   }
@@ -116,7 +117,7 @@ export class BatchClient {
         this.logger.warn(`⚠️ Batch ${batchNumber} not found on chain`);
         return null;
       }
-      this.logger.error(`❌ Failed to get batch ${batchNumber}: ${error instanceof Error ? error.message : error}`);
+      this.logger.error(`❌ Failed to get batch ${batchNumber}: ${getErrorMessage(error)}`);
       return null;
     }
   }
@@ -169,7 +170,7 @@ export class BatchClient {
       };
       
     } catch (error) {
-      this.logger.error(`❌ Failed to get latest signed batch: ${error instanceof Error ? error.message : error}`);
+      this.logger.error(`❌ Failed to get latest signed batch: ${getErrorMessage(error)}`);
       return null;
     }
   }
@@ -227,14 +228,14 @@ export class BatchClient {
           return latestSignedBatch;
         }
       } catch (error) {
-        this.logger.error(`❌ Failed to fetch latest signed batch: ${error instanceof Error ? error.message : error}`);
+        this.logger.error(`❌ Failed to fetch latest signed batch: ${getErrorMessage(error)}`);
       }
       
       this.logger.error(`❌ Failed to fetch any usable batch for DataRequest ${drId}`);
       return null;
 
     } catch (error) {
-      this.logger.error(`❌ Failed to fetch batch information: ${error instanceof Error ? error.message : error}`);
+      this.logger.error(`❌ Failed to fetch batch information: ${getErrorMessage(error)}`);
       return null;
     }
   }

@@ -108,7 +108,7 @@ export class CosmosSequenceCoordinator {
   }
 
   /**
-   * Execute a transaction with ultra-robust sequence coordination
+   * Execute a transaction with robust sequence coordination
    */
   async executeSequenced<T>(execution: SequencedPosting<T>): Promise<PostingResult<T>> {
     if (!this.isInitialized) {
@@ -160,8 +160,8 @@ export class CosmosSequenceCoordinator {
       const { execution, resolve, reject } = queueItem;
       await this.executeWithReliableSequence(execution, resolve, reject);
 
-      // Remove delay for maximum posting speed - sequence coordination handles safety
-      // await delay(200); // REMOVED: This was causing unnecessary 200ms delays
+      // Optimized for performance - sequence coordination handles safety
+      // No artificial delays needed
     }
 
     this.isProcessing = false;
@@ -256,8 +256,8 @@ export class CosmosSequenceCoordinator {
           await this.performComprehensiveRecovery();
           attempts++;
           
-          // Reduced backoff delay for faster recovery
-          const backoffDelay = Math.min(250 * Math.pow(1.5, attempts), 1000); // Faster backoff: 250ms, 375ms, 562ms, max 1s
+          // Efficient backoff delay for recovery
+          const backoffDelay = Math.min(250 * Math.pow(1.5, attempts), 1000); // Progressive backoff: 250ms, 375ms, 562ms, max 1s
           await delay(backoffDelay);
           continue;
         }
@@ -293,8 +293,8 @@ export class CosmosSequenceCoordinator {
           if (!this.sequenceAllocationLock) {
             resolve();
           } else {
-            // Use immediate callback instead of delay for faster response
-            setImmediate(checkLock);
+                    // Use immediate callback for responsive waiting
+        setImmediate(checkLock);
           }
         };
         checkLock();

@@ -1,21 +1,21 @@
 /**
  * SEDA Configuration Loader
- * Updated to use consolidated root configuration
+ * Updated to use centralized root configuration
  */
 
 import type { SEDAConfig } from '../../types';
 
 /**
  * Load SEDA configuration from environment variables
- * Now uses the consolidated root configuration with fallbacks for testing
+ * Now uses the centralized root configuration with fallbacks for testing
  */
 export function loadSEDAConfig(): SEDAConfig {
-  // Try to load from consolidated config, but provide fallbacks for testing
+  // Try to load from centralized config, but provide fallbacks for testing
   try {
     // Dynamic import to avoid module initialization issues during testing
     const { sedaConfig } = require('../../../config');
     
-    // Map new consolidated config to existing SEDAConfig interface
+    // Map centralized config to existing SEDAConfig interface
     return {
       rpcEndpoint: sedaConfig.rpcEndpoint,
       network: sedaConfig.network,

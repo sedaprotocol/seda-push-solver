@@ -4,6 +4,7 @@
  */
 
 import type { LoggingServiceInterface } from '../services';
+import { getErrorMessage } from '../helpers/error-utils';
 import type { TimerServiceInterface, TimerId } from './timer-service';
 
 /**
@@ -269,7 +270,7 @@ export class HealthService implements HealthServiceInterface {
   }
 
   recordError(error: Error | string): void {
-    const errorMessage = error instanceof Error ? error.message : error;
+    const errorMessage = getErrorMessage(error);
     this.errorHistory.push({
       timestamp: this.timerService.now(),
       error: errorMessage

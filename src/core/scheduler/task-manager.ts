@@ -1,6 +1,6 @@
 /**
  * Task Manager for SEDA DataRequest Scheduler
- * Achieves maximum posting speed by completely separating timer intervals from posting execution
+ * Achieves optimal posting performance by separating timer intervals from posting execution
  */
 
 import type { LoggingService } from '../../services';
@@ -17,7 +17,7 @@ import { TaskExecutor } from './task-executor';
 
 /**
  * Task Manager
- * Key innovation: Timer intervals are NEVER blocked by posting execution
+ * Key design: Timer intervals are not blocked by posting execution
  */
 export class TaskManager {
   private taskCounter = 0;

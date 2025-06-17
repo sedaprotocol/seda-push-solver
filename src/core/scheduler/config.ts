@@ -8,7 +8,7 @@ import type { LoggingServiceInterface } from '../../services';
 
 // Default scheduler configuration - all timeouts should be overridden by environment variables
 export const DEFAULT_SCHEDULER_CONFIG: SchedulerConfig = {
-  intervalMs: process.env.SCHEDULER_INTERVAL_MS ? parseInt(process.env.SCHEDULER_INTERVAL_MS, 10) : 15000, // 15 seconds - optimized for faster posting
+  intervalMs: process.env.SCHEDULER_INTERVAL_MS ? parseInt(process.env.SCHEDULER_INTERVAL_MS, 10) : 15000, // 15 seconds - optimized for efficient posting
   continuous: true, // Run continuously by default
   maxRetries: 3,
   memo: 'SEDA DataRequest',
@@ -70,7 +70,7 @@ export function loadSchedulerConfigFromEnv(): Partial<SchedulerConfig> {
 }
 
 /**
- * Build final scheduler configuration by merging defaults, environment, and overrides
+ * Build complete scheduler configuration by merging defaults, environment, and overrides
  */
 export function buildSchedulerConfig(
   overrides: Partial<SchedulerConfig> = {}

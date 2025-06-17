@@ -6,6 +6,7 @@
 import type { LoggingServiceInterface } from '../services';
 import type { SignedBatch, EvmNetworkConfig, BatchPostingResult } from '../types';
 import type { HexString } from '../utils/hex';
+import { getErrorMessage } from '../helpers/error-utils';
 import { HexUtils } from '../utils/hex';
 import { SignatureProcessor } from '../crypto/signature-processor';
 import { MerkleProofGenerator } from '../crypto/merkle-proof-generator';
@@ -149,7 +150,7 @@ export class BatchPoster {
           this.logger.warn(`⚠️ Failed to process signature: ${result.error}`);
         }
       } catch (error) {
-        this.logger.warn(`⚠️ Failed to process signature: ${error instanceof Error ? error.message : error}`);
+        this.logger.warn(`⚠️ Failed to process signature: ${getErrorMessage(error)}`);
       }
     }
 
