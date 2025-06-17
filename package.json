@@ -31,13 +31,16 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@cosmjs/crypto": "^0.33.1",
     "@cosmjs/stargate": "^0.33.1",
+    "@openzeppelin/merkle-tree": "^1.0.8",
     "@seda-protocol/dev-tools": "^1.0.0-rc.13",
     "@seda-protocol/proto-messages": "^1.0.0-rc.1",
     "@seda-protocol/utils": "^2.0.0",
     "buffer": "^6.0.3",
     "ethers": "^6.14.4",
-    "true-myth": "^9.0.1"
+    "true-myth": "^9.0.1",
+    "viem": "^2.31.3"
   },
   "devDependencies": {
     "@types/bun": "latest",
