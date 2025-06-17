@@ -38,6 +38,8 @@ export interface EvmNetworkConfig {
   gas: EvmGasConfig;
   /** Whether this network is enabled */
   enabled: boolean;
+  /** Block explorer URL for transactions (optional) */
+  explorerUrl?: string;
 }
 
 export interface EvmBatch {

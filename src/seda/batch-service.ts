@@ -36,36 +36,35 @@ export class SedaBatchService {
       
       const { batchAssignment } = dataResult;
       
-      // Poll for batch completion
-      this.logger.info(`⏳ Polling for batch ${batchAssignment} completion...`);
+      // Start polling with summary logging only
+      this.logger.info(`📦 Fetching batch ${batchAssignment} (max ${maxRetries} attempts, ${pollingIntervalMs}ms intervals)`);
       
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        this.logger.info(`🔄 Batch polling attempt ${attempt}/${maxRetries} for batch ${batchAssignment}...`);
+        this.logger.debug(`🔄 Polling attempt ${attempt}/${maxRetries} for batch ${batchAssignment}`);
         
         const batch = await this.getBatch(batchAssignment);
         
         if (batch) {
-          this.logger.info(`✅ Batch ${batchAssignment} fetched successfully from SEDA chain!`);
+          this.logger.info(`✅ Batch ${batchAssignment} ready after ${attempt} attempts`);
           return batch;
         }
         
         if (attempt < maxRetries) {
-          this.logger.info(`⏱️ Batch ${batchAssignment} not ready yet, waiting ${pollingIntervalMs}ms...`);
+          this.logger.debug(`⏱️ Batch ${batchAssignment} not ready, waiting ${pollingIntervalMs}ms (attempt ${attempt}/${maxRetries})`);
           await new Promise(resolve => setTimeout(resolve, pollingIntervalMs));
         }
       }
       
       // Try to get latest signed batch if assigned batch isn't ready
-      this.logger.warn(`⚠️ Assigned batch ${batchAssignment} not ready after ${maxRetries} attempts`);
-      this.logger.info(`🔄 Trying to fetch latest signed batch instead...`);
+      this.logger.warn(`⚠️ Batch ${batchAssignment} not ready after ${maxRetries} attempts, trying latest signed batch`);
       
       const latestSignedBatch = await this.getLatestSignedBatch();
       if (latestSignedBatch) {
-        this.logger.info(`✅ Using latest signed batch ${latestSignedBatch.batchNumber} instead of assigned batch ${batchAssignment}`);
+        this.logger.info(`✅ Using latest signed batch ${latestSignedBatch.batchNumber} (fallback)`);
         return latestSignedBatch;
       }
       
-      this.logger.error(`❌ Failed to fetch any usable batch for DataRequest ${drId}`);
+      this.logger.error(`❌ No usable batch found for DataRequest ${drId}`);
       return null;
 
     } catch (error) {
@@ -180,7 +179,7 @@ export class SedaBatchService {
       const protoClient = await this.createSedaQueryClient();
       const client = new sedachain.batching.v1.QueryClientImpl(protoClient);
       
-      this.logger.info(`📦 Querying latest signed batch from SEDA chain...`);
+      this.logger.debug(`📦 Querying latest signed batch from SEDA chain`);
       
       const response = await client.Batch({ 
         batchNumber: 0n,
@@ -204,7 +203,7 @@ export class SedaBatchService {
         return null;
       }
       
-      this.logger.info(`✅ Latest signed batch ${batch.batchNumber} fetched with ${batchSignatures.length} signatures!`);
+      this.logger.debug(`✅ Latest signed batch ${batch.batchNumber} fetched with ${batchSignatures.length} signatures`);
       
       return {
         batchNumber: batch.batchNumber,
@@ -223,4 +222,4 @@ export class SedaBatchService {
       return null;
     }
   }
-} 
+}

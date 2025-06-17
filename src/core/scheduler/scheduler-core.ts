@@ -207,7 +207,7 @@ export class SchedulerCore {
   }
 
   /**
-   * Log countdown to next DataRequest post
+   * Log countdown to next DataRequest post with detailed status
    */
   private logCountdown(): void {
     const now = this.timerService?.now() || Date.now();
@@ -218,11 +218,19 @@ export class SchedulerCore {
       const successRate = stats.totalRequests > 0 ? 
         `${((stats.successfulRequests / stats.totalRequests) * 100).toFixed(0)}%` : '0%';
       
+      // Get detailed task information
+      const activeRequests = this.taskManager.getActiveDataRequests();
+      const completedRequests = this.taskManager.getDataRequestsByStatus('completed');
+      const failedRequests = this.taskManager.getDataRequestsByStatus('failed');
+      const queueStats = this.taskManager.getQueueStats();
+      
+      // Show detailed status with DataRequest information
       this.logger.info(
         `⏰ Next DataRequest post in: ${secondsLeft}s | ` +
         `🔄 Active: ${stats.activeTasks || 0} | ` +
         `📤 Posted: ${stats.postedRequests} | ` +
         `✅ Success: ${stats.successfulRequests} (${successRate}) | ` +
+        `❌ Failed: ${failedRequests.length} | ` +
         `🔢 Queue: ${stats.sequenceCoordinator?.queueSize || 0}`
       );
     }

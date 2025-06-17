@@ -80,39 +80,30 @@ export async function awaitDataRequestResult(
   });
   
   // Clean, structured results display
-  logger.info('┌─────────────────────────────────────────────────────────────────────┐');
-  logger.info('│                         ✅ DataRequest Results                      │');
-  logger.info('├─────────────────────────────────────────────────────────────────────┤');
-  logger.info(`│ Request ID: ${result.drId}`);
-  logger.info(`│ Exit Code: ${result.exitCode}`);
-  logger.info(`│ Block Height: ${result.drBlockHeight}`);
-  logger.info(`│ Gas Used: ${result.gasUsed}`);
-  logger.info(`│ Consensus: ${result.consensus || 'N/A'}`);
+  logger.info('✅ DataRequest completed');
+  logger.info(`   📋 Request ID: ${result.drId}`);
+  logger.info(`   📊 Exit Code: ${result.exitCode} | Gas: ${result.gasUsed} | Block: ${result.drBlockHeight}`);
   
   // Handle result data display
   if (result.result) {
-    logger.info(`│ Result (hex): ${result.result}`);
+    logger.info(`   📦 Result: ${result.result}`);
     
     // Show numeric conversion if it looks like hex
     if (typeof result.result === 'string' && /^(0x)?[0-9a-fA-F]+$/.test(result.result)) {
       try {
         const numericResult = HexUtils.toBigEndianNumber(result.result);
-        logger.info(`│ Result (number): ${numericResult}`);
+        logger.info(`   🔢 Numeric: ${numericResult}`);
       } catch (error) {
         // Silent fail for conversion errors
       }
     }
   } else {
-    logger.info(`│ Result: No result data`);
+    logger.info(`   📦 Result: No data`);
   }
   
-  logger.info('├─────────────────────────────────────────────────────────────────────┤');
   if (networkConfig.explorerEndpoint) {
-    logger.info(`│ Explorer: ${networkConfig.explorerEndpoint}/data-requests/${result.drId}/${result.drBlockHeight}`);
-  } else {
-    logger.info(`│ Explorer: N/A`);
+    logger.info(`   🔗 Explorer: ${networkConfig.explorerEndpoint}/data-requests/${result.drId}/${result.drBlockHeight}`);
   }
-  logger.info('└─────────────────────────────────────────────────────────────────────┘');
   
   // Fetch batch assignment and batch information from SEDA chain
   logger.info('🔍 Fetching batch assignment and batch information from SEDA chain...');
@@ -122,25 +113,9 @@ export async function awaitDataRequestResult(
     
     if (batch) {
       // Log the batch information
-      logger.info('┌─────────────────────────────────────────────────────────────────────┐');
-      logger.info('│                           📦 Batch Information                      │');
-      logger.info('├─────────────────────────────────────────────────────────────────────┤');
-      logger.info(`│ Batch Number: ${batch.batchNumber}`);
-      logger.info(`│ Batch ID: ${batch.batchId}`);
-      logger.info(`│ Block Height: ${batch.blockHeight}`);
-      logger.info(`│ Current Data Result Root: ${batch.currentDataResultRoot}`);
-      logger.info(`│ Data Result Root: ${batch.dataResultRoot}`);
-      logger.info(`│ Validator Root: ${batch.validatorRoot}`);
-      if (batch.dataResultEntries) {
-        logger.info(`│ Data Result Entries: ${batch.dataResultEntries.length} entries`);
-      }
-      if (batch.batchSignatures) {
-        logger.info(`│ Validator Signatures: ${batch.batchSignatures.length} signatures`);
-      }
-      if (batch.validatorEntries) {
-        logger.info(`│ Validator Entries: ${batch.validatorEntries.length} validators`);
-      }
-      logger.info('└─────────────────────────────────────────────────────────────────────┘');
+      logger.info('📦 Batch assignment completed');
+      logger.info(`   🔢 Batch: ${batch.batchNumber} | Block: ${batch.blockHeight}`);
+      logger.info(`   📊 Entries: ${batch.dataResultEntries?.length || 0} | Signatures: ${batch.batchSignatures?.length || 0} | Validators: ${batch.validatorEntries?.length || 0}`);
       
       // Handle EVM batch posting using the batch manager
       const evmBatchManager = new EvmBatchManager(logger);
@@ -148,7 +123,7 @@ export async function awaitDataRequestResult(
       
       // Log detailed results for each network
       if (evmBatchResults.length > 0) {
-        logger.info('📊 Detailed EVM Network Batch Status:');
+        logger.info('🌐 EVM batch status:');
         for (const result of evmBatchResults) {
           const status = result.batchExists ? '✅ EXISTS' : '❌ MISSING';
           const lastHeight = result.lastBatchHeight !== null ? result.lastBatchHeight.toString() : 'N/A';

@@ -62,13 +62,9 @@ export class SEDADataRequestBuilder {
       await this.initialize();
     }
 
-    this.logger.info('\n┌─────────────────────────────────────────────────────────────────────┐');
-    this.logger.info('│                     📤 Posting DataRequest                         │');
-    this.logger.info('├─────────────────────────────────────────────────────────────────────┤');
-    this.logger.info(`│ Network: ${this.config.network.toUpperCase()}`);
-    this.logger.info(`│ RPC Endpoint: ${this.config.rpcEndpoint}`);
-    this.logger.info(`│ Memo: ${options.memo || 'Default memo'}`);
-    this.logger.info('└─────────────────────────────────────────────────────────────────────┘');
+    this.logger.info('📤 Posting DataRequest');
+    this.logger.info(`   🌐 Network: ${this.config.network.toUpperCase()} | RPC: ${this.config.rpcEndpoint}`);
+    this.logger.info(`   📝 Memo: ${options.memo || 'Default memo'}`);
 
     try {
       // Get network-specific DataRequest configuration
