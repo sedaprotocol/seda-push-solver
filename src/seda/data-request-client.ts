@@ -6,7 +6,7 @@
 import { postDataRequest, awaitDataResult, type Signer } from '@seda-protocol/dev-tools';
 import type { PostDataRequestInput, GasOptions, QueryConfig } from '@seda-protocol/dev-tools';
 import type { DataRequestResult, NetworkConfig } from '../types';
-import type { ILoggingService } from '../services';
+import type { LoggingServiceInterface } from '../services';
 import { HexUtils } from '../utils/hex';
 
 /**
@@ -39,7 +39,7 @@ export interface AwaitOptions {
  * Client for SEDA DataRequest operations
  */
 export class DataRequestClient {
-  constructor(private logger: ILoggingService) {}
+  constructor(private logger: LoggingServiceInterface) {}
 
   /**
    * Post a DataRequest transaction to the SEDA network

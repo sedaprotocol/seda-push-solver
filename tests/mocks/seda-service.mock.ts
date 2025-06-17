@@ -5,13 +5,13 @@
 
 import type { Signer } from '@seda-protocol/dev-tools';
 import type { PostDataRequestInput, GasOptions } from '@seda-protocol/dev-tools';
-import type { ISEDAService } from '../../src/services/seda-service';
+import type { SedaServiceInterface } from '../../src/services/seda-service';
 import type { SEDAConfig } from '../../src/types';
 
 /**
  * Mock implementation for testing
  */
-export class MockSEDAService implements ISEDAService {
+export class MockSEDAService implements SedaServiceInterface {
   private mockResults: Map<string, any> = new Map();
 
   async createSigner(config: SEDAConfig): Promise<Signer> {

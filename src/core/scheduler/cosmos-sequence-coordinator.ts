@@ -3,7 +3,7 @@
  * Provides reliable sequence management with atomic allocation, validation, and comprehensive recovery
  */
 
-import type { ILoggingService } from '../../services';
+import type { LoggingServiceInterface } from '../../services';
 import type { Signer } from '@seda-protocol/dev-tools';
 import { SequenceQueryService } from './sequence-query-service';
 import { withTimeout, delay, isSequenceError, isDataRequestExistsError } from '../../helpers';
@@ -86,7 +86,7 @@ export class CosmosSequenceCoordinator {
   private readonly MAX_SEQUENCE_DRIFT = 5; // Maximum allowed drift before forced sync
 
   constructor(
-    private logger: ILoggingService,
+    private logger: LoggingServiceInterface,
     private config: CosmosSequenceConfig
   ) {
     this.queryService = new SequenceQueryService(this.logger);

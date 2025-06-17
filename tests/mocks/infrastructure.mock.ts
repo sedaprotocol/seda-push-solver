@@ -3,13 +3,13 @@
  * Extracted from production source to tests/mocks
  */
 
-import type { IProcessService, ITimerService, IHealthService, ProcessInfo, HealthCheckResult, SystemMetrics, OverallHealth, HealthCheckFunction } from '../../src/infrastructure';
-import type { ILoggingService } from '../../src/services/logging-service';
+import type { ProcessServiceInterface, TimerServiceInterface, HealthServiceInterface, ProcessInfo, HealthCheckResult, SystemMetrics, OverallHealth, HealthCheckFunction } from '../../src/infrastructure';
+import type { LoggingServiceInterface } from '../../src/services/logging-service';
 
 /**
  * Mock process service for testing
  */
-export class MockProcessService implements IProcessService {
+export class MockProcessService implements ProcessServiceInterface {
   private shutdownHandlers: Array<() => Promise<void> | void> = [];
   private isShuttingDownFlag = false;
   private signalHandlersActive = false;
@@ -88,7 +88,7 @@ export class MockProcessService implements IProcessService {
 /**
  * Mock timer service for testing with time control
  */
-export class MockTimerService implements ITimerService {
+export class MockTimerService implements TimerServiceInterface {
   private mockTime = Date.now();
   private timers = new Map<number, { callback: () => void; triggerTime: number; interval?: number }>();
   private nextTimerId = 1;
@@ -98,9 +98,9 @@ export class MockTimerService implements ITimerService {
   }
 
   delay(ms: number): Promise<void> {
-    return new Promise(resolve => {
-      this.setTimeout(() => resolve(), ms);
-    });
+    // In mock, just advance time and resolve immediately
+    this.mockTime += ms;
+    return Promise.resolve();
   }
 
   setTimeout(callback: () => void, ms: number): number {
@@ -137,31 +137,44 @@ export class MockTimerService implements ITimerService {
    * Advance mock time and trigger any timers that should fire
    */
   advanceTime(ms: number): void {
-    this.mockTime += ms;
+    const targetTime = this.mockTime + ms;
     
-    const triggeredTimers: Array<{ id: number; timer: { callback: () => void; triggerTime: number; interval?: number } }> = [];
-    
-    // Find timers that should trigger
-    for (const [id, timer] of this.timers.entries()) {
-      if (timer.triggerTime <= this.mockTime) {
-        triggeredTimers.push({ id, timer });
-      }
-    }
-    
-    // Execute triggered timers
-    for (const { id, timer } of triggeredTimers) {
-      try {
-        timer.callback();
-      } catch (error) {
-        // Silent error handling in mock
+    while (this.mockTime < targetTime) {
+      // Find the next timer to trigger
+      let nextTriggerTime = targetTime;
+      for (const timer of this.timers.values()) {
+        if (timer.triggerTime > this.mockTime && timer.triggerTime < nextTriggerTime) {
+          nextTriggerTime = timer.triggerTime;
+        }
       }
       
-      if (timer.interval) {
-        // Reset interval timer
-        timer.triggerTime = this.mockTime + timer.interval;
-      } else {
-        // Remove one-time timer
-        this.timers.delete(id);
+      // Advance to next trigger time
+      this.mockTime = nextTriggerTime;
+      
+      // Execute all timers that should trigger at this time
+      const triggeredTimers: Array<{ id: number; timer: { callback: () => void; triggerTime: number; interval?: number } }> = [];
+      
+      for (const [id, timer] of this.timers.entries()) {
+        if (timer.triggerTime <= this.mockTime) {
+          triggeredTimers.push({ id, timer });
+        }
+      }
+      
+      // Execute triggered timers
+      for (const { id, timer } of triggeredTimers) {
+        try {
+          timer.callback();
+        } catch (error) {
+          // Silent error handling in mock
+        }
+        
+        if (timer.interval) {
+          // Reset interval timer for next trigger
+          timer.triggerTime = this.mockTime + timer.interval;
+        } else {
+          // Remove one-time timer
+          this.timers.delete(id);
+        }
       }
     }
   }
@@ -181,19 +194,74 @@ export class MockTimerService implements ITimerService {
   setMockTime(timestamp: number): void {
     this.mockTime = timestamp;
   }
+
+  /**
+   * Get count of active timers (for testing)
+   */
+  getTimerCount(): number {
+    return this.timers.size;
+  }
+
+  /**
+   * Run only currently pending timers
+   * Advances to the earliest timer and executes all timers that are ready
+   */
+  runOnlyPendingTimers(): void {
+    if (this.timers.size === 0) return;
+    
+    // Find the earliest timer
+    let earliestTime = Number.MAX_SAFE_INTEGER;
+    for (const timer of this.timers.values()) {
+      if (timer.triggerTime < earliestTime) {
+        earliestTime = timer.triggerTime;
+      }
+    }
+    
+    // Advance to the earliest timer time
+    if (earliestTime > this.mockTime) {
+      this.mockTime = earliestTime;
+    }
+    
+    const triggeredTimers: Array<{ id: number; timer: { callback: () => void; triggerTime: number; interval?: number } }> = [];
+    
+    // Find timers that should trigger at current time
+    for (const [id, timer] of this.timers.entries()) {
+      if (timer.triggerTime <= this.mockTime) {
+        triggeredTimers.push({ id, timer });
+      }
+    }
+    
+    // Execute triggered timers
+    for (const { id, timer } of triggeredTimers) {
+      try {
+        timer.callback();
+      } catch (error) {
+        // Silent error handling in mock
+      }
+      
+      if (timer.interval) {
+        // Reset interval timer for next execution
+        timer.triggerTime = this.mockTime + timer.interval;
+      } else {
+        // Remove one-time timer
+        this.timers.delete(id);
+      }
+    }
+  }
 }
 
 /**
  * Mock health service for testing
  */
-export class MockHealthService implements IHealthService {
+export class MockHealthService implements HealthServiceInterface {
   private checks = new Map<string, () => Promise<HealthCheckResult>>();
   private mockResults = new Map<string, HealthCheckResult>();
   private mockMetrics: SystemMetrics;
+  private periodicCheckTimerId: number | null = null;
 
   constructor(
-    private loggingService: ILoggingService,
-    private timerService: ITimerService
+    private loggingService: LoggingServiceInterface,
+    private timerService: TimerServiceInterface
   ) {
     this.mockMetrics = {
       requests: { total: 0, successful: 0, failed: 0, averageResponseTime: 0 },
@@ -270,11 +338,18 @@ export class MockHealthService implements IHealthService {
   }
 
   startPeriodicChecks(intervalMs: number): void {
-    // Mock periodic check
+    // Start a mock timer for periodic checks
+    this.periodicCheckTimerId = this.timerService.setInterval(() => {
+      // Mock periodic health check execution
+    }, intervalMs);
   }
 
   stopPeriodicChecks(): void {
-    // Mock stop
+    // Clear the periodic check timer
+    if (this.periodicCheckTimerId !== null) {
+      this.timerService.clearInterval(this.periodicCheckTimerId);
+      this.periodicCheckTimerId = null;
+    }
   }
 
   recordRequest(successful: boolean, responseTime: number): void {

@@ -4,13 +4,13 @@
  */
 
 import type { Signer } from '@seda-protocol/dev-tools';
-import type { ILoggingService } from '../../services';
+import type { LoggingServiceInterface } from '../../services';
 
 /**
  * Service for querying account sequence numbers from Cosmos chains
  */
 export class SequenceQueryService {
-  constructor(private logger: ILoggingService) {}
+  constructor(private logger: LoggingServiceInterface) {}
 
   /**
    * Query the current account sequence number from the blockchain

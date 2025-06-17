@@ -11,7 +11,7 @@ import type { SEDAConfig, DataRequestResult } from '../types';
  * Interface for SEDA protocol operations
  * Allows mocking and testing of SEDA interactions without actual network calls
  */
-export interface ISEDAService {
+export interface SedaServiceInterface {
   /**
    * Create and initialize a SEDA signer from configuration
    */
@@ -49,7 +49,7 @@ export interface ISEDAService {
 /**
  * Production implementation of SEDA service using actual SEDA protocol
  */
-export class SEDAService implements ISEDAService {
+export class SEDAService implements SedaServiceInterface {
   async createSigner(config: SEDAConfig): Promise<Signer> {
     // Dynamic import to avoid issues with module loading
     const { buildSigningConfig, Signer } = await import('@seda-protocol/dev-tools');

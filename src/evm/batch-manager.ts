@@ -3,7 +3,7 @@
  * Centralized EVM batch checking and posting operations
  */
 
-import type { ILoggingService } from '../services';
+import type { LoggingServiceInterface } from '../services';
 import type { SignedBatch, NetworkBatchStatus, EvmNetworkConfig } from '../types';
 import { BatchPoster } from './batch-poster';
 import { ProverDiscovery } from './prover-discovery';
@@ -13,7 +13,7 @@ export class EvmBatchManager {
   private batchPoster: BatchPoster;
   private proverDiscovery: ProverDiscovery;
 
-  constructor(private logger: ILoggingService) {
+  constructor(private logger: LoggingServiceInterface) {
     this.batchPoster = new BatchPoster(logger);
     this.proverDiscovery = new ProverDiscovery(logger);
   }

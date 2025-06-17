@@ -3,7 +3,7 @@
  * Achieves maximum posting speed by completely separating timer intervals from posting execution
  */
 
-import type { ILoggingService } from '../../services';
+import type { LoggingService } from '../../services';
 import type { SEDADataRequestBuilder } from '../data-request';
 import type { SchedulerConfig } from '../../types';
 import { 
@@ -31,7 +31,7 @@ export class TaskManager {
   }> = [];
 
   constructor(
-    private logger: ILoggingService,
+    private logger: LoggingService,
     private cosmosSequenceConfig: CosmosSequenceConfig,
     private getTimestamp: () => number = Date.now
   ) {

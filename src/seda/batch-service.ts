@@ -8,12 +8,12 @@ import { QueryClient, createProtobufRpcClient } from "@cosmjs/stargate";
 import { Comet38Client } from "@cosmjs/tendermint-rpc";
 import { sedachain } from "@seda-protocol/proto-messages";
 import type { SignedBatch } from '../types';
-import type { ILoggingService } from '../services';
+import type { LoggingServiceInterface } from '../services';
 
 export class SedaBatchService {
   constructor(
     private queryConfig: QueryConfig,
-    private logger: ILoggingService
+    private logger: LoggingServiceInterface
   ) {}
 
   /**

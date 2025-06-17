@@ -3,7 +3,7 @@
  * Generates unique memos by appending sequence numbers to prevent DataRequest collisions
  */
 
-import type { ILoggingService } from '../../services';
+import type { LoggingServiceInterface } from '../../services';
 
 /**
  * Interface for unique memo metadata
@@ -21,7 +21,7 @@ export interface UniqueMemoData {
 export class UniqueMemoGenerator {
   private readonly startTime = Date.now();
 
-  constructor(private logger: ILoggingService) {}
+  constructor(private logger: LoggingServiceInterface) {}
 
   /**
    * Generate a unique memo using sequence number for uniqueness

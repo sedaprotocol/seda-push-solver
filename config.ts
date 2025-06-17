@@ -30,82 +30,14 @@
  * Example: BASE_RPC_URL, BASE_CONTRACT_ADDRESS, BASE_CHAIN_ID, BASE_GAS_LIMIT
  */
 
-/**
- * Gas configuration for EVM transactions
- */
-export interface EvmGasConfig {
-  /** Gas limit for contract interactions */
-  gasLimit: number;
-  /** Gas price in wei (legacy transactions) */
-  gasPrice?: string;
-  /** Max fee per gas for EIP-1559 transactions */
-  maxFeePerGas?: string;
-  /** Max priority fee per gas for EIP-1559 transactions */
-  maxPriorityFeePerGas?: string;
-  /** Whether to use EIP-1559 gas pricing */
-  useEIP1559: boolean;
-}
+// Import types from centralized location
+import type { EvmGasConfig, EvmNetworkConfig } from './src/types/evm-types';
+import type { SedaConfig, ConfigSummary } from './src/types/config-types';
 
-/**
- * SEDA Network Configuration Interface
- */
-export interface SedaConfig {
-  /** SEDA network to connect to */
-  network: 'testnet' | 'mainnet' | 'local';
-  /** RPC endpoint for SEDA network */
-  rpcEndpoint: string;
-  /** 24-word mnemonic phrase for signing transactions */
-  mnemonic: string;
-  /** Oracle program ID for DataRequest execution */
-  oracleProgramId: string;
-  /** DataRequest execution timeout in seconds */
-  drTimeoutSeconds: number;
-  /** Polling interval for DataRequest results in seconds */
-  drPollingIntervalSeconds: number;
-  /** Scheduler configuration */
-  scheduler: {
-    /** Interval between DataRequest posts in milliseconds */
-    intervalMs: number;
-    /** Whether to run continuously */
-    continuous: boolean;
-    /** Maximum retry attempts */
-    maxRetries: number;
-    /** Custom memo for transactions */
-    memo: string;
-  };
-  /** Cosmos sequence coordination settings */
-  cosmos: {
-    /** Timeout for transaction posting in milliseconds */
-    postingTimeoutMs: number;
-    /** Maximum queue size for sequence coordination */
-    maxQueueSize: number;
-  };
-  /** Logging configuration */
-  logging: {
-    /** Log level */
-    level: 'debug' | 'info' | 'warn' | 'error';
-  };
-}
+// Re-export types for external consumption
+export type { EvmNetworkConfig, EvmGasConfig };
 
-/**
- * EVM Network Configuration Interface
- */
-export interface EvmNetworkConfig {
-  /** Network identifier (e.g., 'base', 'ethereum') */
-  name: string;
-  /** Human-readable display name */
-  displayName: string;
-  /** RPC endpoint URL */
-  rpcUrl: string;
-  /** Chain ID */
-  chainId: number;
-  /** Smart contract address for result posting */
-  contractAddress: string;
-  /** Gas configuration for this network */
-  gas: EvmGasConfig;
-  /** Whether this network is enabled */
-  enabled: boolean;
-}
+
 
 /**
  * Validate required environment variables at startup
@@ -290,26 +222,7 @@ export function validateAllEvmNetworks(): void {
 /**
  * Get configuration summary (for logging by external service)
  */
-export function getConfigSummary(): {
-  seda: {
-    network: string;
-    rpcEndpoint: string;
-    schedulerIntervalMs: number;
-    continuousMode: boolean;
-    maxRetries: number;
-  };
-  evm: {
-    privateKeyConfigured: boolean;
-    networksFound: number;
-    networksEnabled: number;
-    enabledNetworks: Array<{
-      name: string;
-      displayName: string;
-      chainId: number;
-      gasType: string;
-    }>;
-  };
-} {
+export function getConfigSummary(): ConfigSummary {
   const enabledNetworks = getEnabledEvmNetworks();
   
   return {

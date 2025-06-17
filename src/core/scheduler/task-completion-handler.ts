@@ -3,8 +3,8 @@
  * Handles the logging and statistics tracking for completed async tasks
  */
 
-import type { ILoggingService } from '../../services';
-import type { ITimerService } from '../../infrastructure';
+import type { LoggingServiceInterface } from '../../services';
+import type { TimerServiceInterface } from '../../infrastructure';
 import type { SchedulerStatistics } from './statistics';
 import type { SchedulerConfig } from '../../types';
 import type { AsyncTaskResult, TaskCompletionHandler } from './types';
@@ -14,12 +14,12 @@ import type { AsyncTaskResult, TaskCompletionHandler } from './types';
  */
 export class SchedulerTaskCompletionHandler implements TaskCompletionHandler {
   constructor(
-    private logger: ILoggingService,
+    private logger: LoggingServiceInterface,
     private statistics: SchedulerStatistics,
     private config: SchedulerConfig,
     private isRunning: () => boolean,
     private getActiveTaskCount: () => number,
-    private timerService?: ITimerService
+    private timerService?: TimerServiceInterface
   ) {}
 
   /**

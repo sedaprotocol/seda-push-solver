@@ -6,7 +6,7 @@
 import { postDataRequest, awaitDataResult, Signer } from '@seda-protocol/dev-tools';
 import type { PostDataRequestInput, GasOptions, QueryConfig } from '@seda-protocol/dev-tools';
 import type { DataRequestResult, NetworkConfig } from '../../types';
-import type { ILoggingService } from '../../services';
+import type { LoggingServiceInterface } from '../../services';
 import { HexUtils } from '../../utils/hex';
 import { SedaBatchService } from '../../seda/batch-service';
 import { EvmBatchManager } from '../../evm/batch-manager';
@@ -20,7 +20,7 @@ export async function postDataRequestTransaction(
   postInput: PostDataRequestInput, 
   gasOptions: GasOptions, 
   networkConfig: NetworkConfig,
-  logger: ILoggingService
+  logger: LoggingServiceInterface
 ): Promise<{ drId: string; blockHeight: bigint; txHash: string }> {
   
   // Clean, structured configuration display
@@ -61,7 +61,7 @@ export async function awaitDataRequestResult(
   blockHeight: bigint,
   awaitOptions: { timeoutSeconds: number; pollingIntervalSeconds: number, maxBatchRetries: number, batchPollingIntervalMs: number },
   networkConfig: NetworkConfig,
-  logger: ILoggingService
+  logger: LoggingServiceInterface
 ): Promise<DataRequestResult> {
   
   logger.info(`⏳ Waiting for DataRequest ${drId} to complete...`);
@@ -181,7 +181,7 @@ export async function executeDataRequest(
   gasOptions: GasOptions, 
   awaitOptions: { timeoutSeconds: number; pollingIntervalSeconds: number, maxBatchRetries: number, batchPollingIntervalMs: number },
   networkConfig: NetworkConfig,
-  logger: ILoggingService
+  logger: LoggingServiceInterface
 ): Promise<DataRequestResult> {
   
   // Post the transaction first

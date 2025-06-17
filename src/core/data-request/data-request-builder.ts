@@ -13,7 +13,7 @@ import {
 import { executeDataRequest } from './executor';
 import { initializeSigner } from './signer';
 import type { SEDAConfig, DataRequestResult, DataRequestOptions } from '../../types';
-import type { ILoggingService } from '../../services';
+import type { LoggingServiceInterface } from '../../services';
 
 /**
  * SEDA DataRequest Builder
@@ -23,11 +23,11 @@ export class SEDADataRequestBuilder {
   private config: SEDAConfig;
   private signer: Signer | null = null;
   private isInitialized: boolean = false;
-  private logger: ILoggingService;
+  private logger: LoggingServiceInterface;
 
   constructor(
     config: SEDAConfig, 
-    logger: ILoggingService
+    logger: LoggingServiceInterface
   ) {
     this.config = config;
     this.logger = logger;

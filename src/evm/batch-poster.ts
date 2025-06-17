@@ -3,7 +3,7 @@
  * Handles posting batches to EVM networks with signature validation
  */
 
-import type { ILoggingService } from '../services';
+import type { LoggingServiceInterface } from '../services';
 import type { SignedBatch, EvmNetworkConfig, BatchPostingResult } from '../types';
 import type { HexString } from '../utils/hex';
 import { HexUtils } from '../utils/hex';
@@ -22,10 +22,10 @@ import {
   padBytes
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { abiSecp256k1ProverV1 } from './abi/abi-secp256k1-prover-v1.abi';
+import { ABI_SECP256K1_PROVER_V1 } from './abi/abi-secp256k1-prover-v1.abi';
 
 export class BatchPoster {
-  constructor(private logger: ILoggingService) {}
+  constructor(private logger: LoggingServiceInterface) {}
 
   /**
    * Post a batch to an EVM network
@@ -303,7 +303,7 @@ export class BatchPoster {
     const simulation = await publicClient.simulateContract({
       account,
       address: proverAddress as HexString,
-      abi: abiSecp256k1ProverV1,
+              abi: ABI_SECP256K1_PROVER_V1,
       functionName: 'postBatch',
       args: [evmBatch, signatures, proofs],
     });

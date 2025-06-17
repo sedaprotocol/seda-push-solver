@@ -155,8 +155,4 @@ export class HexUtils {
   }
 }
 
-// Legacy compatibility exports (maintained for backward compatibility)
-export const hexBEToNumber = HexUtils.toBigEndianNumber;
-export const hexBEToString = HexUtils.toUtf8String;
-export const add0x = HexUtils.addPrefix;
-export const strip0x = HexUtils.stripPrefix; 
+// Note: Legacy exports removed in Phase 3 refactoring - use HexUtils class methods directly 

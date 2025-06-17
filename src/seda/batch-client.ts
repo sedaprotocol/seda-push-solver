@@ -7,14 +7,14 @@ import { QueryClient, createProtobufRpcClient } from "@cosmjs/stargate";
 import { Comet38Client } from "@cosmjs/tendermint-rpc";
 import { sedachain } from "@seda-protocol/proto-messages";
 import type { QueryConfig } from '@seda-protocol/dev-tools';
-import type { ILoggingService } from '../services';
+import type { LoggingServiceInterface } from '../services';
 import type { SignedBatch } from '../types';
 
 /**
  * Client for SEDA batch operations
  */
 export class BatchClient {
-  constructor(private logger: ILoggingService) {}
+  constructor(private logger: LoggingServiceInterface) {}
 
   /**
    * Create protobuf RPC client for SEDA chain queries
@@ -182,8 +182,8 @@ export class BatchClient {
     drId: string,
     blockHeight: bigint,
     queryConfig: QueryConfig,
-    maxRetries: number = 10,
-    pollingIntervalMs: number = 3000
+    maxRetries: number,
+    pollingIntervalMs: number
   ): Promise<SignedBatch | null> {
     try {
       this.logger.info('\n🔍 Fetching batch assignment and batch information from SEDA chain...');

@@ -1,4 +1,4 @@
-export const iSedaCore = [
+export const I_SEDA_CORE = [
 	{
 		inputs: [],
 		name: "FeeTransferFailed",

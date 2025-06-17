@@ -8,7 +8,7 @@ export type TimerId = number;
 /**
  * Interface for timer operations
  */
-export interface ITimerService {
+export interface TimerServiceInterface {
   /**
    * Set a recurring timer
    */
@@ -48,7 +48,7 @@ export interface ITimerService {
 /**
  * Production timer service using native JavaScript timers
  */
-export class TimerService implements ITimerService {
+export class TimerService implements TimerServiceInterface {
   private activeTimers = new Set<TimerId>();
   private logger?: { error: (msg: string, ...args: any[]) => void };
 

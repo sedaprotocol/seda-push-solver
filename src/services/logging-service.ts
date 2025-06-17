@@ -17,7 +17,7 @@ export enum LogLevel {
  * Interface for logging operations
  * Allows mocking and controlling log output during testing
  */
-export interface ILoggingService {
+export interface LoggingServiceInterface {
   /**
    * Log an informational message
    */
@@ -52,7 +52,7 @@ export interface ILoggingService {
 /**
  * Production implementation using console
  */
-export class LoggingService implements ILoggingService {
+export class LoggingService implements LoggingServiceInterface {
   private logLevel: LogLevel = LogLevel.INFO;
 
   info(message: string, ...args: any[]): void {

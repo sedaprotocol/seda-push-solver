@@ -3,14 +3,8 @@
  * Centralized exports for utility functions
  */
 
-// Export hex conversion utilities (re-exported from centralized utils)
-export {
-  HexUtils,
-  hexBEToNumber,
-  hexBEToString,
-  add0x,
-  strip0x
-} from '../utils/hex';
+// Export hex conversion utilities
+export { HexUtils } from '../utils/hex';
 
 // Export timeout utilities
 export {
