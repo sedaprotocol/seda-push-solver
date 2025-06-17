@@ -1,22 +1,16 @@
 /**
- * Centralized Type Exports
- * All type definitions used throughout the application
+ * Unified Type Exports
+ * Centralized type exports for the entire application
  */
 
+// Core application types
+export * from './core';
+
+// SEDA network types
+export * from './seda';
+
+// EVM network types
+export * from './evm';
+
 // Configuration types
-export * from './config-types';
-
-// SEDA types
-export * from './seda-types';
-
-// EVM types  
-export * from './evm-types';
-
-// Batch types
-export * from './batch-types';
-
-// Scheduler types
-export * from './scheduler-types';
-
-// Re-export hex types for convenience
-export type { HexString } from '../utils/hex'; 
+export * from './config'; 

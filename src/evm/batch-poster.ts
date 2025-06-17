@@ -37,7 +37,7 @@ export class BatchPoster {
     proverAddress: string
   ): Promise<BatchPostingResult> {
     try {
-      this.logger.info(`📤 Posting batch ${batch.batchNumber} to ${network.displayName}...`);
+      this.logger.info(`Posting batch ${batch.batchNumber} to ${network.displayName}`);
       
       // Validate prerequisites
       const validationResult = this.validatePrerequisites(batch);
@@ -63,15 +63,15 @@ export class BatchPoster {
         signatureResult.proofs!
       );
 
-      this.logger.info(`✅ Successfully posted batch ${batch.batchNumber} to ${network.displayName}`);
-      this.logger.info(`🔗 TX Hash: ${txHash}`);
-      this.logger.info(`🌐 Explorer: ${this.getExplorerUrl(network, txHash)}`);
+      this.logger.info(`Successfully posted batch ${batch.batchNumber} to ${network.displayName}`);
+      this.logger.info(`TX Hash: ${txHash}`);
+      this.logger.info(`Explorer: ${this.getExplorerUrl(network, txHash)}`);
       
       return { success: true, txHash };
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error(`❌ Failed to post batch to ${network.displayName}:`, errorMessage);
+      this.logger.error(`Failed to post batch to ${network.displayName}: ${errorMessage}`);
       
       return { 
         success: false, 
@@ -114,7 +114,7 @@ export class BatchPoster {
     signatures?: HexString[];
     proofs?: Array<{ signer: HexString; votingPower: number; merkleProof: HexString[] }>;
   }> {
-    this.logger.debug(`🔐 Processing ${batch.batchSignatures!.length} signatures (${batch.validatorEntries!.length} validators)`);
+    this.logger.debug(`Processing ${batch.batchSignatures!.length} signatures (${batch.validatorEntries!.length} validators)`);
 
     // Generate merkle tree for validators
     const merkleGenerator = new MerkleProofGenerator(this.logger);
@@ -144,17 +144,17 @@ export class BatchPoster {
           validatorProofs.push(result.data.proof);
           ethereumSignatures.push(result.data.ethereumSignature);
           
-          this.logger.debug(`✅ Processed signature (power: ${result.data.votingPower})`);
+          this.logger.debug(`Processed signature (power: ${result.data.votingPower})`);
         } else {
-          this.logger.warn(`⚠️ Failed to process signature: ${result.error}`);
+          this.logger.warn(`Failed to process signature: ${result.error}`);
         }
       } catch (error) {
-        this.logger.warn(`⚠️ Failed to process signature: ${getErrorMessage(error)}`);
+        this.logger.warn(`Failed to process signature: ${getErrorMessage(error)}`);
       }
     }
 
     const powerPercent = (totalVotingPower / 1_000_000).toFixed(2);
-    this.logger.info(`🔐 Processed ${processedSignatures.length} signatures (${powerPercent}% voting power)`);
+    this.logger.info(`Processed ${processedSignatures.length} signatures (${powerPercent}% voting power)`);
 
     // Check consensus threshold
     if (totalVotingPower < CONSENSUS_PERCENTAGE) {
@@ -232,11 +232,11 @@ export class BatchPoster {
       data: {
         ethAddress: Buffer.from(validatorEntry.ethAddress),
         votingPower: votingPowerPercent,
-        ethereumSignature: HexUtils.addPrefix(ethereumSig.toString('hex')),
+        ethereumSignature: HexUtils.normalize(ethereumSig.toString('hex')),
         proof: {
-          signer: HexUtils.addPrefix(Buffer.from(validatorEntry.ethAddress).toString('hex')),
+          signer: HexUtils.normalize(Buffer.from(validatorEntry.ethAddress).toString('hex')),
           votingPower: votingPowerPercent,
-          merkleProof: proof.map((p: string) => HexUtils.addPrefix(p))
+          merkleProof: proof.map((p: string) => HexUtils.normalize(p))
         }
       }
     };
@@ -257,9 +257,9 @@ export class BatchPoster {
     return {
       batchHeight: BigInt(batch.batchNumber),
       blockHeight: BigInt(batch.blockHeight),
-      validatorsRoot: HexUtils.addPrefix(validatorRootHex),
-      resultsRoot: HexUtils.addPrefix(dataResultRootHex),
-      provingMetadata: HexUtils.addPrefix(
+      validatorsRoot: HexUtils.normalize(validatorRootHex),
+      resultsRoot: HexUtils.normalize(dataResultRootHex),
+      provingMetadata: HexUtils.normalize(
         Buffer.from(padBytes(Buffer.alloc(32), { size: 32 })).toString('hex')
       ),
     };

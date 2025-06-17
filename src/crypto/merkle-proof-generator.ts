@@ -95,7 +95,7 @@ export class MerkleProofGenerator {
     // Convert proof elements to proper hex format
     const formattedProof = proof.map((p: any) => {
       const hexString = typeof p === 'string' ? p : p.toString();
-      return HexUtils.addPrefix(HexUtils.stripPrefix(hexString));
+      return HexUtils.normalize(hexString);
     });
 
     this.logger.debug(`🔍 Generated merkle proof for validator ${validatorEthAddressHex}:`);
@@ -144,7 +144,7 @@ export class MerkleProofGenerator {
   ): boolean {
     try {
       // Convert to format expected by SimpleMerkleTree
-      const proofElements = proof.map(p => HexUtils.stripPrefix(p));
+      const proofElements = proof.map(p => p.startsWith('0x') ? p.slice(2) : p);
       
       // This is a simplified verification - in production you'd use the actual tree verification
       this.logger.debug(`🔍 Verifying proof: leaf=${leaf}, root=${root}, proofElements=${proofElements.length}`);

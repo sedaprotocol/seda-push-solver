@@ -10,7 +10,8 @@ import type { LoggingServiceInterface } from '../../services';
 import { getErrorMessage } from '../../helpers/error-utils';
 import { HexUtils } from '../../utils/hex';
 import { SedaBatchService } from '../../seda/batch-service';
-import { EvmBatchManager } from '../../evm/batch-manager';
+import { EvmOrchestrator } from '../../evm/orchestrator';
+import { getEnabledEvmNetworks } from '../../config/evm';
 
 /**
  * Post a DataRequest transaction to the SEDA network (just posting, no waiting)
@@ -88,13 +89,10 @@ export async function awaitDataRequestResult(
   if (result.result) {
     logger.info(`   📦 Result: ${result.result}`);
     
-    // Show numeric conversion if it looks like hex
+    // Show hex validation if it looks like hex
     if (typeof result.result === 'string' && /^(0x)?[0-9a-fA-F]+$/.test(result.result)) {
-      try {
-        const numericResult = HexUtils.toBigEndianNumber(result.result);
-        logger.info(`   🔢 Numeric: ${numericResult}`);
-      } catch (error) {
-        // Silent fail for conversion errors
+      if (HexUtils.validate(result.result)) {
+        logger.info(`   🔢 Valid hex format`);
       }
     }
   } else {
@@ -117,9 +115,9 @@ export async function awaitDataRequestResult(
       logger.info(`   🔢 Batch: ${batch.batchNumber} | Block: ${batch.blockHeight}`);
       logger.info(`   📊 Entries: ${batch.dataResultEntries?.length || 0} | Signatures: ${batch.batchSignatures?.length || 0} | Validators: ${batch.validatorEntries?.length || 0}`);
       
-      // Handle EVM batch posting using the batch manager
-      const evmBatchManager = new EvmBatchManager(logger);
-      const evmBatchResults = await evmBatchManager.handleBatch(batch);
+      // Handle EVM batch posting using the orchestrator
+      const evmOrchestrator = new EvmOrchestrator(logger, getEnabledEvmNetworks());
+      const evmBatchResults = await evmOrchestrator.processBatch(batch);
       
       // Log detailed results for each network
       if (evmBatchResults.length > 0) {
@@ -142,8 +140,11 @@ export async function awaitDataRequestResult(
     drId: result.drId,
     exitCode: result.exitCode,
     result: result.result,
-    blockHeight: Number(result.blockHeight),
-    gasUsed: result.gasUsed.toString()
+    drBlockHeight: result.drBlockHeight,
+    gasUsed: result.gasUsed,
+    paybackAddress: result.paybackAddress,
+    sedaPayload: result.sedaPayload,
+    versionId: result.version
   };
 }
 
