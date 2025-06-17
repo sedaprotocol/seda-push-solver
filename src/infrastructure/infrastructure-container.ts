@@ -5,7 +5,7 @@
 
 import type { ILoggingService } from '../services';
 import type { IProcessService, ITimerService, IHealthService } from './index';
-import { ProcessService, TimerService, HealthService, MockProcessService, MockTimerService, MockHealthService } from './index';
+import { ProcessService, TimerService, HealthService } from './index';
 
 /**
  * Infrastructure container interface
@@ -42,26 +42,7 @@ export class InfrastructureContainer implements IInfrastructureContainer {
     return new InfrastructureContainer(loggingService);
   }
 
-  /**
-   * Create a test infrastructure container with mock implementations
-   */
-  static createTest(
-    loggingService: ILoggingService,
-    processService?: IProcessService,
-    timerService?: ITimerService,
-    healthService?: IHealthService
-  ): InfrastructureContainer {
-    const mockTimer = timerService || new MockTimerService();
-    const mockProcess = processService || new MockProcessService();
-    const mockHealth = healthService || new MockHealthService(loggingService, mockTimer);
 
-    return new InfrastructureContainer(
-      loggingService,
-      mockProcess,
-      mockTimer,
-      mockHealth
-    );
-  }
 }
 
 /**

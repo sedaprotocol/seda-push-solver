@@ -173,8 +173,8 @@ export const sedaConfig: SedaConfig = (() => {
   return {
     network,
     rpcEndpoint: process.env.SEDA_RPC_ENDPOINT || getDefaultRpcEndpoint(network),
-    mnemonic: process.env.SEDA_MNEMONIC || 'test-mnemonic-for-testing-only',
-    oracleProgramId: process.env.SEDA_ORACLE_PROGRAM_ID || 'test-oracle-program-id-for-testing-only',
+    mnemonic: process.env.SEDA_MNEMONIC || '',
+    oracleProgramId: process.env.SEDA_ORACLE_PROGRAM_ID || '',
     drTimeoutSeconds: parseInt(process.env.SEDA_DR_TIMEOUT_SECONDS || '120'),
     drPollingIntervalSeconds: parseInt(process.env.SEDA_DR_POLLING_INTERVAL_SECONDS || '5'),
     scheduler: {
@@ -288,25 +288,48 @@ export function validateAllEvmNetworks(): void {
 }
 
 /**
- * Log configuration summary (without sensitive data)
+ * Get configuration summary (for logging by external service)
  */
-export function logConfigSummary(): void {
-  console.log('\n📋 Configuration Summary:');
-  console.log('├─ SEDA Network:', sedaConfig.network);
-  console.log('├─ SEDA RPC:', sedaConfig.rpcEndpoint);
-  console.log('├─ Scheduler Interval:', `${sedaConfig.scheduler.intervalMs}ms`);
-  console.log('├─ Continuous Mode:', sedaConfig.scheduler.continuous);
-  console.log('├─ Max Retries:', sedaConfig.scheduler.maxRetries);
-  console.log('├─ EVM Private Key:', evmPrivateKey ? '✅ Configured' : '❌ Missing');
-  console.log('├─ EVM Networks Found:', evmNetworks.length);
-  
+export function getConfigSummary(): {
+  seda: {
+    network: string;
+    rpcEndpoint: string;
+    schedulerIntervalMs: number;
+    continuousMode: boolean;
+    maxRetries: number;
+  };
+  evm: {
+    privateKeyConfigured: boolean;
+    networksFound: number;
+    networksEnabled: number;
+    enabledNetworks: Array<{
+      name: string;
+      displayName: string;
+      chainId: number;
+      gasType: string;
+    }>;
+  };
+} {
   const enabledNetworks = getEnabledEvmNetworks();
-  console.log('└─ EVM Networks Enabled:', enabledNetworks.length);
   
-  enabledNetworks.forEach((network, index) => {
-    const isLast = index === enabledNetworks.length - 1;
-    const prefix = isLast ? '   └─' : '   ├─';
-    const gasType = network.gas.useEIP1559 ? 'EIP-1559' : 'Legacy';
-    console.log(`${prefix} ${network.displayName} (Chain ID: ${network.chainId}, Gas: ${gasType})`);
-  });
+  return {
+    seda: {
+      network: sedaConfig.network,
+      rpcEndpoint: sedaConfig.rpcEndpoint,
+      schedulerIntervalMs: sedaConfig.scheduler.intervalMs,
+      continuousMode: sedaConfig.scheduler.continuous,
+      maxRetries: sedaConfig.scheduler.maxRetries,
+    },
+    evm: {
+      privateKeyConfigured: !!evmPrivateKey,
+      networksFound: evmNetworks.length,
+      networksEnabled: enabledNetworks.length,
+      enabledNetworks: enabledNetworks.map(network => ({
+        name: network.name,
+        displayName: network.displayName,
+        chainId: network.chainId,
+        gasType: network.gas.useEIP1559 ? 'EIP-1559' : 'Legacy'
+      }))
+    }
+  };
 } 

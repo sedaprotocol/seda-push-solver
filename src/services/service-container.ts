@@ -40,22 +40,7 @@ export class ServiceContainer implements IServiceContainer {
     return new ServiceContainer();
   }
 
-  /**
-   * Create a test service container with mock implementations
-   */
-  static createTest(
-    sedaService?: ISEDAService,
-    configService?: IConfigService,
-    loggingService?: ILoggingService
-  ): ServiceContainer {
-    const { MockSEDAService, MockConfigService, MockLoggingService } = require('./index');
-    
-    return new ServiceContainer(
-      sedaService || new MockSEDAService(),
-      configService || new MockConfigService(),
-      loggingService || new MockLoggingService()
-    );
-  }
+
 }
 
 /**

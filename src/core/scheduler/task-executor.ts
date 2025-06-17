@@ -266,7 +266,9 @@ export class TaskExecutor {
     try {
       const awaitOptions = {
         timeoutSeconds: networkConfig.dataRequest.timeoutSeconds,
-        pollingIntervalSeconds: networkConfig.dataRequest.pollingIntervalSeconds
+        pollingIntervalSeconds: networkConfig.dataRequest.pollingIntervalSeconds,
+        maxBatchRetries: networkConfig.dataRequest.maxBatchRetries || 5,
+        batchPollingIntervalMs: networkConfig.dataRequest.batchPollingIntervalMs || 5000
       };
 
       const queryConfig = { rpc: builderConfig.rpcEndpoint };

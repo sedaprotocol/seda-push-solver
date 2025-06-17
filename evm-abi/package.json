@@ -1,8 +1,0 @@
-{
-	"name": "@seda-protocol/solver-evm-abi",
-	"main": "src/index.ts",
-	"type": "module",
-	"dependencies": {
-		"@seda-protocol/evm": "1.0.0-rc.2"
-	}
-}
