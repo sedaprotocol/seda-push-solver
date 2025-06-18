@@ -8,6 +8,7 @@ import type { SEDADataRequestBuilder } from '../data-request';
 import type { SchedulerConfig } from '../../types';
 import { executeWithRetry } from './retry-handler';
 import { UniqueMemoGenerator } from './unique-memo-generator';
+import { DataRequestPerformanceTracker, STEP_NAMES } from './performance-tracker';
 import { 
   CosmosSequenceCoordinator, 
   type SequencedPosting, 
@@ -42,7 +43,8 @@ export class TaskExecutor {
     builder: SEDADataRequestBuilder,
     config: SchedulerConfig,
     isRunning: () => boolean,
-    completionHandler: TaskCompletionHandler
+    completionHandler: TaskCompletionHandler,
+    performanceTracker?: DataRequestPerformanceTracker
   ): Promise<AsyncTaskResult> {
     const startTime = this.getTimestamp();
     
@@ -53,10 +55,16 @@ export class TaskExecutor {
       this.logger.info(`⏱️  TASK START: Beginning execution at ${new Date(startTime).toLocaleTimeString()}`);
 
       // Get network configuration
+      performanceTracker?.startStep(taskId, STEP_NAMES.PROCESS);
+      
       const builderConfig = builder.getConfig();
       const networkConfig = getSedaNetworkConfig(builderConfig.network);
 
+      performanceTracker?.endStep(taskId, STEP_NAMES.PROCESS);
+
       // Phase 1: POST ONLY (coordinated by sequence)
+      performanceTracker?.startStep(taskId, STEP_NAMES.POSTING);
+      
       const postingStartTime = this.getTimestamp();
       this.logger.info(`📋 PHASE 1: Starting posting phase at ${new Date(postingStartTime).toLocaleTimeString()}`);
       
@@ -72,10 +80,12 @@ export class TaskExecutor {
       const postingDuration = postingEndTime - postingStartTime;
       
       if (!postingResult.success || !postingResult.result) {
+        performanceTracker?.failStep(taskId, STEP_NAMES.POSTING, 'Posting failed');
         this.logger.error(`❌ PHASE 1 FAILED: Posting failed after ${postingDuration}ms (${(postingDuration/1000).toFixed(2)}s)`);
         return this.handlePostingFailure(taskId, postingResult, startTime, completionHandler);
       }
 
+      performanceTracker?.endStep(taskId, STEP_NAMES.POSTING);
       this.logger.info(`✅ PHASE 1 COMPLETE: Posting succeeded in ${postingDuration}ms (${(postingDuration/1000).toFixed(2)}s)`);
 
       // Phase 2: IMMEDIATE return after successful posting
@@ -121,7 +131,8 @@ export class TaskExecutor {
         builderConfig,
         startTime,
         postingResult.sequence,
-        completionHandler
+        completionHandler,
+        performanceTracker
       );
 
       // Return the posting success result
@@ -233,7 +244,8 @@ export class TaskExecutor {
     builderConfig: any,
     taskStartTime: number,
     sequenceNumber: number,
-    completionHandler: TaskCompletionHandler
+    completionHandler: TaskCompletionHandler,
+    performanceTracker?: DataRequestPerformanceTracker
   ): void {
     // Start oracle awaiting in background - don't await this!
     this.executeOracleAwaitingAsync(
@@ -243,7 +255,8 @@ export class TaskExecutor {
       builderConfig,
       taskStartTime,
       sequenceNumber,
-      completionHandler
+      completionHandler,
+      performanceTracker
     ).catch(error => {
       this.logger.error(`❌ Background oracle awaiting failed for ${taskId}:`, error);
     });
@@ -261,7 +274,8 @@ export class TaskExecutor {
     builderConfig: any,
     taskStartTime: number,
     sequenceNumber: number,
-    completionHandler: TaskCompletionHandler
+    completionHandler: TaskCompletionHandler,
+    performanceTracker?: DataRequestPerformanceTracker
   ): Promise<void> {
     try {
       const awaitOptions = {
@@ -275,14 +289,16 @@ export class TaskExecutor {
 
       this.logger.info(`⏳ BACKGROUND: Awaiting oracle execution for ${postedData.drId}...`);
 
-      // Wait for oracle execution
+      // Wait for oracle execution with detailed timing
       const executionResult = await awaitDataRequestResult(
         queryConfig,
         postedData.drId,
         postedData.blockHeight,
         awaitOptions,
         networkConfig,
-        this.logger
+        this.logger,
+        performanceTracker,
+        taskId
       );
       
       const completedAt = this.getTimestamp();

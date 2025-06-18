@@ -30,6 +30,7 @@ export class SedaBatchService {
     maxRetries: number = 10,
     pollingIntervalMs: number = 3000
   ): Promise<SignedBatch | null> {
+
     try {
       // Get DataResult with batch assignment
       const dataResult = await this.getDataResult(drId, blockHeight);
