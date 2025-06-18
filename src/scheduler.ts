@@ -6,12 +6,12 @@
  */
 
 import { SEDADataRequestBuilder } from './core/data-request';
-import { formatSchedulerConfig, buildSchedulerConfig } from './core/scheduler';
+import { formatSchedulerConfig, buildSchedulerConfig } from './config';
 import { SchedulerCore } from './core/scheduler/scheduler-core';
 import type { SchedulerConfig, SchedulerStats } from './types';
 import type { TimerServiceInterface, ProcessServiceInterface } from './infrastructure';
 import type { LoggingService } from './services';
-import { loadSEDAConfig } from './core/data-request';
+import { loadSEDAConfig } from './config';
 
 /**
  * SEDA DataRequest Scheduler

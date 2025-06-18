@@ -57,47 +57,4 @@ export function validateEvmNetworkConfig(config: EvmNetworkConfig): void {
   if (config.gas.gasLimit < 21000) {
     throw new Error(`Gas limit must be at least 21000 for ${config.name}`);
   }
-}
-
-/**
- * Validate gas configuration
- */
-export function validateGasConfig(gasPrice: bigint, gasLimit: number, networkName: string): void {
-  if (gasPrice <= 0n) {
-    throw new Error(`Gas price must be positive for ${networkName}`);
-  }
-
-  if (gasLimit <= 0) {
-    throw new Error(`Gas limit must be positive for ${networkName}`);
-  }
-}
-
-/**
- * Validate Oracle Program ID format
- */
-export function validateOracleProgramId(programId: string): boolean {
-  // Basic validation - Oracle Program ID should be a hex string
-  return /^[a-fA-F0-9]+$/.test(programId) && programId.length > 0;
-}
-
-/**
- * Validate network connectivity (async)
- */
-export async function validateNetworkConnectivity(rpcEndpoint: string): Promise<boolean> {
-  try {
-    const response = await fetch(rpcEndpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        jsonrpc: '2.0',
-        method: 'status',
-        id: 1
-      }),
-      signal: AbortSignal.timeout(5000) // 5 second timeout
-    });
-    
-    return response.ok;
-  } catch {
-    return false;
-  }
 } 

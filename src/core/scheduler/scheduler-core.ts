@@ -4,7 +4,9 @@
  */
 
 import { 
-  buildSchedulerConfig, 
+  buildSchedulerConfig
+} from '../../config';
+import {
   SchedulerStatistics,
   TaskManager,
   SchedulerTaskCompletionHandler

@@ -4,7 +4,7 @@
  */
 
 import { Signer } from '@seda-protocol/dev-tools';
-import { getNetworkConfig } from '../network';
+import { getSedaNetworkConfig } from '../../config';
 import { 
   buildDataRequestInput, 
   buildGasOptions, 
@@ -68,7 +68,7 @@ export class SEDADataRequestBuilder {
 
     try {
       // Get network-specific DataRequest configuration
-      const networkConfig = getNetworkConfig(this.config.network);
+      const networkConfig = getSedaNetworkConfig(this.config.network);
       const drConfig = networkConfig.dataRequest;
 
       // Build the PostDataRequestInput using the modular function

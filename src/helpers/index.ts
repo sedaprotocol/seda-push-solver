@@ -3,8 +3,8 @@
  * Centralized exports for utility functions
  */
 
-// Export hex conversion utilities
-export { HexUtils } from '../utils/hex';
+// Export hex conversion utilities  
+export * from '../utils/hex';
 
 // Export timeout utilities
 export {

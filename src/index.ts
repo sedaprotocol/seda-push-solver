@@ -5,9 +5,13 @@
 
 // Export core functionality
 export {
-  SEDADataRequestBuilder,
-  loadSEDAConfig
+  SEDADataRequestBuilder
 } from './core/data-request';
+
+// Export configuration functions
+export {
+  loadSEDAConfig
+} from './config';
 
 // Export scheduler
 export {

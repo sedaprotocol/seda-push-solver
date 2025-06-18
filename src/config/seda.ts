@@ -170,4 +170,12 @@ export const sedaConfig: SedaConfig = {
   logging: {
     level: getEnvVar('LOG_LEVEL', 'info') as SedaConfig['logging']['level']
   }
-}; 
+};
+
+/**
+ * Load SEDA configuration from environment variables
+ * Centralized function that replaces the old config-loader.ts
+ */
+export function loadSEDAConfig(): SedaConfig {
+  return sedaConfig;
+} 

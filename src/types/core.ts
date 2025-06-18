@@ -2,7 +2,8 @@
  * Core Application Types
  */
 
-export type HexString = `0x${string}`;
+import type { HexString } from '../utils/hex';
+export type { HexString };
 
 // Logging types to replace any[] usage
 export type LoggingArgs = Array<string | number | boolean | object | Error>;
