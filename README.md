@@ -1,8 +1,6 @@
 # SEDA Push Solver
-
+git add
 A robust TypeScript-based **SEDA Oracle Push Solver** for enterprise-grade Oracle integrations. This system posts DataRequests to the SEDA oracle network, orchestrates EVM integrations across multiple chains, and provides comprehensive batch processing with advanced reliability features.
-
-**🚀 Recently Refactored**: Enhanced with improved type safety, consolidated configuration management, and streamlined architecture for better maintainability.
 
 ## 🌟 Features
 
@@ -319,22 +317,6 @@ npm run test:coverage
 - **Integration Tests**: End-to-end workflow testing
 - **Type Tests**: TypeScript compilation and type safety
 - **Mock Services**: Isolated testing with mock implementations
-
-## 📊 Recent Improvements
-
-### ✅ **Refactoring Achievements**
-- **11+ `any` types eliminated** - Improved type safety throughout
-- **Configuration consolidated** - Moved from 3 fragmented files to organized config module
-- **Legacy code removed** - Cleaned up deprecated interfaces and functions
-- **Service architecture enhanced** - Better dependency injection and testing support
-- **Build errors resolved** - From 36 errors down to 0 (clean build)
-- **Backward compatibility maintained** - All existing APIs still work
-
-### 🚀 **Performance & Reliability**
-- **Enhanced error handling** - Structured error types with proper context
-- **Improved logging** - Structured logging with configurable levels
-- **Better resource management** - Proper cleanup and graceful shutdown
-- **Optimized batch processing** - More efficient signature and proof handling
 
 ## 🔗 Requirements
 
