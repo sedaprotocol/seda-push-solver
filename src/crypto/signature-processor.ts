@@ -6,7 +6,7 @@
 import { ExtendedSecp256k1Signature, Secp256k1 } from '@cosmjs/crypto';
 import { keccak256, encodePacked, toHex } from 'viem';
 import type { LoggingServiceInterface } from '../services';
-import type { SignedBatch, ProcessedSignature, ValidatorEntry, BatchSignature } from '../types';
+import type { SignedBatch, ProcessedSignature, ValidatorEntry, BatchSignature } from '../types/batch-types';
 import { HexUtils, type HexString } from '../utils/hex';
 import { BYTE_LENGTHS, ETHEREUM_RECOVERY_OFFSET } from './constants';
 import { getErrorMessage } from '../helpers/error-utils';
@@ -115,7 +115,8 @@ export class SignatureProcessor {
 
       // Convert proof elements to proper format
       const formattedProof = validatorTreeProof.map((p: HexString) => {
-        return Buffer.from(HexUtils.stripPrefix(p), 'hex');
+        const normalized = HexUtils.normalize(p);
+        return Buffer.from(normalized.slice(2), 'hex'); // Remove '0x' prefix
       });
 
       // Ensure votingPowerPercent is a proper number
@@ -214,7 +215,7 @@ export class SignatureProcessor {
 
     // Extract Ethereum signatures in sorted order
     const ethereumSignatures = sortedSignatures
-      .map(sig => HexUtils.addPrefix(sig.signature.toString('hex')));
+      .map(sig => HexUtils.normalize(sig.signature.toString('hex')));
 
     const consensusReached = totalVotingPower >= CONSENSUS_PERCENTAGE;
 

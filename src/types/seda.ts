@@ -2,6 +2,33 @@
  * SEDA Network Types
  */
 
+export type NetworkType = 'testnet' | 'mainnet' | 'local';
+
+// Legacy alias for compatibility
+export interface SEDAConfig {
+  rpcEndpoint: string;
+  network: NetworkType;
+  mnemonic?: string;
+}
+
+export interface SEDADataRequestConfig {
+  oracleProgramId: string;
+  replicationFactor: number;
+  execGasLimit: bigint;
+  gasPrice: bigint;
+  consensusOptions: any;
+  timeoutSeconds: number;
+  pollingIntervalSeconds: number;
+  memo: string;
+  maxBatchRetries: number;
+  batchPollingIntervalMs: number;
+}
+
+export interface DataRequestOptions {
+  memo?: string;
+  customTimeout?: number;
+}
+
 export interface SedaConfig {
   network: 'testnet' | 'mainnet' | 'local';
   rpcEndpoint: string;
@@ -24,16 +51,7 @@ export interface SedaConfig {
   };
 }
 
-export interface SignedBatch {
-  batchNumber: number;
-  blockHeight: number;
-  batchId: Buffer | string;
-  dataResultRoot: Buffer | string;
-  validatorRoot: Buffer | string;
-  dataResultEntries?: any[];
-  batchSignatures?: any[];
-  validatorEntries?: any[];
-}
+
 
 export interface NetworkConfig {
   name: string;

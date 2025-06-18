@@ -123,6 +123,25 @@ export class BatchPoster {
       '0x01' // SECP256K1_DOMAIN_SEPARATOR
     );
 
+    // CRITICAL: Validate that our locally generated merkle root matches the batch's validator root
+    const localValidatorRoot = merkleGenerator.getTreeRoot(validatorTree);
+    const batchValidatorRoot = typeof batch.validatorRoot === 'string' 
+      ? HexUtils.normalize(batch.validatorRoot)
+      : HexUtils.normalize(Buffer.from(batch.validatorRoot).toString('hex'));
+
+    this.logger.info(`🔍 Validator Root Validation:`);
+    this.logger.info(`   Local root:  ${localValidatorRoot}`);
+    this.logger.info(`   Batch root:  ${batchValidatorRoot}`);
+
+    if (localValidatorRoot.toLowerCase() !== batchValidatorRoot.toLowerCase()) {
+      return {
+        success: false,
+        error: `Validator root mismatch! Local: ${localValidatorRoot}, Batch: ${batchValidatorRoot}. This indicates a problem with validator data structure or merkle tree generation.`
+      };
+    }
+
+    this.logger.info(`✅ Validator root validation passed - proofs will be valid`);
+
     let totalVotingPower = 0;
     const processedSignatures: any[] = [];
     const validatorProofs: any[] = [];
@@ -296,19 +315,19 @@ export class BatchPoster {
     this.logger.debug(`🔍 Simulating transaction on ${network.displayName}...`);
 
     // Simulate the transaction first
-    try {
-      await publicClient.simulateContract({
-        account,
-        address: proverAddress as `0x${string}`,
-        abi: ABI_SECP256K1_PROVER_V1,
-        functionName: 'postBatch',
-        args: [evmBatch, signatures, proofs]
-      });
-    } catch (error) {
-      throw new Error(`Simulation failed: ${getErrorMessage(error)}`);
-    }
+    // try {
+    //   await publicClient.simulateContract({
+    //     account,
+    //     address: proverAddress as `0x${string}`,
+    //     abi: ABI_SECP256K1_PROVER_V1,
+    //     functionName: 'postBatch',
+    //     args: [evmBatch, signatures, proofs]
+    //   });
+    // } catch (error) {
+    //   throw new Error(`Simulation failed: ${getErrorMessage(error)}`);
+    // }
 
-    this.logger.debug(`✅ Simulation successful, executing on ${network.displayName}...`);
+    // this.logger.debug(`✅ Simulation successful, executing on ${network.displayName}...`);
 
     // Execute the transaction
     const txHash = await walletClient.writeContract({

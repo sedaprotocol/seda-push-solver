@@ -141,13 +141,17 @@ export class DataRequestClient {
     }
     this.logger.info('└─────────────────────────────────────────────────────────────────────┘');
     
-    return {
-      drId: result.drId,
-      exitCode: result.exitCode,
-      result: result.result,
-      blockHeight: Number(result.blockHeight),
-      gasUsed: result.gasUsed.toString()
-    };
+      return {
+        drId: result.drId,
+        drBlockHeight: BigInt(result.blockHeight || 0),
+        exitCode: result.exitCode,
+        gasUsed: BigInt(result.gasUsed || '0'),
+        result: result.result || '',
+        paybackAddress: result.paybackAddress || '',
+        sedaPayload: result.sedaPayload || '',
+        version: result.version || '',
+        blockTimestamp: BigInt(result.blockTimestamp ? result.blockTimestamp.getTime() / 1000 : 0)
+      };
   }
 
   /**

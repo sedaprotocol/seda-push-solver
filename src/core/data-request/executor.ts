@@ -75,23 +75,23 @@ export async function awaitDataRequestResult(
   const dataRequest = { id: drId, height: blockHeight };
   
   // Wait for DataRequest execution to complete
-  const result = await awaitDataResult(queryConfig, dataRequest, {
+  const rawResult = await awaitDataResult(queryConfig, dataRequest, {
     timeoutSeconds: awaitOptions.timeoutSeconds,
     pollingIntervalSeconds: awaitOptions.pollingIntervalSeconds
   });
   
   // Clean, structured results display
   logger.info('✅ DataRequest completed');
-  logger.info(`   📋 Request ID: ${result.drId}`);
-  logger.info(`   📊 Exit Code: ${result.exitCode} | Gas: ${result.gasUsed} | Block: ${result.drBlockHeight}`);
+  logger.info(`   📋 Request ID: ${rawResult.drId}`);
+  logger.info(`   📊 Exit Code: ${rawResult.exitCode} | Gas: ${rawResult.gasUsed} | Block: ${rawResult.drBlockHeight}`);
   
   // Handle result data display
-  if (result.result) {
-    logger.info(`   📦 Result: ${result.result}`);
+  if (rawResult.result) {
+    logger.info(`   📦 Result: ${rawResult.result}`);
     
     // Show hex validation if it looks like hex
-    if (typeof result.result === 'string' && /^(0x)?[0-9a-fA-F]+$/.test(result.result)) {
-      if (HexUtils.validate(result.result)) {
+    if (typeof rawResult.result === 'string' && /^(0x)?[0-9a-fA-F]+$/.test(rawResult.result)) {
+      if (HexUtils.validate(rawResult.result)) {
         logger.info(`   🔢 Valid hex format`);
       }
     }
@@ -100,7 +100,7 @@ export async function awaitDataRequestResult(
   }
   
   if (networkConfig.explorerEndpoint) {
-    logger.info(`   🔗 Explorer: ${networkConfig.explorerEndpoint}/data-requests/${result.drId}/${result.drBlockHeight}`);
+    logger.info(`   🔗 Explorer: ${networkConfig.explorerEndpoint}/data-requests/${rawResult.drId}/${rawResult.drBlockHeight}`);
   }
   
   // Fetch batch assignment and batch information from SEDA chain
@@ -115,20 +115,43 @@ export async function awaitDataRequestResult(
       logger.info(`   🔢 Batch: ${batch.batchNumber} | Block: ${batch.blockHeight}`);
       logger.info(`   📊 Entries: ${batch.dataResultEntries?.length || 0} | Signatures: ${batch.batchSignatures?.length || 0} | Validators: ${batch.validatorEntries?.length || 0}`);
       
-      // Handle EVM batch posting using the orchestrator
+
+      // Handle EVM batch posting and result posting using the orchestrator
       const evmOrchestrator = new EvmOrchestrator(logger, getEnabledEvmNetworks());
-      const evmBatchResults = await evmOrchestrator.processBatch(batch);
+      const evmBatchResults = await evmOrchestrator.processBatch(batch, {
+        drId: rawResult.drId,
+        exitCode: rawResult.exitCode,
+        result: rawResult.result,
+        drBlockHeight: rawResult.drBlockHeight,
+        gasUsed: rawResult.gasUsed,
+        paybackAddress: rawResult.paybackAddress,
+        sedaPayload: rawResult.sedaPayload,
+        version: rawResult.version,
+        blockTimestamp: BigInt(rawResult.blockTimestamp instanceof Date ? rawResult.blockTimestamp.getTime() : Number(rawResult.blockTimestamp))
+      });
       
       // Log detailed results for each network
       if (evmBatchResults.length > 0) {
-        logger.info('🌐 EVM batch status:');
-        for (const result of evmBatchResults) {
-          const status = result.batchExists ? '✅ EXISTS' : '❌ MISSING';
-          const lastHeight = result.lastBatchHeight !== null ? result.lastBatchHeight.toString() : 'N/A';
-          const postInfo = result.posted !== undefined ? (result.posted ? ' | 🚀 POSTED' : ' | ⚠️ POST FAILED') : '';
-          const txInfo = result.txHash ? ` | TX: ${result.txHash}` : '';
-          const errorInfo = result.error ? ` | Error: ${result.error}` : '';
-          logger.info(`   ${result.networkName}: ${status} | Last Height: ${lastHeight}${postInfo}${txInfo}${errorInfo}`);
+        logger.info('🌐 EVM Processing Results:');
+        for (const networkResult of evmBatchResults) {
+          // Batch status
+          const batchStatus = networkResult.batchExists ? '✅ EXISTS' : '❌ MISSING';
+          const lastHeight = networkResult.lastBatchHeight !== null ? networkResult.lastBatchHeight.toString() : 'N/A';
+          const batchPostInfo = networkResult.posted !== undefined ? (networkResult.posted ? ' | 🚀 POSTED' : ' | ⚠️ POST FAILED') : '';
+          const batchTxInfo = networkResult.txHash ? ` | TX: ${networkResult.txHash}` : '';
+          const batchErrorInfo = networkResult.error ? ` | Error: ${networkResult.error}` : '';
+          
+          logger.info(`   📦 ${networkResult.networkName} Batch: ${batchStatus} | Height: ${lastHeight}${batchPostInfo}${batchTxInfo}${batchErrorInfo}`);
+          
+          // Result status (if attempted)
+          if (networkResult.resultPosted !== undefined) {
+            const resultStatus = networkResult.resultPosted ? '✅ POSTED' : '❌ FAILED';
+            const resultTxInfo = networkResult.resultTxHash ? ` | TX: ${networkResult.resultTxHash}` : '';
+            const resultIdInfo = networkResult.resultId ? ` | ID: ${networkResult.resultId}` : '';
+            const resultErrorInfo = networkResult.resultError ? ` | Error: ${networkResult.resultError}` : '';
+            
+            logger.info(`   📋 ${networkResult.networkName} Result: ${resultStatus}${resultTxInfo}${resultIdInfo}${resultErrorInfo}`);
+          }
         }
       }
     }
@@ -137,14 +160,15 @@ export async function awaitDataRequestResult(
   }
   
   return {
-    drId: result.drId,
-    exitCode: result.exitCode,
-    result: result.result,
-    drBlockHeight: result.drBlockHeight,
-    gasUsed: result.gasUsed,
-    paybackAddress: result.paybackAddress,
-    sedaPayload: result.sedaPayload,
-    versionId: result.version
+    drId: rawResult.drId,
+    exitCode: rawResult.exitCode,
+    result: rawResult.result,
+    drBlockHeight: rawResult.drBlockHeight,
+    gasUsed: rawResult.gasUsed,
+    paybackAddress: rawResult.paybackAddress,
+    sedaPayload: rawResult.sedaPayload,
+    version: rawResult.version,
+    blockTimestamp: BigInt(rawResult.blockTimestamp instanceof Date ? rawResult.blockTimestamp.getTime() : Number(rawResult.blockTimestamp))
   };
 }
 

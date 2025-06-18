@@ -71,6 +71,14 @@ export class HexUtils {
     
     return `0x${cleaned}` as HexString;
   }
+
+  /**
+   * Convert big-endian hex string to number
+   */
+  static toBigEndianNumber(hex: string): number {
+    const normalized = HexUtils.normalize(hex);
+    return parseInt(normalized, 16);
+  }
 }
 
 // Note: Legacy exports removed in Phase 3 refactoring - use HexUtils class methods directly 

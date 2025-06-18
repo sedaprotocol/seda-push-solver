@@ -10,12 +10,9 @@ export { evmPrivateKey, evmNetworks, getEnabledEvmNetworks, getEvmNetwork } from
 // Re-export types
 export type { EvmNetworkConfig, EvmGasConfig } from './src/types/evm';
 export type { SedaConfig } from './src/types/seda';
-export type { ConfigSummary } from './src/types/config';
 
 // Import for validation functions
 import type { EvmNetworkConfig } from './src/types/evm';
-import type { SedaConfig } from './src/types/seda';
-import type { ConfigSummary } from './src/types/config';
 import { evmPrivateKey, evmNetworks, getEnabledEvmNetworks } from './src/config/evm';
 import { sedaConfig } from './src/config/seda';
 
@@ -51,23 +48,4 @@ export function validateAllEvmNetworks(): void {
   }
 }
 
-/**
- * Get configuration summary (for logging by external service)
- */
-export function getConfigSummary(): ConfigSummary {
-  const enabledNetworks = getEnabledEvmNetworks();
-  
-  return {
-    seda: {
-      network: sedaConfig.network,
-      rpcEndpoint: sedaConfig.rpcEndpoint,
-      oracleProgramId: sedaConfig.oracleProgramId,
-      schedulerInterval: sedaConfig.scheduler.intervalMs
-    },
-    evm: {
-      networksConfigured: evmNetworks.length,
-      networksEnabled: enabledNetworks.length,
-      privateKeyConfigured: !!evmPrivateKey
-    }
-  };
-} 
+ 

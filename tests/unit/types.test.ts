@@ -13,10 +13,14 @@ const testConfig: SEDAConfig = {
 
 const testResult: DataRequestResult = {
   drId: 'test-id',
+  drBlockHeight: 12345n,
   exitCode: 0,
+  gasUsed: 100000n,
   result: 'test-result',
-  blockHeight: 12345,
-  gasUsed: '100000'
+  paybackAddress: 'test-address',
+  sedaPayload: 'test-payload',
+  version: 'test-version',
+  blockTimestamp: 1640995200000n
 };
 
 const testOptions: DataRequestOptions = {
