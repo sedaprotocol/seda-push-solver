@@ -1,6 +1,7 @@
 /**
  * Task Manager for SEDA DataRequest Scheduler
  * Achieves optimal posting performance by separating timer intervals from posting execution
+ * Refactored to use extracted task management modules
  */
 
 import type { LoggingService } from '../../services';
@@ -16,6 +17,10 @@ import { TaskRegistry } from './task-registry';
 import { TaskExecutor } from './task-executor';
 import { DataRequestPerformanceTracker } from './performance-tracker';
 
+// Task management modules
+import { TaskQueue, type QueueStats } from './task-management';
+import { TaskCompletionManager } from './task-management';
+
 /**
  * Task Manager
  * Key design: Timer intervals are not blocked by posting execution
@@ -26,11 +31,10 @@ export class TaskManager {
   private registry: TaskRegistry;
   private executor: TaskExecutor;
   private performanceTracker: DataRequestPerformanceTracker;
-  private taskQueue: Array<{
-    taskId: string;
-    requestNumber: number;
-    timestamp: number;
-  }> = [];
+  
+  // Task management modules
+  private taskQueue: TaskQueue;
+  private completionManager: TaskCompletionManager;
 
   constructor(
     private logger: LoggingService,
@@ -41,6 +45,10 @@ export class TaskManager {
     this.registry = new TaskRegistry(this.logger, this.getTimestamp);
     this.executor = new TaskExecutor(this.logger, this.sequenceCoordinator, this.registry, this.getTimestamp);
     this.performanceTracker = new DataRequestPerformanceTracker();
+    
+    // Initialize task management modules
+    this.taskQueue = new TaskQueue(this.logger, this.getTimestamp);
+    this.completionManager = new TaskCompletionManager(this.logger);
   }
 
   /**
@@ -80,15 +88,19 @@ export class TaskManager {
     // Start performance tracking
     this.performanceTracker.startTracking(taskId, requestNumber);
     
-    // Add to queue (this is instant)
-    this.taskQueue.push({
-      taskId,
-      requestNumber,
-      timestamp: this.getTimestamp()
-    });
+    // Add to queue using the queue module
+    this.taskQueue.enqueue(taskId, requestNumber);
 
     // Register the task
     this.registry.registerTask(taskId, config.memo);
+
+    // Create completion handler using the completion manager
+    const enhancedCompletionHandler = this.completionManager.createCompletionHandler(
+      taskId,
+      statistics,
+      this.performanceTracker,
+      completionHandler
+    );
 
     // Start processing the task in the background (fire and forget)
     this.processTaskInBackground(
@@ -97,36 +109,7 @@ export class TaskManager {
       builder,
       config,
       isRunning,
-      {
-        onSuccess: (result: AsyncTaskResult) => {
-          if (result.result && result.result.type === 'posted') {
-            // This is a posting success - increment posted counter
-            statistics.recordPosted();
-            this.logger.info(`📤 POSTED SUCCESSFULLY: ${result.taskId} (DR: ${result.drId})`);
-          } else if (result.result && result.result.type === 'oracle_completed') {
-            // This is an oracle completion - complete performance tracking
-            if (result.drId) {
-              this.performanceTracker.completeRequest(result.taskId, result.drId);
-              this.performanceTracker.logRequestPerformance(result.taskId, this.logger);
-            }
-            this.logger.info(`✅ ORACLE COMPLETED: ${result.taskId} (DR: ${result.drId})`);
-          }
-          completionHandler.onSuccess(result);
-        },
-        onFailure: (result: AsyncTaskResult) => {
-          // Mark performance tracking as failed
-          const errorMsg = typeof result.error === 'string' ? result.error : 'Unknown error';
-          this.performanceTracker.failRequest(result.taskId, errorMsg);
-          
-          if (result.drId) {
-            // Only log oracle failures, failure counter handled by completion handler
-            this.logger.info(`❌ ORACLE FAILED: ${result.taskId} (DR: ${result.drId})`);
-          } else {
-            this.logger.info(`❌ POSTING FAILED: ${result.taskId}`);
-          }
-          completionHandler.onFailure(result);
-        }
-      }
+      enhancedCompletionHandler
     );
 
     return taskId;
@@ -157,8 +140,8 @@ export class TaskManager {
     } catch (error) {
       this.logger.error(`❌ Background task processing failed for ${taskId}:`, error instanceof Error ? error : String(error));
     } finally {
-      // Remove from queue when done
-      this.taskQueue = this.taskQueue.filter(task => task.taskId !== taskId);
+      // Remove from queue when done using the queue module
+      this.taskQueue.dequeue(taskId);
     }
   }
 
@@ -166,14 +149,14 @@ export class TaskManager {
    * Get count of active tasks (both queued and executing)
    */
   getActiveTaskCount(): number {
-    return this.taskQueue.length;
+    return this.taskQueue.getSize();
   }
 
   /**
    * Get queue size
    */
   getQueueSize(): number {
-    return this.taskQueue.length;
+    return this.taskQueue.getSize();
   }
 
   /**
@@ -219,24 +202,17 @@ export class TaskManager {
   }
 
   /**
-   * Get queue statistics
+   * Get queue statistics using the queue module
    */
-  getQueueStats() {
-    const now = this.getTimestamp();
-    const queueAges = this.taskQueue.map(task => now - task.timestamp);
-    
-    return {
-      queueSize: this.taskQueue.length,
-      oldestTaskAge: queueAges.length > 0 ? Math.max(...queueAges) : 0,
-      averageTaskAge: queueAges.length > 0 ? queueAges.reduce((a, b) => a + b, 0) / queueAges.length : 0
-    };
+  getQueueStats(): QueueStats {
+    return this.taskQueue.getStats();
   }
 
   /**
    * Wait for all active tasks to complete
    */
   async waitForAllTasks(): Promise<void> {
-    while (this.taskQueue.length > 0) {
+    while (!this.taskQueue.isEmpty()) {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
     
@@ -262,7 +238,7 @@ export class TaskManager {
    * Clear all active tasks
    */
   clear(): void {
-    this.taskQueue = [];
+    this.taskQueue.clear();
     this.registry.clear();
     this.executor.reset();
     this.sequenceCoordinator.clear();
