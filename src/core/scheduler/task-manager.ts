@@ -140,7 +140,7 @@ export class TaskManager {
         completionHandler
       );
     } catch (error) {
-      this.logger.error(`❌ Background task processing failed for ${taskId}:`, error);
+      this.logger.error(`❌ Background task processing failed for ${taskId}:`, error instanceof Error ? error : String(error));
     } finally {
       // Remove from queue when done
       this.taskQueue = this.taskQueue.filter(task => task.taskId !== taskId);

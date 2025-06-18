@@ -154,29 +154,6 @@ export class DataRequestClient {
       };
   }
 
-  /**
-   * Execute a complete DataRequest flow: post and await results
-   * Legacy function for backward compatibility
-   */
-  async executeDataRequest(
-    signer: Signer, 
-    postInput: PostDataRequestInput, 
-    gasOptions: GasOptions, 
-    awaitOptions: AwaitOptions,
-    networkConfig: NetworkConfig
-  ): Promise<DataRequestResult> {
-    
-    // Post the transaction first
-    const postResult = await this.postRequest(signer, postInput, gasOptions, networkConfig);
-    
-    // Then wait for results
-    const queryConfig: QueryConfig = { rpc: signer.getEndpoint() };
-    return await this.awaitResult(
-      queryConfig,
-      postResult.drId,
-      postResult.blockHeight,
-      awaitOptions,
-      networkConfig
-    );
-  }
+  // Legacy executeDataRequest method removed
+  // Use postRequest and awaitResult separately for better control
 } 

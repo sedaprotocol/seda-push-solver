@@ -130,7 +130,7 @@ export class TaskExecutor {
     } catch (error) {
       const errorTime = this.getTimestamp();
       const errorDuration = errorTime - startTime;
-      this.logger.error(`💥 TASK ERROR: Task ${taskId} failed after ${errorDuration}ms (${(errorDuration/1000).toFixed(2)}s):`, error);
+      this.logger.error(`💥 TASK ERROR: Task ${taskId} failed after ${errorDuration}ms (${(errorDuration/1000).toFixed(2)}s):`, error instanceof Error ? error : String(error));
       return this.handleGeneralFailure(taskId, error, startTime, completionHandler);
     }
   }

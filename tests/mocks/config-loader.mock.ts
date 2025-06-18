@@ -3,16 +3,37 @@
  * Provides test configuration without requiring environment variables
  */
 
-import type { SEDAConfig, NetworkType } from '../../src/types';
+import type { SedaConfig, NetworkType } from '../../src/types';
 
 /**
  * Mock SEDA configuration for testing
  */
-export function createMockSEDAConfig(overrides: Partial<SEDAConfig> = {}): SEDAConfig {
-  return {
-    rpcEndpoint: 'https://rpc.testnet.seda.xyz',
+export function createMockSEDAConfig(overrides: Partial<SedaConfig> = {}): SedaConfig {
+  // Use a mock version of the centralized config
+  const mockConfig: SedaConfig = {
     network: 'testnet' as NetworkType,
+    rpcEndpoint: 'https://rpc.testnet.seda.xyz',
     mnemonic: 'test mnemonic for testing purposes only',
+    oracleProgramId: getMockOracleProgramId(),
+    drTimeoutSeconds: 60,
+    drPollingIntervalSeconds: 1,
+    scheduler: {
+      intervalMs: 15000,
+      continuous: true,
+      maxRetries: 3,
+      memo: 'Test DataRequest'
+    },
+    cosmos: {
+      postingTimeoutMs: 20000,
+      maxQueueSize: 100
+    },
+    logging: {
+      level: 'info' as const
+    }
+  };
+  
+  return {
+    ...mockConfig,
     ...overrides
   };
 }

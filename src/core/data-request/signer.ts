@@ -4,13 +4,13 @@
  */
 
 import { buildSigningConfig, Signer } from '@seda-protocol/dev-tools';
-import type { SEDAConfig } from '../../types';
+import type { SedaConfig } from '../../types';
 import type { LoggingServiceInterface } from '../../services';
 
 /**
  * Initialize a SEDA signer from configuration
  */
-export async function initializeSigner(config: SEDAConfig, logger: LoggingServiceInterface): Promise<Signer> {
+export async function initializeSigner(config: SedaConfig, logger: LoggingServiceInterface): Promise<Signer> {
   if (!config.mnemonic) {
     throw new Error('Mnemonic is required in SEDA configuration');
   }

@@ -172,30 +172,5 @@ export async function awaitDataRequestResult(
   };
 }
 
-/**
- * Execute a DataRequest on the SEDA network and await its completion
- * Legacy function that combines posting and awaiting for backward compatibility
- */
-export async function executeDataRequest(
-  signer: Signer, 
-  postInput: PostDataRequestInput, 
-  gasOptions: GasOptions, 
-  awaitOptions: { timeoutSeconds: number; pollingIntervalSeconds: number, maxBatchRetries: number, batchPollingIntervalMs: number },
-  networkConfig: NetworkConfig,
-  logger: LoggingServiceInterface
-): Promise<DataRequestResult> {
-  
-  // Post the transaction first
-  const postResult = await postDataRequestTransaction(signer, postInput, gasOptions, networkConfig, logger);
-  
-  // Then wait for results
-  const queryConfig: QueryConfig = { rpc: signer.getEndpoint() };
-  return await awaitDataRequestResult(
-    queryConfig,
-    postResult.drId,
-    postResult.blockHeight,
-    awaitOptions,
-    networkConfig,
-    logger
-  );
-} 
+// Legacy executeDataRequest function removed
+// Use postDataRequestTransaction and awaitDataRequestResult separately for better control 

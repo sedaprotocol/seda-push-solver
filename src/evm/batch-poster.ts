@@ -4,7 +4,7 @@
  */
 
 import type { LoggingServiceInterface } from '../services';
-import type { SignedBatch, EvmNetworkConfig, BatchPostingResult } from '../types';
+import type { SignedBatch, EvmNetworkConfig, BatchPostingResult, ProcessedSignature, ValidatorProofData } from '../types';
 import type { HexString } from '../utils/hex';
 import { getErrorMessage } from '../helpers/error-utils';
 import { HexUtils } from '../utils/hex';
@@ -112,7 +112,7 @@ export class BatchPoster {
     success: boolean;
     error?: string;
     signatures?: HexString[];
-    proofs?: Array<{ signer: HexString; votingPower: number; merkleProof: HexString[] }>;
+    proofs?: ValidatorProofData[];
   }> {
     this.logger.debug(`Processing ${batch.batchSignatures!.length} signatures (${batch.validatorEntries!.length} validators)`);
 
@@ -143,8 +143,8 @@ export class BatchPoster {
     this.logger.info(`✅ Validator root validation passed - proofs will be valid`);
 
     let totalVotingPower = 0;
-    const processedSignatures: any[] = [];
-    const validatorProofs: any[] = [];
+    const processedSignatures: ProcessedSignature[] = [];
+    const validatorProofs: ValidatorProofData[] = [];
     const ethereumSignatures: HexString[] = [];
 
     // Process each signature
@@ -189,7 +189,7 @@ export class BatchPoster {
       .sort((a, b) => a.sig.ethAddress.toString('hex').localeCompare(b.sig.ethAddress.toString('hex')))
       .map(item => item.index);
 
-    const sortedValidatorProofs = sortedIndices.map(i => validatorProofs[i]);
+    const sortedValidatorProofs = sortedIndices.map(i => validatorProofs[i]).filter((proof): proof is ValidatorProofData => proof !== undefined);
     const sortedEthereumSignatures = sortedIndices.map(i => ethereumSignatures[i]).filter((sig): sig is HexString => sig !== undefined);
 
     return {

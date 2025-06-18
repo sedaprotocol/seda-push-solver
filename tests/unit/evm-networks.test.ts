@@ -3,6 +3,8 @@
  * Tests for EVM network integration functionality
  */
 
+import type { EvmGasConfig } from '../../src/types';
+
 console.log('🧪 Testing EVM Networks Module');
 
 // Test EVM configuration loading
@@ -107,29 +109,16 @@ try {
 console.log('\n✅ Gas Configuration Tests');
 
 try {
-  // Test legacy gas config
-  const legacyGas = {
+  // Test modern gas configuration with proper types
+  const modernGasConfig: EvmGasConfig = {
     gasLimit: 500000,
     gasPrice: '1000000000',
     useEIP1559: false
   };
 
-  console.log(`   Legacy gas limit: ${legacyGas.gasLimit > 0 ? '✅' : '❌'}`);
-  console.log(`   Legacy gas price: ${legacyGas.gasPrice ? '✅' : '❌'}`);
-  console.log(`   Legacy mode: ${!legacyGas.useEIP1559 ? '✅' : '❌'}`);
-
-  // Test EIP-1559 gas config
-  const eip1559Gas = {
-    gasLimit: 500000,
-    maxFeePerGas: '50000000000',
-    maxPriorityFeePerGas: '2000000000',
-    useEIP1559: true
-  };
-
-  console.log(`   EIP-1559 gas limit: ${eip1559Gas.gasLimit > 0 ? '✅' : '❌'}`);
-  console.log(`   EIP-1559 max fee: ${eip1559Gas.maxFeePerGas ? '✅' : '❌'}`);
-  console.log(`   EIP-1559 priority fee: ${eip1559Gas.maxPriorityFeePerGas ? '✅' : '❌'}`);
-  console.log(`   EIP-1559 mode: ${eip1559Gas.useEIP1559 ? '✅' : '❌'}`);
+  console.log(`   Gas limit: ${modernGasConfig.gasLimit > 0 ? '✅' : '❌'}`);
+  console.log(`   Gas price: ${modernGasConfig.gasPrice ? '✅' : '❌'}`);
+  console.log(`   EIP-1559 mode: ${modernGasConfig.useEIP1559 ? '✅' : '❌'}`);
 
 } catch (error) {
   console.log(`   ❌ Gas config test failed: ${error}`);

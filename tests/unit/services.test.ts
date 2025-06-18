@@ -67,9 +67,25 @@ console.log('   Error logs:', mockLogger.getLogsByLevel('error').length);
 console.log('\n✅ Mock SEDA service');
 const mockSEDA = new MockSEDAService();
 const mockConfig2 = {
-  rpcEndpoint: 'http://localhost:26657',
   network: 'local' as const,
-  mnemonic: 'test mnemonic'
+  rpcEndpoint: 'http://localhost:26657',
+  mnemonic: 'test mnemonic',
+  oracleProgramId: 'test-oracle-program-id',
+  drTimeoutSeconds: 60,
+  drPollingIntervalSeconds: 1,
+  scheduler: {
+    intervalMs: 15000,
+    continuous: true,
+    maxRetries: 3,
+    memo: 'Test DataRequest'
+  },
+  cosmos: {
+    postingTimeoutMs: 20000,
+    maxQueueSize: 100
+  },
+  logging: {
+    level: 'info' as const
+  }
 };
 
 mockSEDA.createSigner(mockConfig2).then(signer => {

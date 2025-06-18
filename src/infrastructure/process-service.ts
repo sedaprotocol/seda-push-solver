@@ -161,7 +161,7 @@ export class ProcessService implements ProcessServiceInterface {
   }
 
   private handleUncaughtException(error: Error): void {
-    this.loggingService.error(`💥 Uncaught Exception: ${error.message}`, error.stack);
+    this.loggingService.error(`💥 Uncaught Exception: ${error.message}`, error.stack || 'No stack trace');
     // Don't exit immediately, let graceful shutdown handle it
     this.gracefulShutdown(1);
   }
