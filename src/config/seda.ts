@@ -36,7 +36,7 @@ export const SEDA_NETWORKS: Record<'testnet' | 'mainnet' | 'local', NetworkConfi
     rpcEndpoint: 'https://rpc.testnet.seda.xyz',
     explorerEndpoint: 'https://testnet.explorer.seda.xyz',
     transaction: {
-      gasPrice: BigInt(10_000_000_000),           // Transaction gas price for posting DataRequest
+      gasPrice: BigInt(11_000_000_000),           // Transaction gas price for posting DataRequest
       gasLimit: 300000                    // Transaction gas limit for posting DataRequest
     },
     dataRequest: {

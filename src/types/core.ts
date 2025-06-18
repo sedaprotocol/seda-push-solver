@@ -60,6 +60,7 @@ export interface SchedulerConfig {
   continuous: boolean;
   maxRetries: number;
   memo?: string;
+  enablePostCondition: boolean; // Simple flag to enable/disable
   cosmosSequence: {
     postingTimeoutMs: number;
     drResultTimeout: number;
