@@ -14,6 +14,7 @@ import type { SchedulerStatistics } from './statistics';
 import type { DataRequestTracker, AsyncTaskResult, TaskCompletionHandler } from './types';
 import { TaskRegistry } from './task-registry';
 import { TaskExecutor } from './task-executor';
+import { DataRequestPerformanceTracker } from './performance-tracker';
 
 /**
  * Task Manager
@@ -24,6 +25,7 @@ export class TaskManager {
   private sequenceCoordinator: CosmosSequenceCoordinator;
   private registry: TaskRegistry;
   private executor: TaskExecutor;
+  private performanceTracker: DataRequestPerformanceTracker;
   private taskQueue: Array<{
     taskId: string;
     requestNumber: number;
@@ -38,6 +40,7 @@ export class TaskManager {
     this.sequenceCoordinator = new CosmosSequenceCoordinator(this.logger, this.cosmosSequenceConfig);
     this.registry = new TaskRegistry(this.logger, this.getTimestamp);
     this.executor = new TaskExecutor(this.logger, this.sequenceCoordinator, this.registry, this.getTimestamp);
+    this.performanceTracker = new DataRequestPerformanceTracker();
   }
 
   /**
@@ -74,6 +77,9 @@ export class TaskManager {
     
     this.logger.info(`⚡ Queued task #${requestNumber} (${taskId}) - NO BLOCKING!`);
     
+    // Start performance tracking
+    this.performanceTracker.startTracking(taskId, requestNumber);
+    
     // Add to queue (this is instant)
     this.taskQueue.push({
       taskId,
@@ -98,12 +104,20 @@ export class TaskManager {
             statistics.recordPosted();
             this.logger.info(`📤 POSTED SUCCESSFULLY: ${result.taskId} (DR: ${result.drId})`);
           } else if (result.result && result.result.type === 'oracle_completed') {
-            // This is an oracle completion - success counter handled by completion handler
+            // This is an oracle completion - complete performance tracking
+            if (result.drId) {
+              this.performanceTracker.completeRequest(result.taskId, result.drId);
+              this.performanceTracker.logRequestPerformance(result.taskId, this.logger);
+            }
             this.logger.info(`✅ ORACLE COMPLETED: ${result.taskId} (DR: ${result.drId})`);
           }
           completionHandler.onSuccess(result);
         },
         onFailure: (result: AsyncTaskResult) => {
+          // Mark performance tracking as failed
+          const errorMsg = typeof result.error === 'string' ? result.error : 'Unknown error';
+          this.performanceTracker.failRequest(result.taskId, errorMsg);
+          
           if (result.drId) {
             // Only log oracle failures, failure counter handled by completion handler
             this.logger.info(`❌ ORACLE FAILED: ${result.taskId} (DR: ${result.drId})`);
@@ -137,7 +151,8 @@ export class TaskManager {
         builder,
         config,
         isRunning,
-        completionHandler
+        completionHandler,
+        this.performanceTracker
       );
     } catch (error) {
       this.logger.error(`❌ Background task processing failed for ${taskId}:`, error instanceof Error ? error : String(error));
@@ -230,6 +245,20 @@ export class TaskManager {
   }
 
   /**
+   * Get performance tracker for access from executor
+   */
+  getPerformanceTracker(): DataRequestPerformanceTracker {
+    return this.performanceTracker;
+  }
+
+  /**
+   * Log performance summary
+   */
+  logPerformanceSummary(): void {
+    this.performanceTracker.logSummaryStatistics(this.logger);
+  }
+
+  /**
    * Clear all active tasks
    */
   clear(): void {
@@ -237,5 +266,6 @@ export class TaskManager {
     this.registry.clear();
     this.executor.reset();
     this.sequenceCoordinator.clear();
+    this.performanceTracker.reset();
   }
 } 

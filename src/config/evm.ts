@@ -22,12 +22,7 @@ export const evmNetworks: EvmNetworkConfig[] = (() => {
   
   const knownNetworks = {
     BASE: 'Base',
-    ETHEREUM: 'Ethereum',
-    POLYGON: 'Polygon',
-    ARBITRUM: 'Arbitrum',
-    OPTIMISM: 'Optimism',
-    SEPOLIA: 'Sepolia Testnet',
-    GOERLI: 'Goerli Testnet'
+    SUPERSEED_SEPOLIA: 'Superseed Sepolia'
   };
   
   for (const [prefix, displayName] of Object.entries(knownNetworks)) {

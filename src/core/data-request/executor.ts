@@ -63,7 +63,9 @@ export async function awaitDataRequestResult(
   blockHeight: bigint,
   awaitOptions: { timeoutSeconds: number; pollingIntervalSeconds: number, maxBatchRetries: number, batchPollingIntervalMs: number },
   networkConfig: NetworkConfig,
-  logger: LoggingServiceInterface
+  logger: LoggingServiceInterface,
+  performanceTracker?: any,
+  taskId?: string
 ): Promise<DataRequestResult> {
   
   logger.info(`⏳ Waiting for DataRequest ${drId} to complete...`);
@@ -74,11 +76,23 @@ export async function awaitDataRequestResult(
   // Create DataRequest object for awaiting
   const dataRequest = { id: drId, height: blockHeight };
   
+  // Start timing oracle result phase
+  if (performanceTracker && taskId) {
+    performanceTracker.startStep(taskId, 'awaitingOracleResult');
+  }
+  
   // Wait for DataRequest execution to complete
   const rawResult = await awaitDataResult(queryConfig, dataRequest, {
     timeoutSeconds: awaitOptions.timeoutSeconds,
     pollingIntervalSeconds: awaitOptions.pollingIntervalSeconds
   });
+  
+  // Oracle result received - END timing for oracle phase
+  if (performanceTracker && taskId) {
+    performanceTracker.endStep(taskId, 'awaitingOracleResult');
+    logger.info(`⏱️  Oracle result retrieved - now proceeding to fetch signatures`);
+    logger.info(`📊 ═══════════ ORACLE PHASE COMPLETE ═══════════`);
+  }
   
   // Clean, structured results display
   logger.info('✅ DataRequest completed');
@@ -105,9 +119,22 @@ export async function awaitDataRequestResult(
   
   // Fetch batch assignment and batch information from SEDA chain
   logger.info('🔍 Fetching batch assignment and batch information from SEDA chain...');
+  
   try {
+    // NOW start timing signatures phase - only AFTER oracle result is complete
+    if (performanceTracker && taskId) {
+      performanceTracker.startStep(taskId, 'awaitingSignatures');
+      logger.info(`⏱️  Starting signature retrieval timing...`);
+    }
+    
     const batchService = new SedaBatchService(queryConfig, logger);
     const batch = await batchService.fetchBatch(drId, blockHeight, awaitOptions.maxBatchRetries, awaitOptions.batchPollingIntervalMs);
+    
+    // Signatures received - END timing for signatures phase
+    if (performanceTracker && taskId) {
+      performanceTracker.endStep(taskId, 'awaitingSignatures');
+      logger.info(`⏱️  Signatures retrieved - signature timing complete`);
+    }
     
     if (batch) {
       // Log the batch information
@@ -116,6 +143,11 @@ export async function awaitDataRequestResult(
       logger.info(`   📊 Entries: ${batch.dataResultEntries?.length || 0} | Signatures: ${batch.batchSignatures?.length || 0} | Validators: ${batch.validatorEntries?.length || 0}`);
       
 
+      // Start timing EVM processing phase (batch + result posting)
+      if (performanceTracker && taskId) {
+        performanceTracker.startStep(taskId, 'postingBatch');
+      }
+      
       // Handle EVM batch posting and result posting using the orchestrator
       const evmOrchestrator = new EvmOrchestrator(logger, getEnabledEvmNetworks());
       const evmBatchResults = await evmOrchestrator.processBatch(batch, {
@@ -129,6 +161,11 @@ export async function awaitDataRequestResult(
         version: rawResult.version,
         blockTimestamp: BigInt(rawResult.blockTimestamp instanceof Date ? rawResult.blockTimestamp.getTime() : Number(rawResult.blockTimestamp))
       });
+      
+      // EVM processing complete, end timing
+      if (performanceTracker && taskId) {
+        performanceTracker.endStep(taskId, 'postingBatch');
+      }
       
       // Log detailed results for each network
       if (evmBatchResults.length > 0) {
@@ -156,6 +193,11 @@ export async function awaitDataRequestResult(
       }
     }
   } catch (error) {
+    // If batch fetching failed, end the signatures timing with error
+    if (performanceTracker && taskId) {
+      performanceTracker.failStep(taskId, 'awaitingSignatures', getErrorMessage(error));
+      logger.warn(`⏱️  Signature retrieval failed - timing ended with error`);
+    }
     logger.warn(`⚠️ Could not fetch batch information: ${getErrorMessage(error)}`);
   }
   

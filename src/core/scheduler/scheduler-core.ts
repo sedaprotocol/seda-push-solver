@@ -171,6 +171,10 @@ export class SchedulerCore {
     }
 
     this.statistics.printReport(this.logger);
+    
+    // Log performance summary
+    this.taskManager.logPerformanceSummary();
+    
     this.logger.info('✅ Scheduler stopped gracefully');
   }
 

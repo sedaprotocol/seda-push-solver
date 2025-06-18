@@ -17,6 +17,17 @@ export {
   SchedulerStatistics
 } from './statistics';
 
+// Export performance tracking
+export {
+  DataRequestPerformanceTracker,
+  STEP_NAMES,
+  type DataRequestStepTiming,
+  type DataRequestPerformance,
+  type StepAverages,
+  type PerformanceStatistics,
+  type StepName
+} from './performance-tracker';
+
 // Export retry handling functions
 export {
   executeWithRetry
