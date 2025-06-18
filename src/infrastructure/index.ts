@@ -23,23 +23,4 @@ export type {
 export { HealthService } from './health-service';
 
 // Export infrastructure container
-export { InfrastructureContainer } from './infrastructure-container';
-
-// Testing utilities (not for production use)
-import { InfrastructureContainer } from './infrastructure-container';
-let globalInfrastructure: InfrastructureContainer | null = null;
-
-export function getInfrastructure(): InfrastructureContainer {
-  if (!globalInfrastructure) {
-    throw new Error('Infrastructure container not initialized. Call setInfrastructure() first.');
-  }
-  return globalInfrastructure;
-}
-
-export function setInfrastructure(container: InfrastructureContainer): void {
-  globalInfrastructure = container;
-}
-
-export function resetInfrastructure(): void {
-  globalInfrastructure = null;
-} 
+export { InfrastructureContainer } from './infrastructure-container'; 

@@ -10,13 +10,7 @@ export type {
   TaskCompletionHandler
 } from './types';
 
-// Export configuration functions
-export {
-  DEFAULT_SCHEDULER_CONFIG,
-  loadSchedulerConfigFromEnv,
-  buildSchedulerConfig,
-  formatSchedulerConfig
-} from './config';
+// Configuration functions are now exported from src/config/scheduler.ts
 
 // Export statistics functions
 export {

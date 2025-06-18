@@ -25,7 +25,4 @@ export {
   initializeSigner
 } from './signer';
 
-// Export configuration functions
-export {
-  loadSEDAConfig
-} from './config-loader'; 
+// Configuration functions are now exported from root config 

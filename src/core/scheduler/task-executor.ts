@@ -14,7 +14,7 @@ import {
   type PostingResult
 } from './cosmos-sequence-coordinator';
 import { postDataRequestTransaction, awaitDataRequestResult, buildDataRequestInput, buildGasOptions } from '../data-request';
-import { getNetworkConfig } from '../network';
+import { getSedaNetworkConfig } from '../../config';
 import type { AsyncTaskResult, TaskCompletionHandler } from './types';
 import type { TaskRegistry } from './task-registry';
 
@@ -54,7 +54,7 @@ export class TaskExecutor {
 
       // Get network configuration
       const builderConfig = builder.getConfig();
-      const networkConfig = getNetworkConfig(builderConfig.network);
+      const networkConfig = getSedaNetworkConfig(builderConfig.network);
 
       // Phase 1: POST ONLY (coordinated by sequence)
       const postingStartTime = this.getTimestamp();

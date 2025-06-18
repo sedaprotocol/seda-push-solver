@@ -8,10 +8,7 @@ import {
   ProcessService,
   TimerService,
   HealthService,
-  InfrastructureContainer,
-  getInfrastructure,
-  setInfrastructure,
-  resetInfrastructure
+  InfrastructureContainer
 } from '../../src/infrastructure';
 import {
   MockProcessService,
@@ -26,11 +23,6 @@ describe('Infrastructure Services', () => {
 
   beforeEach(() => {
     mockLoggingService = new LoggingService();
-    resetInfrastructure();
-  });
-
-  afterEach(() => {
-    resetInfrastructure();
   });
 
   describe('ProcessService', () => {
@@ -263,26 +255,20 @@ describe('Infrastructure Services', () => {
       expect(container.healthService).toBeInstanceOf(MockHealthService);
     });
 
-    it('should manage global infrastructure instance', () => {
-      const container = InfrastructureContainer.createProduction(mockLoggingService);
+         it('should create independent infrastructure instances', () => {
+      const container1 = InfrastructureContainer.createProduction(mockLoggingService);
+      const container2 = InfrastructureContainer.createProduction(mockLoggingService);
       
-      setInfrastructure(container);
-      const retrieved = getInfrastructure();
-      
-      expect(retrieved).toBe(container);
-    });
-
-    it('should throw error when accessing uninitialized infrastructure', () => {
-      expect(() => getInfrastructure()).toThrow('Infrastructure container not initialized');
+      expect(container1).not.toBe(container2);
+      expect(container1.processService).not.toBe(container2.processService);
     });
   });
 
   describe('Integration', () => {
     it('should work together in a complete infrastructure setup', async () => {
       const container = MockInfrastructureContainer.createTest(mockLoggingService);
-      setInfrastructure(container as any);
 
-      const { processService, timerService, healthService } = getInfrastructure();
+      const { processService, timerService, healthService } = container;
 
       // Register health check
       healthService.registerCheck('integration-test', async () => ({

@@ -19,23 +19,4 @@ export { LoggingService, LogLevel } from './logging-service';
 export {
   ServiceContainer,
   DEFAULT_SERVICES
-} from './service-container';
-
-// Testing utilities (not for production use)
-import { ServiceContainer } from './service-container';
-let globalServices: ServiceContainer | null = null;
-
-export function getServices(): ServiceContainer {
-  if (!globalServices) {
-    globalServices = ServiceContainer.createProduction();
-  }
-  return globalServices;
-}
-
-export function setServices(container: ServiceContainer): void {
-  globalServices = container;
-}
-
-export function resetToProductionServices(): void {
-  globalServices = ServiceContainer.createProduction();
-} 
+} from './service-container'; 

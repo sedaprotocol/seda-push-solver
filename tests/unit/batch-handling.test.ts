@@ -3,7 +3,7 @@
  */
 
 import { expect, test, describe } from 'bun:test';
-import { loadSEDAConfig } from '../../src/core/data-request';
+import { loadSEDAConfig } from '../../src/config';
 import { SEDADataRequestBuilder } from '../../src/core/data-request';
 import { MockLoggingService } from '../mocks';
 

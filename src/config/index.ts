@@ -13,7 +13,8 @@ export {
   getSedaRpcEndpoint,
   getSedaDataRequestConfig,
   logSedaGasConfiguration,
-  sedaConfig
+  sedaConfig,
+  loadSEDAConfig
 } from './seda';
 
 // EVM configuration
@@ -23,6 +24,14 @@ export {
   getEnabledEvmNetworks,
   getEvmNetwork
 } from './evm';
+
+// Scheduler configuration
+export {
+  DEFAULT_SCHEDULER_CONFIG,
+  loadSchedulerConfigFromEnv,
+  buildSchedulerConfig,
+  formatSchedulerConfig
+} from './scheduler';
 
 // Configuration validators
 export * from './validators'; 

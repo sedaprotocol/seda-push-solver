@@ -4,9 +4,6 @@
 
 import {
   ServiceContainer,
-  getServices,
-  setServices,
-  resetToProductionServices,
   LogLevel
 } from '../../src/services';
 import {
@@ -32,21 +29,17 @@ console.log('   SEDA Service:', testContainer.sedaService.constructor.name);
 console.log('   Config Service:', testContainer.configService.constructor.name);
 console.log('   Logging Service:', testContainer.loggingService.constructor.name);
 
-// Test global service management
-console.log('\n✅ Global service management');
-const originalServices = getServices();
-console.log('   Original services type:', originalServices.constructor.name);
+// Test service container independence (no global state anymore)
+console.log('\n✅ Service container independence');
+const productionServices = ServiceContainer.createProduction();
+console.log('   Production services type:', productionServices.constructor.name);
 
-// Switch to test services (use production container for global state test)
-const testContainerForGlobal = ServiceContainer.createProduction();
-setServices(testContainerForGlobal);
-const testServices = getServices();
-console.log('   Test services type:', testServices.constructor.name);
+// Create separate test container instance
+const testContainerForTesting = ServiceContainer.createProduction();
+console.log('   Test services type:', testContainerForTesting.constructor.name);
 
-// Reset to production
-resetToProductionServices();
-const resetServices = getServices();
-console.log('   Reset services type:', resetServices.constructor.name);
+// Each container is independent
+console.log('   Containers are separate:', productionServices !== testContainerForTesting);
 
 // Test mock service functionality
 console.log('\n✅ Mock service functionality');

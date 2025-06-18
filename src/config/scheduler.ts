@@ -3,8 +3,8 @@
  * Handles loading and validation of scheduler configuration from environment and overrides
  */
 
-import type { SchedulerConfig } from '../../types';
-import type { LoggingServiceInterface } from '../../services';
+import type { SchedulerConfig } from '../types';
+import type { LoggingServiceInterface } from '../services';
 
 // Default scheduler configuration - all timeouts should be overridden by environment variables
 export const DEFAULT_SCHEDULER_CONFIG: SchedulerConfig = {

@@ -42,7 +42,7 @@ export interface ConfigServiceInterface {
 }
 
 /**
- * Production implementation using actual environment variables
+ * Production implementation using centralized configuration utilities
  */
 export class ConfigService implements ConfigServiceInterface {
   getEnvVar(key: string): string | undefined {
@@ -50,54 +50,38 @@ export class ConfigService implements ConfigServiceInterface {
   }
 
   getEnvVarWithDefault(key: string, defaultValue: string): string {
-    return process.env[key] || defaultValue;
+    const { getEnvVar } = require('../config/environment');
+    return getEnvVar(key, defaultValue);
   }
 
   getEnvVarAsNumber(key: string): number | undefined {
-    const value = process.env[key];
-    if (!value) return undefined;
-    
-    const num = parseInt(value);
-    return isNaN(num) ? undefined : num;
+    const { getEnvVarInt } = require('../config/environment');
+    try {
+      return getEnvVarInt(key);
+    } catch {
+      return undefined;
+    }
   }
 
   getEnvVarAsBoolean(key: string): boolean | undefined {
-    const value = process.env[key];
-    if (!value) return undefined;
-    
-    return value.toLowerCase() === 'true';
+    const { getEnvVarBool } = require('../config/environment');
+    try {
+      return getEnvVarBool(key);
+    } catch {
+      return undefined;
+    }
   }
 
   loadSEDAConfig(): SedaConfig {
-    // Use the centralized config
-    const { sedaConfig } = require('../../config');
-    return sedaConfig;
+    // Use the centralized config function
+    const { loadSEDAConfig } = require('../config');
+    return loadSEDAConfig();
   }
 
   loadSchedulerConfig(): Partial<SchedulerConfig> {
-    const config: Partial<SchedulerConfig> = {};
-    
-    const intervalSeconds = this.getEnvVarAsNumber('SCHEDULER_INTERVAL_SECONDS');
-    if (intervalSeconds && intervalSeconds > 0) {
-      config.intervalMs = intervalSeconds * 1000;
-    }
-    
-    const memo = this.getEnvVar('SCHEDULER_MEMO');
-    if (memo) {
-      config.memo = memo;
-    }
-    
-    const maxRetries = this.getEnvVarAsNumber('SCHEDULER_MAX_RETRIES');
-    if (maxRetries !== undefined && maxRetries >= 0) {
-      config.maxRetries = maxRetries;
-    }
-    
-    const continuous = this.getEnvVarAsBoolean('SCHEDULER_CONTINUOUS');
-    if (continuous !== undefined) {
-      config.continuous = continuous;
-    }
-    
-    return config;
+    // Use the centralized scheduler config function
+    const { loadSchedulerConfigFromEnv } = require('../config');
+    return loadSchedulerConfigFromEnv();
   }
 }
 
