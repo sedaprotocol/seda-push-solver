@@ -18,7 +18,10 @@ export class SchedulerStatistics {
       postedRequests: 0,
       successfulRequests: 0,
       failedRequests: 0,
-      startTime: Date.now()
+      averageResponseTime: 0,
+      uptime: 0,
+      startTime: Date.now(),
+      errors: []
     };
   }
 
@@ -31,7 +34,10 @@ export class SchedulerStatistics {
       postedRequests: 0,
       successfulRequests: 0,
       failedRequests: 0,
-      startTime: Date.now()
+      averageResponseTime: 0,
+      uptime: 0,
+      startTime: Date.now(),
+      errors: []
     };
   }
 

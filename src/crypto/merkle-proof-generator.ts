@@ -6,7 +6,7 @@
 import { SimpleMerkleTree } from '@openzeppelin/merkle-tree';
 import { keccak256, encodePacked, toHex } from 'viem';
 import type { LoggingServiceInterface } from '../services';
-import type { ValidatorEntry } from '../types';
+import type { ValidatorEntry } from '../types/batch-types';
 import { HexUtils, type HexString } from '../utils/hex';
 import { SECP256K1_DOMAIN_SEPARATOR } from './constants';
 import { getErrorMessage } from '../helpers/error-utils';
@@ -26,6 +26,7 @@ export class MerkleProofGenerator {
   ): SimpleMerkleTree {
     
     this.logger.info(`🌳 Building validator merkle tree with ${validatorEntries.length} validators...`);
+    this.logger.debug(`   Domain separator: ${domainSeparator}`);
     
     const validatorTreeLeaves = validatorEntries.map((validator: ValidatorEntry, index: number) => {
       // Use toHex() to properly handle the ETH address
@@ -36,12 +37,15 @@ export class MerkleProofGenerator {
         ? validator.votingPowerPercent 
         : Number(validator.votingPowerPercent);
       
-      this.logger.debug(`🔍 Processing validator ${index}: ethAddress=${ethAddressHex}, votingPower=${votingPowerPercent}`);
+      this.logger.debug(`🔍 Processing validator ${index}:`);
       this.logger.debug(`   Validator Address: ${Buffer.from(validator.validatorAddress).toString('hex')}`);
+      this.logger.debug(`   ETH Address: ${ethAddressHex}`);
       this.logger.debug(`   ETH Address type: ${typeof validator.ethAddress}`);
-      this.logger.debug(`   ETH Address toHex: ${ethAddressHex}`);
+      this.logger.debug(`   Voting Power: ${votingPowerPercent}`);
+      this.logger.debug(`   Voting Power type: ${typeof votingPowerPercent}`);
       
-      return keccak256(
+      // Generate the leaf hash
+      const leaf = keccak256(
         encodePacked(
           ["bytes1", "bytes", "uint32"],
           [
@@ -51,12 +55,21 @@ export class MerkleProofGenerator {
           ],
         ),
       );
+      
+      this.logger.debug(`   Leaf hash: ${leaf}`);
+      
+      return leaf;
     });
 
+    this.logger.debug(`🌳 Generated ${validatorTreeLeaves.length} leaf hashes`);
+    
+    // Sort leaves before building tree (important for deterministic root)
     const validatorTree = SimpleMerkleTree.of(validatorTreeLeaves, { sortLeaves: true });
     
-    this.logger.info(`✅ Validator merkle tree built with ${validatorTreeLeaves.length} leaves`);
+    this.logger.info(`✅ Validator merkle tree built successfully`);
     this.logger.info(`   🌳 Root: ${validatorTree.root}`);
+    this.logger.info(`   📊 Leaves: ${validatorTreeLeaves.length}`);
+    this.logger.info(`   🔄 Sorted: true`);
     
     return validatorTree;
   }
@@ -162,6 +175,6 @@ export class MerkleProofGenerator {
    * Get the merkle root from a tree
    */
   getTreeRoot(tree: SimpleMerkleTree): HexString {
-    return HexUtils.addPrefix(tree.root);
+    return HexUtils.normalize(tree.root);
   }
 } 

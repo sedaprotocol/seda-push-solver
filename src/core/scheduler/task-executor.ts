@@ -297,7 +297,7 @@ export class TaskExecutor {
         success: true,
         result: { type: 'oracle_completed', ...executionResult },
         drId: executionResult.drId,
-        blockHeight: Number(executionResult.blockHeight),
+        blockHeight: Number(executionResult.drBlockHeight),
         completedAt,
         duration: totalDuration,
         sequenceNumber
