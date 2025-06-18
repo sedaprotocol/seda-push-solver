@@ -4,6 +4,45 @@
 
 export type HexString = `0x${string}`;
 
+// Logging types to replace any[] usage
+export type LoggingArgs = Array<string | number | boolean | object | Error>;
+
+// Network status types for hardcoded returns
+export interface NetworkStatus {
+  network: string;
+  status: 'connected' | 'disconnected' | 'no prover address' | 'query failed' | string;
+  lastBatch?: bigint;
+}
+
+export interface PostDataRequestResult {
+  drId: string;
+  blockHeight: bigint;
+  txHash: string;
+}
+
+export interface TaskExecutionResult {
+  taskId: string;
+  success: boolean;
+  duration: number;
+  error?: string;
+}
+
+// EVM signature and proof types
+export interface ProcessedSignature {
+  signer: HexString;
+  signature: HexString;
+  votingPower: number;
+  ethAddress: Buffer;
+  ethereumSignature: HexString;
+  proof: ValidatorProofData;
+}
+
+export interface ValidatorProofData {
+  signer: HexString;
+  votingPower: number;
+  merkleProof: HexString[];
+}
+
 export interface DataRequestResult {
   drId: string;
   drBlockHeight: bigint;
@@ -15,8 +54,6 @@ export interface DataRequestResult {
   version: string;
   blockTimestamp: bigint;
 }
-
-
 
 export interface SchedulerConfig {
   intervalMs: number;

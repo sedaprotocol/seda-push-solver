@@ -2,6 +2,8 @@
  * Batch Type Definitions
  */
 
+import type { DataRequestResult } from './core';
+
 export interface SignedBatch {
   batchNumber: bigint;
   batchId: string;
@@ -9,7 +11,7 @@ export interface SignedBatch {
   currentDataResultRoot: string;
   dataResultRoot: string;
   validatorRoot: string;
-  dataResultEntries?: any[];
+  dataResultEntries?: Uint8Array[];
   batchSignatures?: BatchSignature[];
   validatorEntries?: ValidatorEntry[];
 }
@@ -25,7 +27,7 @@ export interface ValidatorEntry {
   votingPowerPercent: number;
 }
 
-export interface ProcessedSignature {
+export interface ProcessedBatchSignature {
   validatorAddr: string;
   ethAddress: Buffer;
   votingPowerPercentage: number;

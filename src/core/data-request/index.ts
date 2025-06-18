@@ -15,7 +15,7 @@ export {
 
 // Export execution functions
 export {
-  executeDataRequest,
+  // executeDataRequest removed - use postDataRequestTransaction and awaitDataRequestResult separately
   postDataRequestTransaction,
   awaitDataRequestResult
 } from './executor';

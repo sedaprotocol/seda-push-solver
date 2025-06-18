@@ -33,7 +33,7 @@ export function buildDataRequestInput(
     gasPrice: drConfig.gasPrice,
     
     // Consensus configuration
-    consensusOptions: drConfig.consensusOptions,
+    consensusOptions: { method: 'none' },
     
     // Optional memo
     memo: memoBytes

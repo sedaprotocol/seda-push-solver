@@ -31,7 +31,7 @@ export class SequenceQueryService {
       }
       
     } catch (error) {
-      this.logger.error('❌ Error querying account sequence:', error);
+      this.logger.error('❌ Error querying account sequence:', error instanceof Error ? error : String(error));
       throw error;
     }
   }

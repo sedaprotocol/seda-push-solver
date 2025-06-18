@@ -6,7 +6,7 @@
 import { ExtendedSecp256k1Signature, Secp256k1 } from '@cosmjs/crypto';
 import { keccak256, encodePacked, toHex } from 'viem';
 import type { LoggingServiceInterface } from '../services';
-import type { SignedBatch, ProcessedSignature, ValidatorEntry, BatchSignature } from '../types/batch-types';
+import type { SignedBatch, ProcessedBatchSignature, ValidatorEntry, BatchSignature } from '../types/batch-types';
 import { HexUtils, type HexString } from '../utils/hex';
 import { BYTE_LENGTHS, ETHEREUM_RECOVERY_OFFSET } from './constants';
 import { getErrorMessage } from '../helpers/error-utils';
@@ -20,7 +20,7 @@ const SECP256K1_DOMAIN_SEPARATOR = "0x01";
  */
 export interface SignatureProcessingResult {
   /** Successfully processed signatures */
-  processedSignatures: ProcessedSignature[];
+  processedSignatures: ProcessedBatchSignature[];
   /** Total voting power of processed signatures */
   totalVotingPower: number;
   /** Ethereum format signatures (r + s + v) */
@@ -62,7 +62,7 @@ export class SignatureProcessor {
     validatorEntry: ValidatorEntry,
     batchId: string | Buffer,
     validatorTreeProof: HexString[]
-  ): Promise<ProcessedSignature | null> {
+  ): Promise<ProcessedBatchSignature | null> {
     try {
       // Prepare batch ID buffer
       const batchIdBuffer = Buffer.isBuffer(batchId) 
@@ -171,7 +171,7 @@ export class SignatureProcessor {
     this.logger.info(`   👥 Validators available: ${batch.validatorEntries.length}`);
 
     let totalVotingPower = 0;
-    const processedSignatures: ProcessedSignature[] = [];
+    const processedSignatures: ProcessedBatchSignature[] = [];
 
     for (const signature of batch.batchSignatures) {
       // Find corresponding validator entry

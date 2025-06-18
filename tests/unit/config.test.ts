@@ -25,7 +25,7 @@ console.log('   Gas Limit:', drConfig.execGasLimit);
 
 // Test validation
 try {
-  validateDataRequestConfig(drConfig);
+  validateDataRequestConfig(testnetConfig, 'testnet');
   console.log('✅ validateDataRequestConfig works');
 } catch (error) {
   console.error('❌ Validation failed:', error);

@@ -5,7 +5,7 @@
 
 import type { Signer } from '@seda-protocol/dev-tools';
 import type { PostDataRequestInput, GasOptions } from '@seda-protocol/dev-tools';
-import type { SEDAConfig, DataRequestResult } from '../types';
+import type { SedaConfig, DataRequestResult } from '../types';
 
 /**
  * Interface for SEDA protocol operations
@@ -15,7 +15,7 @@ export interface SedaServiceInterface {
   /**
    * Create and initialize a SEDA signer from configuration
    */
-  createSigner(config: SEDAConfig): Promise<Signer>;
+  createSigner(config: SedaConfig): Promise<Signer>;
 
   /**
    * Post a DataRequest to the SEDA network and await the result
@@ -50,7 +50,7 @@ export interface SedaServiceInterface {
  * Production implementation of SEDA service using actual SEDA protocol
  */
 export class SEDAService implements SedaServiceInterface {
-  async createSigner(config: SEDAConfig): Promise<Signer> {
+  async createSigner(config: SedaConfig): Promise<Signer> {
     // Dynamic import to avoid issues with module loading
     const { buildSigningConfig, Signer } = await import('@seda-protocol/dev-tools');
     

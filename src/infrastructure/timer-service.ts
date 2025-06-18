@@ -3,6 +3,8 @@
  * Abstracts timing operations (setTimeout, setInterval) for better testing and control
  */
 
+import type { LoggingArgs } from '../types/core';
+
 export type TimerId = number;
 
 /**
@@ -50,9 +52,9 @@ export interface TimerServiceInterface {
  */
 export class TimerService implements TimerServiceInterface {
   private activeTimers = new Set<TimerId>();
-  private logger?: { error: (msg: string, ...args: any[]) => void };
+  private logger?: { error: (msg: string, ...args: LoggingArgs) => void };
 
-  constructor(logger?: { error: (msg: string, ...args: any[]) => void }) {
+  constructor(logger?: { error: (msg: string, ...args: LoggingArgs) => void }) {
     this.logger = logger;
   }
 
@@ -63,7 +65,7 @@ export class TimerService implements TimerServiceInterface {
       } catch (error) {
         // Log error but continue interval
         if (this.logger) {
-          this.logger.error('Timer callback error:', error);
+          this.logger.error('Timer callback error:', error instanceof Error ? error : String(error));
         }
       }
     }, ms) as unknown as TimerId;
@@ -79,7 +81,7 @@ export class TimerService implements TimerServiceInterface {
         callback();
       } catch (error) {
         if (this.logger) {
-          this.logger.error('Timer callback error:', error);
+          this.logger.error('Timer callback error:', error instanceof Error ? error : String(error));
         }
       }
     }, ms) as unknown as TimerId;

@@ -3,7 +3,7 @@
  * Abstracts environment variable access and configuration loading for better testability
  */
 
-import type { SEDAConfig, SchedulerConfig, NetworkType } from '../types';
+import type { SedaConfig, SchedulerConfig, NetworkType } from '../types';
 
 /**
  * Interface for configuration operations
@@ -33,7 +33,7 @@ export interface ConfigServiceInterface {
   /**
    * Load SEDA configuration from environment
    */
-  loadSEDAConfig(): SEDAConfig;
+  loadSEDAConfig(): SedaConfig;
 
   /**
    * Load scheduler configuration from environment
@@ -68,23 +68,10 @@ export class ConfigService implements ConfigServiceInterface {
     return value.toLowerCase() === 'true';
   }
 
-  loadSEDAConfig(): SEDAConfig {
-    const network = this.getEnvVarWithDefault('SEDA_NETWORK', 'testnet') as NetworkType;
-    const mnemonic = this.getEnvVar('SEDA_MNEMONIC');
-    
-    if (!mnemonic) {
-      throw new Error('SEDA_MNEMONIC environment variable is required');
-    }
-
-    // Get network configuration
-    const { getNetworkConfig } = require('../core/network');
-    const networkConfig = getNetworkConfig(network);
-
-    return {
-      rpcEndpoint: this.getEnvVarWithDefault('SEDA_RPC_ENDPOINT', networkConfig.rpcEndpoint),
-      network,
-      mnemonic
-    };
+  loadSEDAConfig(): SedaConfig {
+    // Use the centralized config
+    const { sedaConfig } = require('../../config');
+    return sedaConfig;
   }
 
   loadSchedulerConfig(): Partial<SchedulerConfig> {

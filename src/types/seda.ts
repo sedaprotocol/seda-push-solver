@@ -4,19 +4,21 @@
 
 export type NetworkType = 'testnet' | 'mainnet' | 'local';
 
-// Legacy alias for compatibility
-export interface SEDAConfig {
-  rpcEndpoint: string;
-  network: NetworkType;
-  mnemonic?: string;
+// Consensus options type to replace any
+export interface ConsensusOptions {
+  method: 'none' | 'simple' | 'weighted';
+  threshold?: number;
+  weights?: Record<string, number>;
 }
+
+// Legacy interface removed - use SedaConfig instead
 
 export interface SEDADataRequestConfig {
   oracleProgramId: string;
   replicationFactor: number;
   execGasLimit: bigint;
   gasPrice: bigint;
-  consensusOptions: any;
+  consensusOptions: ConsensusOptions;
   timeoutSeconds: number;
   pollingIntervalSeconds: number;
   memo: string;
@@ -66,7 +68,7 @@ export interface NetworkConfig {
     replicationFactor: number;
     execGasLimit: bigint;
     gasPrice: bigint;
-    consensusOptions: { method: string };
+    consensusOptions: ConsensusOptions;
     timeoutSeconds: number;
     pollingIntervalSeconds: number;
     memo: string;

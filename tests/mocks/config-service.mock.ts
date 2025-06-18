@@ -4,7 +4,7 @@
  */
 
 import type { ConfigServiceInterface } from '../../src/services/config-service';
-import type { SEDAConfig, SchedulerConfig, NetworkType } from '../../src/types';
+import type { SedaConfig, SchedulerConfig, NetworkType } from '../../src/types';
 
 /**
  * Mock implementation for testing
@@ -49,14 +49,30 @@ export class MockConfigService implements ConfigServiceInterface {
     return value.toLowerCase() === 'true';
   }
 
-  loadSEDAConfig(): SEDAConfig {
+  loadSEDAConfig(): SedaConfig {
     const network = this.getEnvVarWithDefault('SEDA_NETWORK', 'testnet') as NetworkType;
     const mnemonic = this.getEnvVar('SEDA_MNEMONIC') || 'mock-mnemonic';
 
     return {
-      rpcEndpoint: this.getEnvVarWithDefault('SEDA_RPC_ENDPOINT', 'https://rpc.testnet.seda.xyz'),
       network,
-      mnemonic
+      rpcEndpoint: this.getEnvVarWithDefault('SEDA_RPC_ENDPOINT', 'https://rpc.testnet.seda.xyz'),
+      mnemonic,
+      oracleProgramId: 'mock-oracle-program-id',
+      drTimeoutSeconds: 60,
+      drPollingIntervalSeconds: 1,
+      scheduler: {
+        intervalMs: 15000,
+        continuous: true,
+        maxRetries: 3,
+        memo: 'Mock DataRequest'
+      },
+      cosmos: {
+        postingTimeoutMs: 20000,
+        maxQueueSize: 100
+      },
+      logging: {
+        level: 'info' as const
+      }
     };
   }
 

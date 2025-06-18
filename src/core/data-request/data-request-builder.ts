@@ -10,9 +10,9 @@ import {
   buildGasOptions, 
   buildAwaitOptions
 } from './input-builder';
-import { executeDataRequest } from './executor';
+import { postDataRequestTransaction, awaitDataRequestResult } from './executor';
 import { initializeSigner } from './signer';
-import type { SEDAConfig, DataRequestResult, DataRequestOptions } from '../../types';
+import type { SedaConfig, DataRequestResult, DataRequestOptions } from '../../types';
 import type { LoggingServiceInterface } from '../../services';
 
 /**
@@ -20,13 +20,13 @@ import type { LoggingServiceInterface } from '../../services';
  * Handles configuration and posting of DataRequests to SEDA network
  */
 export class SEDADataRequestBuilder {
-  private config: SEDAConfig;
+  private config: SedaConfig;
   private signer: Signer | null = null;
   private isInitialized: boolean = false;
   private logger: LoggingServiceInterface;
 
   constructor(
-    config: SEDAConfig, 
+    config: SedaConfig, 
     logger: LoggingServiceInterface
   ) {
     this.config = config;
@@ -49,7 +49,7 @@ export class SEDADataRequestBuilder {
       this.signer = await initializeSigner(this.config, this.logger);
       this.isInitialized = true;
     } catch (error) {
-      this.logger.error('Failed to initialize signing configuration:', error);
+      this.logger.error('Failed to initialize signing configuration:', error instanceof Error ? error : String(error));
       throw error;
     }
   }
@@ -78,18 +78,28 @@ export class SEDADataRequestBuilder {
       const gasOptions = buildGasOptions(networkConfig);
       const awaitOptions = buildAwaitOptions(drConfig, options);
 
-      // Execute the DataRequest using the modular function
-      return await executeDataRequest(
+      // Post the DataRequest transaction first
+      const postResult = await postDataRequestTransaction(
         this.signer!, 
         postInput, 
         gasOptions, 
-        awaitOptions, 
+        networkConfig,
+        this.logger
+      );
+
+      // Then wait for results
+      const queryConfig = { rpc: this.signer!.getEndpoint() };
+      return await awaitDataRequestResult(
+        queryConfig,
+        postResult.drId,
+        postResult.blockHeight,
+        awaitOptions,
         networkConfig,
         this.logger
       );
 
     } catch (error) {
-      this.logger.error('DataRequest Failed:', error);
+      this.logger.error('DataRequest Failed:', error instanceof Error ? error : String(error));
       throw error;
     }
   }
@@ -97,7 +107,7 @@ export class SEDADataRequestBuilder {
   /**
    * Get the current configuration
    */
-  getConfig(): SEDAConfig {
+  getConfig(): SedaConfig {
     return { ...this.config };
   }
 
