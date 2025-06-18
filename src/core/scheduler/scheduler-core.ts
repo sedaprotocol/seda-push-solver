@@ -13,6 +13,7 @@ import type { SchedulerConfig } from '../../types';
 import type { TimerServiceInterface, TimerId } from '../../infrastructure';
 import type { LoggingService } from '../../services';
 import type { SEDADataRequestBuilder } from '../data-request';
+import { postCondition } from './post-condition';
 
 /**
  * Core scheduler implementation focused on the scheduling logic
@@ -77,7 +78,7 @@ export class SchedulerCore {
     this.statistics.reset();
 
     // Launch first async task immediately (non-blocking)
-    this.launchAsyncDataRequest();
+    await this.checkConditionAndPost();
     this.postCount = 1;
     this.nextPostTime = (this.timerService?.now() || Date.now()) + this.config.intervalMs;
 
@@ -94,18 +95,18 @@ export class SchedulerCore {
   private startContinuousMode(): void {
     // Schedule subsequent requests using timer service
     if (this.timerService) {
-      this.intervalId = this.timerService.setInterval(() => {
+      this.intervalId = this.timerService.setInterval(async () => {
         if (this.isRunning) {
-          this.launchAsyncDataRequest();
+          await this.checkConditionAndPost();
           this.postCount++;
           this.nextPostTime = (this.timerService?.now() || Date.now()) + this.config.intervalMs;
         }
       }, this.config.intervalMs);
     } else {
       // Fallback to built-in setInterval
-      this.intervalId = setInterval(() => {
+      this.intervalId = setInterval(async () => {
         if (this.isRunning) {
-          this.launchAsyncDataRequest();
+          await this.checkConditionAndPost();
           this.postCount++;
           this.nextPostTime = Date.now() + this.config.intervalMs;
         }
@@ -172,6 +173,28 @@ export class SchedulerCore {
   }
 
   /**
+   * Check post condition and launch DataRequest if condition passes
+   */
+  private async checkConditionAndPost(): Promise<void> {
+    if (!this.isRunning) return;
+
+    // Skip condition check if disabled
+    if (!this.config.enablePostCondition) {
+      this.launchAsyncDataRequest();
+      return;
+    }
+
+    // Check condition
+    const shouldPost = await postCondition();
+
+    if (shouldPost) {
+      this.launchAsyncDataRequest();
+    } else {
+      this.logger.info(`⏭️  Condition check failed, skipping this tick...`);
+    }
+  }
+
+  /**
    * Launch a new async DataRequest task (non-blocking)
    */
   private launchAsyncDataRequest(): void {
@@ -218,11 +241,7 @@ export class SchedulerCore {
       const successRate = stats.totalRequests > 0 ? 
         `${((stats.successfulRequests / stats.totalRequests) * 100).toFixed(0)}%` : '0%';
       
-      // Get detailed task information
-      const activeRequests = this.taskManager.getActiveDataRequests();
-      const completedRequests = this.taskManager.getDataRequestsByStatus('completed');
       const failedRequests = this.taskManager.getDataRequestsByStatus('failed');
-      const queueStats = this.taskManager.getQueueStats();
       
       // Show detailed status with DataRequest information
       this.logger.info(
