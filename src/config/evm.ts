@@ -21,8 +21,7 @@ export const evmNetworks: EvmNetworkConfig[] = (() => {
   const networks: EvmNetworkConfig[] = [];
   
   const knownNetworks = {
-    BASE: 'Base',
-    SUPERSEED_SEPOLIA: 'Superseed Sepolia'
+    BASE: 'Base'
   };
   
   for (const [prefix, displayName] of Object.entries(knownNetworks)) {

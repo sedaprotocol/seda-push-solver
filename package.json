@@ -36,6 +36,7 @@
     "@openzeppelin/merkle-tree": "^1.0.8",
     "@seda-protocol/dev-tools": "^1.0.0-rc.13",
     "@seda-protocol/proto-messages": "^1.0.0-rc.1",
+    "@seda-protocol/solver-sdk": "file:./solver-sdk",
     "@seda-protocol/utils": "^2.0.0",
     "buffer": "^6.0.3",
     "ethers": "^6.14.4",
