@@ -26,9 +26,26 @@ export interface SEDADataRequestConfig {
   batchPollingIntervalMs: number;
 }
 
+/**
+ * Multi-program data request configuration
+ */
+export interface MultiProgramDataRequestConfig {
+  oracleProgramIds: string[];
+  replicationFactor: number;
+  execGasLimit: bigint;
+  gasPrice: bigint;
+  consensusOptions: ConsensusOptions;
+  timeoutSeconds: number;
+  pollingIntervalSeconds: number;
+  memo: string;
+  maxBatchRetries: number;
+  batchPollingIntervalMs: number;
+}
+
 export interface DataRequestOptions {
   memo?: string;
   customTimeout?: number;
+  programId?: string; // Optional override for specific program ID
 }
 
 export interface SedaConfig {
@@ -53,8 +70,6 @@ export interface SedaConfig {
   };
 }
 
-
-
 export interface NetworkConfig {
   name: string;
   rpcEndpoint: string;
@@ -65,6 +80,7 @@ export interface NetworkConfig {
   };
   dataRequest: {
     oracleProgramId: string;
+    oracleProgramIds?: string[];
     replicationFactor: number;
     execGasLimit: bigint;
     gasPrice: bigint;

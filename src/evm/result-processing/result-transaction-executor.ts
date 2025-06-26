@@ -24,7 +24,10 @@ export async function executeResultTransaction(
   proof: string[],
   logger?: LoggingServiceInterface
 ): Promise<string> {
-  logger?.debug(`📡 Posting result to ${network.displayName}...`);
+  logger?.info(`📡 EXECUTING result posting transaction to ${network.displayName}...`);
+  logger?.info(`   🎯 Target: ${sedaCoreAddress}`);
+  logger?.info(`   📦 Batch: ${targetBatch}`);
+  logger?.info(`   🌳 Proof elements: ${proof.length}`);
 
   try {
     const result = await executeEvmTransaction(
@@ -38,9 +41,10 @@ export async function executeResultTransaction(
       }
     );
 
-    logger?.debug(`📦 Block: ${result.blockNumber}, Gas: ${result.gasUsed}`);
+    logger?.info(`✅ Result transaction successful! Block: ${result.blockNumber}, Gas: ${result.gasUsed}, TX: ${result.txHash}`);
     return result.txHash;
   } catch (error) {
+    logger?.error(`❌ Result transaction failed: ${getErrorMessage(error)}`);
     throw new Error(`Transaction execution failed: ${getErrorMessage(error)}`);
   }
 } 

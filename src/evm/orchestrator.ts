@@ -18,6 +18,9 @@ export class EvmOrchestrator {
   private proverDiscovery: ProverDiscovery;
   private batchPoster: BatchPoster;
   private resultPoster: ResultPoster;
+  
+  // Cache to prevent duplicate batch posting attempts for the same batch+network combination
+  private static batchPostingCache = new Map<string, Promise<any>>();
 
   constructor(private logger: LoggingServiceInterface, private networks: EvmNetworkConfig[]) {
     this.proverDiscovery = new ProverDiscovery(logger);
@@ -107,14 +110,39 @@ export class EvmOrchestrator {
         return networkResult;
       }
 
-      // Batch missing - attempt to post
-      this.logger.info(`${network.displayName}: Posting missing batch ${batch.batchNumber}`);
-      const postResult = await this.batchPoster.postBatch(network, batch, proverAddress);
+      // Batch missing - attempt to post with deduplication
+      const cacheKey = `${network.displayName}-${batch.batchNumber}`;
       
-      if (postResult.success) {
-        this.logger.info(`${network.displayName}: Posted batch ${batch.batchNumber} - ${postResult.txHash}`);
+      let postResult;
+      if (EvmOrchestrator.batchPostingCache.has(cacheKey)) {
+        this.logger.info(`${network.displayName}: Batch ${batch.batchNumber} posting already in progress - waiting...`);
+        postResult = await EvmOrchestrator.batchPostingCache.get(cacheKey);
+        this.logger.info(`${network.displayName}: Batch ${batch.batchNumber} posting completed (deduplicated)`);
       } else {
-        this.logger.error(`${network.displayName}: Failed to post batch - ${postResult.error}`);
+        this.logger.info(`${network.displayName}: Posting missing batch ${batch.batchNumber}`);
+        
+        // Create and cache the posting promise
+        const postingPromise = this.batchPoster.postBatch(network, batch, proverAddress);
+        EvmOrchestrator.batchPostingCache.set(cacheKey, postingPromise);
+        
+        try {
+          postResult = await postingPromise;
+          
+          if (postResult.success) {
+            this.logger.info(`${network.displayName}: Posted batch ${batch.batchNumber} - ${postResult.txHash}`);
+          } else {
+            this.logger.error(`${network.displayName}: Failed to post batch - ${postResult.error}`);
+          }
+        } catch (error) {
+          // Remove from cache on error so it can be retried
+          EvmOrchestrator.batchPostingCache.delete(cacheKey);
+          throw error;
+        }
+        
+        // Clean up cache after completion (keep for a short time to handle concurrent requests)
+        setTimeout(() => {
+          EvmOrchestrator.batchPostingCache.delete(cacheKey);
+        }, 10000); // Clean up after 10 seconds
       }
       
       // Update network result with batch posting info

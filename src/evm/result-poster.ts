@@ -7,7 +7,8 @@
 import type { LoggingServiceInterface } from '../services';
 import type { DataRequestResult, EvmNetworkConfig, SignedBatch } from '../types';
 import { getErrorMessage } from '../helpers/error-utils';
-import { evmPrivateKey, sedaConfig } from '../../config';
+import { evmPrivateKey } from '../../config';
+import { loadSEDAConfig } from '../config/seda';
 
 import { Solver } from '@seda-protocol/solver-sdk';
 
@@ -47,9 +48,10 @@ export class ResultPoster {
     }
 
     try {
+      const config = loadSEDAConfig();
       this.solver = await Solver.fromConfig({
-        rpc: sedaConfig.rpcEndpoint,
-        mnemonic: sedaConfig.mnemonic,
+        rpc: config.rpcEndpoint,
+        mnemonic: config.mnemonic,
         minimumBalance: 1_000_000_000_000_000_000n, // 1 SEDA
         batchPollingIntervalMs: 3000,
         dataResultPollingIntervalMs: 5000,
@@ -76,6 +78,9 @@ export class ResultPoster {
   ): Promise<ResultPostingResult> {
     try {
       this.logger.info(`🔍 Posting result for DR ${dataRequestResult.drId} to ${network.displayName}`);
+      this.logger.info(`   📋 DR ID: ${dataRequestResult.drId}`);
+      this.logger.info(`   🎯 Contract: ${sedaCoreAddress}`);
+      this.logger.info(`   📦 Batch: ${batch.batchNumber}`);
 
       // Validate prerequisites using extracted validator
       const validation = validateResultPostingPrerequisites(dataRequestResult, evmPrivateKey);
@@ -83,12 +88,16 @@ export class ResultPoster {
         return { success: false, error: validation.error };
       }
 
-      // Check if result already exists using extracted checker
-      const resultExists = await checkResultExists(network, sedaCoreAddress, dataRequestResult.drId, this.logger);
-      if (resultExists) {
-        this.logger.debug(`✅ Result already exists for DR ${dataRequestResult.drId} on ${network.displayName}`);
-        return { success: true, error: 'Result already exists' };
-      }
+      // TEMPORARILY DISABLE existence check to force result posting
+      // The existence check is giving false positives, so let's bypass it for now
+      this.logger.info(`📝 FORCING result posting for DR ${dataRequestResult.drId} to ${network.displayName} (existence check bypassed)`);
+      
+      // TODO: Fix the result existence check - it's incorrectly reporting results as existing
+      // const resultExists = await checkResultExists(network, sedaCoreAddress, dataRequestResult.drId, this.logger);
+      // if (resultExists) {
+      //   this.logger.info(`✅ Result already exists for DR ${dataRequestResult.drId} on ${network.displayName} - skipping posting`);
+      //   return { success: true, error: 'Result already exists' };
+      // }
 
       // Get the actual DataResult from solver SDK
       const solver = await this.initializeSolver();
@@ -117,10 +126,11 @@ export class ResultPoster {
       this.logger.info(`📊 Current batch height: ${currentBatchHeight}, Batch assignment: ${batch.batchNumber}`);
       
       let proof: string[] = [];
-      const targetBatch = currentBatchHeight;
+      // IMPORTANT: Use the batch the DataRequest was assigned to, not the current batch height
+      const targetBatch = BigInt(batch.batchNumber);
       
       // For permissionless contracts, generate proper merkle proof using solver SDK
-      this.logger.info(`🌳 Generating merkle proof for permissionless contract (current batch: ${currentBatchHeight})`);
+      this.logger.info(`🌳 Generating merkle proof for assigned batch: ${targetBatch} (DataRequest batch assignment)`);
       
       try {
         const solver = await this.initializeSolver();
@@ -174,9 +184,6 @@ export class ResultPoster {
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      const currentBatchHeight = await getCurrentBatchHeight(network, sedaCoreAddress, batch, this.logger);
-      this.logger.info(`📊 Current batch height: ${currentBatchHeight}, Batch assignment: ${batch.batchNumber}`);
-
       this.logger.error(`❌ Failed to post result to ${network.displayName}: ${errorMessage}`);
       
       return { 

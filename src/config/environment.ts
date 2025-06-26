@@ -3,13 +3,13 @@
  * Centralized environment variable validation and access
  */
 
-export function validateEnvironment(): void {
-  const required = [
-    'SEDA_MNEMONIC',
-    'SEDA_ORACLE_PROGRAM_ID'
-  ];
+const REQUIRED_ENV_VARS = [
+  'SEDA_MNEMONIC',
+  'SEDA_ORACLE_PROGRAM_IDS'
+];
 
-  const missing = required.filter(key => !process.env[key]);
+export function validateEnvironment(): void {
+  const missing = REQUIRED_ENV_VARS.filter(key => !process.env[key]);
   
   if (missing.length > 0) {
     if (process.env.NODE_ENV === 'test' || process.env.BUN_ENV === 'test') {

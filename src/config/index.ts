@@ -8,13 +8,12 @@ export * from './environment';
 
 // SEDA configuration
 export {
-  SEDA_NETWORKS,
   getSedaNetworkConfig,
   getSedaRpcEndpoint,
   getSedaDataRequestConfig,
   logSedaGasConfiguration,
-  sedaConfig,
-  loadSEDAConfig
+  loadSEDAConfig,
+  getOracleProgramIds
 } from './seda';
 
 // EVM configuration

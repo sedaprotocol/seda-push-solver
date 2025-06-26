@@ -116,6 +116,53 @@ export class TaskManager {
   }
 
   /**
+   * Queue a multi-program task for parallel execution
+   * This executes multiple programs in parallel within a single task
+   */
+  queueMultiProgramTask(
+    builder: SEDADataRequestBuilder,
+    config: SchedulerConfig,
+    isRunning: () => boolean,
+    completionHandler: TaskCompletionHandler,
+    statistics: SchedulerStatistics
+  ): string {
+    this.taskCounter++;
+    const taskId = `multi-task-${this.taskCounter}-${Date.now()}`;
+    const requestNumber = this.taskCounter;
+    
+    this.logger.info(`⚡ Queued multi-program task #${requestNumber} (${taskId}) - NO BLOCKING!`);
+    
+    // Start performance tracking
+    this.performanceTracker.startTracking(taskId, requestNumber);
+    
+    // Add to queue using the queue module
+    this.taskQueue.enqueue(taskId, requestNumber);
+
+    // Register the task
+    this.registry.registerTask(taskId, `${config.memo} - Multi-Program`);
+
+    // Create completion handler using the completion manager
+    const enhancedCompletionHandler = this.completionManager.createCompletionHandler(
+      taskId,
+      statistics,
+      this.performanceTracker,
+      completionHandler
+    );
+
+    // Start processing the multi-program task in the background (fire and forget)
+    this.processMultiProgramTaskInBackground(
+      taskId,
+      requestNumber,
+      builder,
+      config,
+      isRunning,
+      enhancedCompletionHandler
+    );
+
+    return taskId;
+  }
+
+  /**
    * Process task in background without blocking
    */
   private async processTaskInBackground(
@@ -139,6 +186,36 @@ export class TaskManager {
       );
     } catch (error) {
       this.logger.error(`❌ Background task processing failed for ${taskId}:`, error instanceof Error ? error : String(error));
+    } finally {
+      // Remove from queue when done using the queue module
+      this.taskQueue.dequeue(taskId);
+    }
+  }
+
+  /**
+   * Process multi-program task in background without blocking
+   */
+  private async processMultiProgramTaskInBackground(
+    taskId: string,
+    requestNumber: number,
+    builder: SEDADataRequestBuilder,
+    config: SchedulerConfig,
+    isRunning: () => boolean,
+    completionHandler: TaskCompletionHandler
+  ): Promise<void> {
+    try {
+      // Execute the multi-program task using the executor
+      await this.executor.executeMultiProgramTask(
+        taskId,
+        requestNumber,
+        builder,
+        config,
+        isRunning,
+        completionHandler,
+        this.performanceTracker
+      );
+    } catch (error) {
+      this.logger.error(`❌ Background multi-program task processing failed for ${taskId}:`, error instanceof Error ? error : String(error));
     } finally {
       // Remove from queue when done using the queue module
       this.taskQueue.dequeue(taskId);

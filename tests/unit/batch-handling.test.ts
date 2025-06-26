@@ -3,9 +3,15 @@
  */
 
 import { expect, test, describe } from 'bun:test';
+import { MockLoggingService } from '../mocks';
+
+// Set up required environment for testing
+process.env.SEDA_ORACLE_PROGRAM_IDS = 'test-program-1';
+process.env.SEDA_MNEMONIC = 'test mnemonic';
+process.env.SEDA_NETWORK = 'testnet';
+
 import { loadSEDAConfig } from '../../src/config';
 import { SEDADataRequestBuilder } from '../../src/core/data-request';
-import { MockLoggingService } from '../mocks';
 
 // Mock the batch handling functions for testing
 async function mockAwaitDataRequestResult(

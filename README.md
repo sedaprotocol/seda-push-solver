@@ -147,7 +147,7 @@ Create a `.env` file with your configuration:
 SEDA_NETWORK=testnet                           # testnet, mainnet, or local
 SEDA_MNEMONIC="your 24-word mnemonic"          # Your SEDA wallet mnemonic
 SEDA_RPC_ENDPOINT=                             # Optional: custom RPC endpoint
-SEDA_ORACLE_PROGRAM_ID="your-program-id"       # Your Oracle Program ID
+SEDA_ORACLE_PROGRAM_IDS="program1,program2"    # Your Oracle Program IDs (comma-separated for multiple programs)
 
 # DataRequest Configuration
 SEDA_REPLICATION_FACTOR=1                      # Number of oracle replications
@@ -341,3 +341,37 @@ npm run test:coverage
 3. Commit your changes (`git commit -m 'Add amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
+
+### Multi-Program Parallel Execution
+
+The solver now supports executing multiple oracle programs in parallel within each scheduled interval. This allows you to:
+
+- **Post DataRequests for multiple programs simultaneously**: All configured programs execute in parallel rather than sequentially
+- **Track multiple DataRequests concurrently**: Each program's DataRequest is tracked independently
+- **Post results to EVM chains in parallel**: Results from all programs are processed and posted to EVM networks simultaneously
+
+#### Configuration
+
+Configure multiple oracle programs using the `SEDA_ORACLE_PROGRAM_IDS` environment variable:
+
+```bash
+# Single program (legacy support)
+SEDA_ORACLE_PROGRAM_IDS="your-single-program-id"
+
+# Multiple programs (new parallel execution)
+SEDA_ORACLE_PROGRAM_IDS="program-id-1,program-id-2,program-id-3"
+```
+
+#### How It Works
+
+1. **Parallel Posting**: When the scheduler triggers, it posts DataRequests for all configured programs simultaneously
+2. **Independent Tracking**: Each program's DataRequest is tracked independently with its own lifecycle 
+3. **Parallel Result Processing**: Once oracle execution completes, results from all programs are processed and posted to EVM networks in parallel
+4. **Comprehensive Logging**: The system provides detailed logs for each program's execution status
+
+#### Benefits
+
+- **Improved Efficiency**: Multiple programs execute concurrently instead of waiting for each other
+- **Better Resource Utilization**: Takes full advantage of parallel processing capabilities
+- **Reduced Latency**: Overall execution time is determined by the slowest program rather than the sum of all programs
+- **Maintained Reliability**: Each program operates independently, so failures in one don't affect others

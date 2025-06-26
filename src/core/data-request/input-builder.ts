@@ -19,9 +19,12 @@ export function buildDataRequestInput(
   // Convert memo to Uint8Array if provided
   const memoBytes = options.memo ? new TextEncoder().encode(options.memo) : new Uint8Array(0);
 
+  // Use programId from options if provided, otherwise use config default
+  const programId = options.programId || drConfig.oracleProgramId;
+
   return {
     // Oracle program configuration
-    execProgramId: drConfig.oracleProgramId,
+    execProgramId: programId,
     
     // Empty inputs since the oracle program doesn't expect any input
     execInputs: new Uint8Array(0),

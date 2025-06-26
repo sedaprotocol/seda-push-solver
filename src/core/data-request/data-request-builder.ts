@@ -105,6 +105,98 @@ export class SEDADataRequestBuilder {
   }
 
   /**
+   * Post DataRequests for multiple programs in parallel
+   */
+  async postDataRequestsForAllPrograms(options: DataRequestOptions = {}): Promise<DataRequestResult[]> {
+    if (!this.isInitialized || !this.signer) {
+      await this.initialize();
+    }
+
+    // Get network-specific configuration
+    const networkConfig = getSedaNetworkConfig(this.config.network);
+    const programIds = networkConfig.dataRequest.oracleProgramIds || [networkConfig.dataRequest.oracleProgramId];
+
+    this.logger.info('📤 Posting Multiple DataRequests in Parallel');
+    this.logger.info(`   🌐 Network: ${this.config.network.toUpperCase()} | RPC: ${this.config.rpcEndpoint}`);
+    this.logger.info(`   🎯 Programs: ${programIds.length} programs`);
+    programIds.forEach((programId, index) => {
+      this.logger.info(`   ${index + 1}. ${programId}`);
+    });
+
+    try {
+      // Create promises for all program requests
+      const requestPromises = programIds.map(programId => 
+        this.postDataRequestForProgram(programId, options)
+      );
+
+      // Execute all requests in parallel
+      this.logger.info(`🚀 Launching ${programIds.length} DataRequests in parallel...`);
+      const results = await Promise.all(requestPromises);
+
+      this.logger.info(`✅ All ${results.length} DataRequests completed successfully`);
+      return results;
+
+    } catch (error) {
+      this.logger.error('Multiple DataRequests Failed:', error instanceof Error ? error : String(error));
+      throw error;
+    }
+  }
+
+  /**
+   * Post a DataRequest for a specific program
+   */
+  private async postDataRequestForProgram(programId: string, options: DataRequestOptions = {}): Promise<DataRequestResult> {
+    // Get network-specific DataRequest configuration
+    const networkConfig = getSedaNetworkConfig(this.config.network);
+    const drConfig = networkConfig.dataRequest;
+
+    // Create program-specific options
+    const programOptions = {
+      ...options,
+      programId,
+      memo: options.memo || `DX Feed Oracle DataRequest - ${programId}`
+    };
+
+    this.logger.info(`📤 Posting DataRequest for Program: ${programId}`);
+
+    try {
+      // Build the PostDataRequestInput using the modular function with program override
+      const postInput = buildDataRequestInput(drConfig, programOptions);
+
+      // Build gas and await options using modular functions
+      const gasOptions = buildGasOptions(networkConfig);
+      const awaitOptions = buildAwaitOptions(drConfig, programOptions);
+
+      // Post the DataRequest transaction first
+      const postResult = await postDataRequestTransaction(
+        this.signer!, 
+        postInput, 
+        gasOptions, 
+        networkConfig,
+        this.logger
+      );
+
+      // Then wait for results
+      const queryConfig = { rpc: this.signer!.getEndpoint() };
+      const result = await awaitDataRequestResult(
+        queryConfig,
+        postResult.drId,
+        postResult.blockHeight,
+        awaitOptions,
+        networkConfig,
+        this.logger
+      );
+
+      this.logger.info(`✅ DataRequest completed for Program: ${programId} (DR: ${result.drId})`);
+      return result;
+
+    } catch (error) {
+      this.logger.error(`❌ DataRequest failed for Program: ${programId}:`, error instanceof Error ? error : String(error));
+      throw error;
+    }
+  }
+
+  /**
    * Get the current configuration
    */
   getConfig(): SedaConfig {

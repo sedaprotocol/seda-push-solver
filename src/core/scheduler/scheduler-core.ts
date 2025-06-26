@@ -206,7 +206,7 @@ export class SchedulerCore {
   private launchAsyncDataRequest(): void {
     if (!this.isRunning) return;
 
-    this.taskManager.queueTask(
+    this.taskManager.queueMultiProgramTask(
       this.builder,
       this.config,
       () => this.isRunning,

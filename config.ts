@@ -4,7 +4,7 @@
  */
 
 // Re-export from modular config files
-export { sedaConfig } from './src/config/seda';
+export { loadSEDAConfig, getOracleProgramIds } from './src/config/seda';
 export { evmPrivateKey, evmNetworks, getEnabledEvmNetworks, getEvmNetwork } from './src/config/evm';
 
 // Re-export types

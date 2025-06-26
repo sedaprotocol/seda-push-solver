@@ -49,7 +49,7 @@ export function getMockOracleProgramId(): string {
  * Set up mock environment variables for testing
  */
 export function setupMockEnvironment(): void {
-  process.env.SEDA_ORACLE_PROGRAM_ID = getMockOracleProgramId();
+  process.env.SEDA_ORACLE_PROGRAM_IDS = getMockOracleProgramId();
   process.env.SEDA_MNEMONIC = 'test mnemonic for testing purposes only';
   process.env.SEDA_NETWORK = 'testnet';
 }
@@ -58,7 +58,7 @@ export function setupMockEnvironment(): void {
  * Clean up mock environment variables after testing
  */
 export function cleanupMockEnvironment(): void {
-  delete process.env.SEDA_ORACLE_PROGRAM_ID;
+  delete process.env.SEDA_ORACLE_PROGRAM_IDS;
   delete process.env.SEDA_MNEMONIC;
   delete process.env.SEDA_NETWORK;
 } 

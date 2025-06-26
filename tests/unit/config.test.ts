@@ -2,14 +2,17 @@
  * Configuration Test - Verify configuration functions work after refactoring
  */
 
+import type { SEDADataRequestConfig, NetworkConfig } from '../../src/types';
+
+// Set up required environment for testing
+process.env.SEDA_ORACLE_PROGRAM_IDS = 'test-program-1,test-program-2';
+process.env.SEDA_MNEMONIC = 'test mnemonic';
+process.env.SEDA_NETWORK = 'testnet';
+
 import { 
   getSedaNetworkConfig,
-  getSedaDataRequestConfig,
-  validateSedaNetworkConfig,
-  SEDA_NETWORKS
+  getSedaDataRequestConfig
 } from '../../src/config';
-
-import type { SEDADataRequestConfig, NetworkConfig } from '../../src/types';
 
 // Test getting network configuration
 const testnetConfig: NetworkConfig = getSedaNetworkConfig('testnet');
@@ -23,16 +26,12 @@ console.log('✅ getSedaDataRequestConfig works');
 console.log('   Oracle Program ID:', drConfig.oracleProgramId);
 console.log('   Gas Limit:', drConfig.execGasLimit);
 
-// Test validation
-try {
-  validateSedaNetworkConfig(testnetConfig, 'testnet');
-  console.log('✅ validateSedaNetworkConfig works');
-} catch (error) {
-  console.error('❌ Validation failed:', error);
-}
-
-// Test that the network configs are accessible
-console.log('✅ SEDA_NETWORKS accessible');
-console.log('   Available networks:', Object.keys(SEDA_NETWORKS));
+// Test that we can get different network configurations
+const mainnetConfig = getSedaNetworkConfig('mainnet');
+const localConfig = getSedaNetworkConfig('local');
+console.log('✅ Network configurations accessible');
+console.log('   Available networks: testnet, mainnet, local');
+console.log('   Mainnet RPC:', mainnetConfig.rpcEndpoint);
+console.log('   Local RPC:', localConfig.rpcEndpoint);
 
 console.log('\n✅ All configuration tests passed!'); 
