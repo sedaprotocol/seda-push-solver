@@ -23,6 +23,7 @@ export interface EvmTransactionConfig {
   functionName: string;
   args: any[];
   value?: bigint;
+  nonce?: number; // Optional manual nonce specification
 }
 
 /**
@@ -94,7 +95,8 @@ export async function executeEvmTransaction(
     abi: config.abi,
     functionName: config.functionName,
     args: config.args,
-    value: config.value
+    value: config.value,
+    nonce: config.nonce // Use manual nonce if provided
   });
 
   // Wait for confirmation

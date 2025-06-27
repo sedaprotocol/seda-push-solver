@@ -148,8 +148,9 @@ export async function awaitDataRequestResult(
         performanceTracker.startStep(taskId, 'postingBatch');
       }
       
-      // Handle EVM batch posting and result posting using the orchestrator
-      const evmOrchestrator = new EvmOrchestrator(logger, getEnabledEvmNetworks());
+      // Handle EVM batch posting and result posting using the SHARED orchestrator
+      // This ensures all DataRequest results use the same nonce coordinator to prevent conflicts
+      const evmOrchestrator = EvmOrchestrator.getSharedInstance(logger, getEnabledEvmNetworks());
       const evmBatchResults = await evmOrchestrator.processBatch(batch, {
         drId: rawResult.drId,
         exitCode: rawResult.exitCode,

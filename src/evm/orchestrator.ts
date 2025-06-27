@@ -10,6 +10,7 @@ import { getErrorMessage } from '../helpers/error-utils';
 import { ProverDiscovery } from './prover-discovery';
 import { BatchPoster } from './batch-poster';
 import { ResultPoster } from './result-poster';
+import { EvmNonceCoordinator, NonceStrategy } from './nonce-coordinator';
 
 /**
  * Unified orchestrator for all EVM network operations
@@ -18,14 +19,43 @@ export class EvmOrchestrator {
   private proverDiscovery: ProverDiscovery;
   private batchPoster: BatchPoster;
   private resultPoster: ResultPoster;
+  private nonceCoordinator: EvmNonceCoordinator;
   
   // Cache to prevent duplicate batch posting attempts for the same batch+network combination
   private static batchPostingCache = new Map<string, Promise<any>>();
+  
+  // Singleton instance to ensure shared nonce coordination across all DataRequest results
+  private static sharedInstance: EvmOrchestrator | null = null;
 
   constructor(private logger: LoggingServiceInterface, private networks: EvmNetworkConfig[]) {
     this.proverDiscovery = new ProverDiscovery(logger);
     this.batchPoster = new BatchPoster(logger);
     this.resultPoster = new ResultPoster(logger);
+    // Initialize with HYBRID strategy for production-grade nonce management
+    this.nonceCoordinator = new EvmNonceCoordinator(logger, NonceStrategy.HYBRID);
+  }
+
+  /**
+   * Get or create shared EvmOrchestrator instance for nonce coordination
+   * This ensures all DataRequest results use the same nonce coordinator
+   */
+  static getSharedInstance(logger: LoggingServiceInterface, networks: EvmNetworkConfig[]): EvmOrchestrator {
+    if (!EvmOrchestrator.sharedInstance) {
+      logger.info('🔧 Creating shared EvmOrchestrator instance with advanced nonce coordination');
+      EvmOrchestrator.sharedInstance = new EvmOrchestrator(logger, networks);
+    }
+    return EvmOrchestrator.sharedInstance;
+  }
+
+  /**
+   * Reset the shared instance (for testing or configuration changes)
+   */
+  static resetSharedInstance(): void {
+    if (EvmOrchestrator.sharedInstance) {
+      EvmOrchestrator.sharedInstance.logger.info('🔄 Resetting shared EvmOrchestrator instance');
+      EvmOrchestrator.sharedInstance.nonceCoordinator.reset();
+      EvmOrchestrator.sharedInstance = null;
+    }
   }
 
   /**
@@ -36,7 +66,7 @@ export class EvmOrchestrator {
       return;
     }
     
-    this.logger.info(`Initializing ${this.networks.length} EVM networks`);
+    this.logger.info(`Initializing ${this.networks.length} EVM networks with advanced nonce management`);
     
     const discoveries = await Promise.all(
       this.networks.map(network => 
@@ -46,6 +76,9 @@ export class EvmOrchestrator {
      
     const successCount = discoveries.filter((addr: string | null) => addr !== null).length;
     this.logger.info(`Discovered ${successCount}/${this.networks.length} prover contracts`);
+    
+    // Log nonce coordinator status
+    this.logNonceStatus();
   }
 
   /**
@@ -59,11 +92,55 @@ export class EvmOrchestrator {
     
     this.logger.info(`Processing batch ${batch.batchNumber} on ${this.networks.length} EVM networks`);
 
+    // Phase 1: Handle batch posting (parallel across networks)
     const results = await Promise.all(
       this.networks.map(network => 
-        this.processNetworkBatch(network, batch, dataRequestResult)
+        this.processNetworkBatch(network, batch, undefined) // Don't post results yet
       )
     );
+
+    // Phase 2: Post results sequentially across all networks where batches exist
+    if (dataRequestResult) {
+      this.logger.info(`🚀 Posting results sequentially across networks where batch ${batch.batchNumber} exists`);
+      
+      // CRITICAL: Ensure all batches are posted and confirmed before posting results
+      const networksWithBatch = results
+        .map((result, index) => ({ result, network: this.networks[index] }))
+        .filter(({ result }) => result.batchExists || result.posted === true);
+
+      if (networksWithBatch.length > 0) {
+        this.logger.info(`📋 Ensuring batches are confirmed before posting results to ${networksWithBatch.length} networks`);
+        
+        // STEP 1: Ensure all batches are fully posted and confirmed
+        for (const { result, network } of networksWithBatch) {
+          if (!network) {
+            throw new Error('Network is undefined in networksWithBatch');
+          }
+          
+          // If batch was just posted (not pre-existing), wait for confirmation
+          if (result.posted === true && !result.batchExists) {
+            this.logger.info(`⏳ Waiting for batch ${batch.batchNumber} confirmation on ${network.displayName}...`);
+            await this.waitForBatchConfirmation(network, batch.batchNumber);
+          }
+        }
+        
+        this.logger.info(`✅ All batches confirmed. Posting results sequentially with advanced nonce management`);
+        
+        // STEP 2: Post results to all networks sequentially to avoid nonce conflicts
+        for (const { result, network } of networksWithBatch) {
+          if (!network) {
+            throw new Error('Network is undefined in networksWithBatch');
+          }
+          await this.postResultToNetworkWithNonce(network, dataRequestResult, batch, result);
+        }
+        
+        // Log nonce status after result posting
+        this.logNonceStatus();
+        
+      } else {
+        this.logger.warn(`⚠️ No networks have batch ${batch.batchNumber} available for result posting`);
+      }
+    }
 
     this.logBatchSummary(Number(batch.batchNumber), results);
     return results;
@@ -102,9 +179,9 @@ export class EvmOrchestrator {
       if (batchExists) {
         this.logger.info(`${network.displayName}: Batch ${batch.batchNumber} exists (height: ${lastBatchHeight})`);
         
-        // If batch exists and we have a DataRequest result, try to post the result
+        // If batch exists and we have a DataRequest result, result posting will be handled in sequential phase
         if (dataRequestResult) {
-          await this.postResultToNetwork(network, dataRequestResult, batch, networkResult);
+          this.logger.debug(`${network.displayName}: Batch exists, result posting will be handled in sequential phase`);
         }
         
         return networkResult;
@@ -130,39 +207,64 @@ export class EvmOrchestrator {
           
           if (postResult.success) {
             this.logger.info(`${network.displayName}: Posted batch ${batch.batchNumber} - ${postResult.txHash}`);
+            networkResult.posted = true;
+            networkResult.txHash = postResult.txHash;
           } else {
-            this.logger.error(`${network.displayName}: Failed to post batch - ${postResult.error}`);
+            this.logger.warn(`${network.displayName}: Failed to post batch - ${postResult.error}`);
+            networkResult.posted = false;
+            networkResult.error = postResult.error;
           }
-        } catch (error) {
-          // Remove from cache on error so it can be retried
+        } finally {
+          // Clean up cache entry
           EvmOrchestrator.batchPostingCache.delete(cacheKey);
-          throw error;
         }
-        
-        // Clean up cache after completion (keep for a short time to handle concurrent requests)
-        setTimeout(() => {
-          EvmOrchestrator.batchPostingCache.delete(cacheKey);
-        }, 10000); // Clean up after 10 seconds
       }
-      
-      // Update network result with batch posting info
-      networkResult.batchExists = false;
-      networkResult.posted = postResult.success;
-      networkResult.txHash = postResult.txHash;
-      networkResult.error = postResult.error;
 
-      // If batch was successfully posted and we have a DataRequest result, try to post the result
-      if (postResult.success && dataRequestResult) {
-        await this.postResultToNetwork(network, dataRequestResult, batch, networkResult);
-      }
-      
       return networkResult;
-
+      
     } catch (error) {
       const errorMsg = getErrorMessage(error);
-      this.logger.warn(`${network.displayName}: Batch processing failed - ${errorMsg}`);
+      this.logger.warn(`${network.displayName}: Error processing batch - ${errorMsg}`);
       return this.createErrorResult(network, errorMsg);
     }
+  }
+
+  /**
+   * Wait for batch confirmation on a specific network
+   */
+  private async waitForBatchConfirmation(network: EvmNetworkConfig, batchNumber: bigint): Promise<void> {
+    const maxAttempts = 10;
+    const delayMs = 2000; // 2 seconds
+    
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const proverAddress = await this.proverDiscovery.discoverProverAddress(network);
+        if (!proverAddress) {
+          throw new Error('Failed to discover prover contract address');
+        }
+
+        const lastBatchHeight = await this.proverDiscovery.getLastBatchHeight(network, proverAddress);
+        if (lastBatchHeight !== null && lastBatchHeight >= batchNumber) {
+          this.logger.info(`✅ Batch ${batchNumber} confirmed on ${network.displayName} (height: ${lastBatchHeight})`);
+          return;
+        }
+        
+        this.logger.debug(`⏳ Batch ${batchNumber} not yet confirmed on ${network.displayName} (attempt ${attempt}/${maxAttempts}, current height: ${lastBatchHeight})`);
+        
+        if (attempt < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
+        
+      } catch (error) {
+        this.logger.warn(`⚠️ Error checking batch confirmation on ${network.displayName} (attempt ${attempt}): ${getErrorMessage(error)}`);
+        
+        if (attempt < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
+      }
+    }
+    
+    this.logger.warn(`⚠️ Batch ${batchNumber} confirmation timeout on ${network.displayName} after ${maxAttempts} attempts`);
   }
 
   /**
@@ -199,7 +301,47 @@ export class EvmOrchestrator {
   }
 
   /**
-   * Post DataRequest result to a specific network
+   * Post DataRequest result to a specific network with advanced nonce coordination
+   */
+  private async postResultToNetworkWithNonce(
+    network: EvmNetworkConfig,
+    dataRequestResult: DataRequestResult,
+    batch: SignedBatch,
+    networkResult: NetworkBatchStatus
+  ): Promise<void> {
+    try {
+      this.logger.info(`🔍 Attempting to post result for DR ${dataRequestResult.drId} to ${network.displayName} (with advanced nonce coordination)`);
+      
+      const resultPostResult = await this.resultPoster.postResultWithNonce(
+        network,
+        dataRequestResult,
+        batch,
+        network.contractAddress, // SEDA Core contract address
+        this.nonceCoordinator
+      );
+
+      // Update network result with result posting info
+      networkResult.resultPosted = resultPostResult.success;
+      networkResult.resultTxHash = resultPostResult.txHash;
+      networkResult.resultError = resultPostResult.error;
+      networkResult.resultId = resultPostResult.resultId;
+
+      if (resultPostResult.success) {
+        this.logger.info(`✅ ${network.displayName}: Posted result for DR ${dataRequestResult.drId} - ${resultPostResult.txHash}`);
+      } else {
+        this.logger.warn(`⚠️ ${network.displayName}: Failed to post result - ${resultPostResult.error}`);
+      }
+      
+    } catch (error) {
+      const errorMsg = getErrorMessage(error);
+      this.logger.warn(`⚠️ ${network.displayName}: Result posting failed - ${errorMsg}`);
+      networkResult.resultPosted = false;
+      networkResult.resultError = errorMsg;
+    }
+  }
+
+  /**
+   * Post DataRequest result to a specific network (legacy method without nonce coordination)
    */
   private async postResultToNetwork(
     network: EvmNetworkConfig,
@@ -235,6 +377,39 @@ export class EvmOrchestrator {
       networkResult.resultPosted = false;
       networkResult.resultError = errorMsg;
     }
+  }
+
+  /**
+   * Log comprehensive nonce status for debugging
+   */
+  private logNonceStatus(): void {
+    const summary = this.nonceCoordinator.getSummary();
+    const status = this.nonceCoordinator.getComprehensiveStatus();
+    
+    this.logger.info(`🔢 Nonce Coordinator Status:`);
+    this.logger.info(`   Networks: ${summary.totalNetworks}, Pending TXs: ${summary.totalPendingTransactions}`);
+    this.logger.info(`   Gaps: ${summary.networksWithGaps}, Stuck: ${summary.networksWithStuckTx}`);
+    
+    // Log detailed status for networks with issues
+    for (const [key, info] of Object.entries(status)) {
+      if (info.gaps.length > 0 || info.pendingTransactions.some(tx => tx.isStuck)) {
+        this.logger.warn(`⚠️ ${key}: confirmed=${info.confirmed}, pending=${info.pending}, gaps=[${info.gaps.join(',')}]`);
+        
+        const stuckTxs = info.pendingTransactions.filter(tx => tx.isStuck);
+        if (stuckTxs.length > 0) {
+          this.logger.warn(`   Stuck transactions: ${stuckTxs.map(tx => `${tx.nonce}(${tx.retryCount})`).join(', ')}`);
+        }
+      }
+    }
+  }
+
+  /**
+   * Force refresh all nonce managers (for error recovery)
+   */
+  async refreshNonceManagers(): Promise<void> {
+    this.logger.info('🔄 Refreshing all nonce managers for error recovery');
+    await this.nonceCoordinator.refreshAllNonces();
+    this.logNonceStatus();
   }
 
   private createErrorResult(network: EvmNetworkConfig, error: string): NetworkBatchStatus {
