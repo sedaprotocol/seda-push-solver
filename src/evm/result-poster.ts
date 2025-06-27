@@ -474,7 +474,7 @@ export class ResultPoster {
           } else {
             // Retry attempts: use nonce failure recovery
             const errorMsg = `Retry attempt ${attempt} after nonce failure`;
-            const previousNonce = nonceReservation ? nonceReservation.nonce : 0;
+            const previousNonce = (nonceReservation as any)?.nonce ?? 0;
             const recoveryResult = await nonceCoordinator.handleNonceFailure(network, evmPrivateKey, previousNonce, errorMsg);
             nonceReservation = {
               nonce: recoveryResult.nonce,
