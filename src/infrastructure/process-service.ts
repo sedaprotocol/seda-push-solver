@@ -80,15 +80,29 @@ export class ProcessService implements ProcessServiceInterface {
     this.isShuttingDownFlag = true;
     this.loggingService.info('🛑 Starting graceful shutdown...');
 
+    // Add timeout to prevent hanging shutdown
+    const shutdownTimeout = setTimeout(() => {
+      this.loggingService.error('💥 Graceful shutdown timed out after 30 seconds, forcing exit');
+      process.exit(1);
+    }, 30000); // 30 second timeout
+
     try {
-      // Run all shutdown handlers
-      for (const handler of this.shutdownHandlers) {
-        try {
-          await handler();
-        } catch (error) {
-          this.loggingService.error(`❌ Shutdown handler failed: ${error}`);
-        }
-      }
+      // Run all shutdown handlers with individual timeouts
+      const handlerPromises = this.shutdownHandlers.map((handler, index) => 
+        Promise.race([
+          Promise.resolve(handler()),
+          new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error(`Handler ${index} timeout after 5 seconds`)), 5000)
+          )
+        ]).catch(error => {
+          this.loggingService.error(`❌ Shutdown handler ${index} failed: ${error}`);
+        })
+      );
+
+      await Promise.all(handlerPromises);
+
+      // Clear the shutdown timeout since we completed successfully
+      clearTimeout(shutdownTimeout);
 
       this.loggingService.info('✅ Graceful shutdown completed');
       
@@ -97,6 +111,7 @@ export class ProcessService implements ProcessServiceInterface {
       
       process.exit(exitCode);
     } catch (error) {
+      clearTimeout(shutdownTimeout);
       this.loggingService.error(`💥 Graceful shutdown failed: ${error}`);
       process.exit(1);
     }

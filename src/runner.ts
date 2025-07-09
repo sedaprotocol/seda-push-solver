@@ -46,6 +46,28 @@ async function main() {
 
     infrastructure.healthService.startPeriodicChecks(30000); // Check every 30s
 
+    // Enhanced shutdown handler to ensure complete cleanup
+    infrastructure.processService.onShutdown(async () => {
+      logger.info('\n🔔 Received shutdown signal, starting graceful shutdown...');
+      
+      try {
+        // Stop scheduler first
+        logger.info('🛑 Stopping scheduler...');
+        await scheduler.shutdown();
+        
+        // Shutdown infrastructure services
+        logger.info('🛑 Shutting down infrastructure services...');
+        await infrastructure.shutdown();
+        
+        logger.info('✅ Graceful shutdown completed successfully');
+      } catch (error) {
+        logger.error('❌ Error during shutdown:', getErrorMessage(error));
+      }
+    });
+
+    // Start signal handling
+    infrastructure.processService.startSignalHandling();
+
   } catch (error) {
     logger.info('\n📊 Process ending...');
     
@@ -78,6 +100,14 @@ async function main() {
     }
     
     logger.error(`\n❌ Error: ${getErrorMessage(error)}`);
+    
+    // Ensure infrastructure cleanup even on startup failure
+    try {
+      await infrastructure.shutdown();
+    } catch (shutdownError) {
+      logger.error('❌ Failed to shutdown infrastructure:', getErrorMessage(shutdownError));
+    }
+    
     process.exit(1);
   }
 }
@@ -86,12 +116,12 @@ async function main() {
 const services = ServiceContainer.createProduction();
 const logger = services.loggingService;
 
-process.on('uncaughtException', (error) => {
+process.on('uncaughtException', (error: Error) => {
   logger.error('💥 Uncaught Exception:', error);
   process.exit(1);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) => {
   logger.error('💥 Unhandled Rejection at:', promise, 'reason:', reason instanceof Error ? reason : String(reason));
   process.exit(1);
 });

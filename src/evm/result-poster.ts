@@ -135,16 +135,12 @@ export class ResultPoster {
         return { success: false, error: validation.error };
       }
 
-      // TEMPORARILY DISABLE existence check to force result posting
-      // The existence check is giving false positives, so let's bypass it for now
-      this.logger.info(`📝 FORCING result posting for DR ${dataRequestResult.drId} to ${network.displayName} (existence check bypassed)`);
-      
-      // TODO: Fix the result existence check - it's incorrectly reporting results as existing
-      // const resultExists = await checkResultExists(network, sedaCoreAddress, dataRequestResult.drId, this.logger);
-      // if (resultExists) {
-      //   this.logger.info(`✅ Result already exists for DR ${dataRequestResult.drId} on ${network.displayName} - skipping posting`);
-      //   return { success: true, error: 'Result already exists' };
-      // }
+      // Check if result already exists to avoid unnecessary transaction attempts
+      const resultExists = await checkResultExists(network, sedaCoreAddress, dataRequestResult.drId, this.logger);
+      if (resultExists) {
+        this.logger.info(`✅ Result already exists for DR ${dataRequestResult.drId} on ${network.displayName} - skipping posting`);
+        return { success: true, error: 'Result already exists' };
+      }
 
       // Get the actual DataResult from solver SDK at the correct block height
       const solver = await this.initializeSolver();
@@ -293,6 +289,33 @@ export class ResultPoster {
       
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      // CRITICAL: Treat ResultAlreadyExists as SUCCESS, not failure
+      if (errorMessage.includes('ResultAlreadyExists')) {
+        this.logger.info(`✅ Result already exists for DR ${dataRequestResult.drId} on ${network.displayName} - treating as success`);
+        
+        // Try to derive result ID for tracking
+        let resultId: string | undefined;
+        try {
+          const solver = await this.initializeSolver();
+          const dataResultResponse = await solver.getDataResult(dataRequestResult.drId, dataRequestResult.drBlockHeight);
+          
+          if (dataResultResponse.isOk && !dataResultResponse.value.isNothing) {
+            const dataResult = dataResultResponse.value.value;
+            const evmResult = convertDataResultToDataResultEvm(dataResult);
+            resultId = await deriveResultId(network, sedaCoreAddress, evmResult, this.logger);
+          }
+        } catch (deriveError) {
+          this.logger.debug(`Could not derive result ID: ${deriveError}`);
+        }
+        
+        return { 
+          success: true,
+          resultId,
+          error: 'Result already exists on chain'  // Informational message
+        };
+      }
+      
       this.logger.error(`❌ Failed to post result to ${network.displayName}: ${errorMessage}`);
       
       return { 
@@ -337,9 +360,12 @@ export class ResultPoster {
         return { success: false, error: validation.error };
       }
 
-      // TEMPORARILY DISABLE existence check to force result posting
-      // The existence check is giving false positives, so let's bypass it for now
-      this.logger.info(`📝 FORCING result posting for DR ${dataRequestResult.drId} to ${network.displayName} (existence check bypassed)`);
+      // Check if result already exists to avoid unnecessary transaction attempts
+      const resultExists = await checkResultExists(network, sedaCoreAddress, dataRequestResult.drId, this.logger);
+      if (resultExists) {
+        this.logger.info(`✅ Result already exists for DR ${dataRequestResult.drId} on ${network.displayName} - skipping posting`);
+        return { success: true, error: 'Result already exists' };
+      }
 
       // Get the actual DataResult from solver SDK at the correct block height
       const solver = await this.initializeSolver();
@@ -578,6 +604,29 @@ export class ResultPoster {
       
     } catch (error) {
       const errorMessage = getErrorMessage(error);
+      
+      // CRITICAL: Treat ResultAlreadyExists as SUCCESS, not failure
+      if (errorMessage.includes('ResultAlreadyExists')) {
+        this.logger.info(`✅ Result already exists for DR ${dataRequestResult.drId} on ${network.displayName} - treating as success`);
+        
+        // Try to derive result ID for tracking
+        let resultId: string | undefined;
+        try {
+          if (dataResult) {
+            const evmResult = convertDataResultToDataResultEvm(dataResult);
+            resultId = await deriveResultId(network, sedaCoreAddress, evmResult, this.logger);
+          }
+        } catch (deriveError) {
+          this.logger.debug(`Could not derive result ID: ${deriveError}`);
+        }
+        
+        return { 
+          success: true,
+          resultId,
+          error: 'Result already exists on chain'  // Informational message
+        };
+      }
+      
       this.logger.error(`❌ Failed to post result to ${network.displayName}: ${errorMessage}`);
       
       // Log proof analysis for failed posting (if we have the required variables)

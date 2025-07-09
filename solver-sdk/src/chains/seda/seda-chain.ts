@@ -165,6 +165,14 @@ export class SedaChain extends EventEmitter<EventMap> {
 		}, QUEUE_INTERVAL);
 	}
 
+	stop() {
+		if (this.intervalId) {
+			clearInterval(this.intervalId);
+			this.intervalId = undefined;
+		}
+		this.transactionQueue = [];
+	}
+
 	static async fromConfig(
 		config: SolverConfigInternal,
 	): Promise<Result<SedaChain, unknown>> {

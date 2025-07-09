@@ -321,4 +321,47 @@ export class TaskManager {
     this.sequenceCoordinator.clear();
     this.performanceTracker.reset();
   }
+
+  /**
+   * Shutdown the task manager and wait for all tasks to complete
+   */
+  async shutdown(): Promise<void> {
+    this.logger.info('🛑 Starting task manager shutdown...');
+    
+    // First, signal all components to stop accepting new work
+    this.sequenceCoordinator.clear();
+    
+    // Cancel any long-running background operations
+    if (this.executor.cancelAllTasks) {
+      this.executor.cancelAllTasks();
+    }
+    
+    // Wait for existing tasks to complete (with timeout)
+    let attempts = 0;
+    const maxAttempts = 50; // 5 seconds total (100ms * 50)
+    
+    while (!this.taskQueue.isEmpty() && attempts < maxAttempts) {
+      await new Promise<void>(resolve => {
+        if (this.getTimestamp === Date.now) {
+          // Use a simple delay since we don't have timer service here
+          const start = Date.now();
+          while (Date.now() - start < 100) {
+            // Busy wait for 100ms
+          }
+        }
+        resolve();
+      });
+      attempts++;
+    }
+    
+    if (!this.taskQueue.isEmpty()) {
+      const remainingTasks = this.taskQueue.getSize();
+      this.logger.warn(`⚠️ Shutdown timeout: ${remainingTasks} tasks still in queue`);
+    }
+    
+    // Force clear all resources
+    this.clear();
+    
+    this.logger.info('✅ Task manager shutdown completed');
+  }
 } 

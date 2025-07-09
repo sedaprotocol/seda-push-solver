@@ -179,6 +179,61 @@ export class SchedulerCore {
   }
 
   /**
+   * Shutdown the scheduler with complete cleanup
+   */
+  async shutdown(): Promise<void> {
+    if (!this.isRunning) {
+      this.logger.warn('⚠️  Scheduler is not running');
+      return;
+    }
+
+    this.logger.info('🛑 Starting scheduler shutdown...');
+    
+    // Stop accepting new tasks
+    this.isRunning = false;
+    
+    // Clear intervals first
+    if (this.intervalId) {
+      if (this.timerService) {
+        this.timerService.clearInterval(this.intervalId);
+      } else {
+        clearInterval(this.intervalId);
+      }
+      this.intervalId = null;
+    }
+
+    if (this.tickerIntervalId) {
+      if (this.timerService) {
+        this.timerService.clearInterval(this.tickerIntervalId);
+      } else {
+        clearInterval(this.tickerIntervalId);
+      }
+      this.tickerIntervalId = null;
+    }
+
+    // Wait for all background tasks to complete
+    const activeTasks = this.taskManager.getActiveTaskCount();
+    if (activeTasks > 0) {
+      this.logger.info(`⏳ Waiting for ${activeTasks} background tasks to complete...`);
+      
+      try {
+        await this.taskManager.shutdown();
+        this.logger.info('✅ All background tasks completed successfully');
+      } catch (error) {
+        this.logger.warn(`⚠️ Background task shutdown error: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+
+    // Clear all task manager resources
+    this.taskManager.clear();
+
+    this.statistics.printReport(this.logger);
+    this.taskManager.logPerformanceSummary();
+    
+    this.logger.info('✅ Scheduler shutdown completed');
+  }
+
+  /**
    * Check post condition and launch DataRequest if condition passes
    */
   private async checkConditionAndPost(): Promise<void> {

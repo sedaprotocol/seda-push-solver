@@ -27,6 +27,7 @@ import { getErrorMessage } from '../../helpers/error-utils';
 export class TaskExecutor {
   private memoGenerator: UniqueMemoGenerator;
   private sequenceQueryService: SequenceQueryService;
+  private cancellationTokens = new Map<string, boolean>();
 
   constructor(
     private logger: LoggingServiceInterface,
@@ -776,6 +777,34 @@ export class TaskExecutor {
   }
 
   /**
+   * Cancel all active tasks
+   */
+  cancelAllTasks(): void {
+    this.logger.info(`🚫 Cancelling ${this.cancellationTokens.size} active tasks`);
+    
+    for (const [taskId] of this.cancellationTokens) {
+      this.cancellationTokens.set(taskId, true);
+      this.logger.debug(`🚫 Marked task ${taskId} for cancellation`);
+    }
+  }
+
+  /**
+   * Check if a task is cancelled
+   */
+  isTaskCancelled(taskId: string): boolean {
+    return this.cancellationTokens.get(taskId) === true;
+  }
+
+  /**
+   * Reset the executor and clear all resources
+   */
+  reset(): void {
+    this.cancellationTokens.clear();
+    this.memoGenerator.reset();
+    this.logger.debug('🔄 Task executor reset');
+  }
+
+  /**
    * Handle posting failure
    */
   private handlePostingFailure(
@@ -855,12 +884,5 @@ export class TaskExecutor {
    */
   getMemoGeneratorStats() {
     return this.memoGenerator.getStats();
-  }
-
-  /**
-   * Reset memo generator
-   */
-  reset(): void {
-    this.memoGenerator.reset();
   }
 } 

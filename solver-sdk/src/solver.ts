@@ -131,7 +131,7 @@ export class Solver extends EventEmitter<EventMap> {
 
 	async listen() {
 		// Make sure any dangling processes are stopped
-		clearInterval(this.dataResultInterval);
+		this.stop();
 
 		this.batchFetcher.stop();
 		this.batchFetcher.start();
@@ -205,6 +205,38 @@ export class Solver extends EventEmitter<EventMap> {
 		}, this.config.dataResultPollingIntervalMs);
 
 		this.sedaChain.start();
+	}
+
+	/**
+	 * Stop all solver processes and clean up resources
+	 */
+	stop(): void {
+		// Clear data result interval
+		if (this.dataResultInterval) {
+			clearInterval(this.dataResultInterval);
+			this.dataResultInterval = undefined;
+		}
+
+		// Stop batch fetcher
+		this.batchFetcher.stop();
+
+		// Stop SEDA chain
+		this.sedaChain.stop();
+
+		// Clear processing maps
+		this.processingDataRequests.clear();
+		this.watchingDataRequests.clear();
+	}
+
+	/**
+	 * Comprehensive shutdown with cleanup
+	 */
+	async shutdown(): Promise<void> {
+		this.stop();
+		
+		// Remove all event listeners
+		this.removeAllListeners();
+		this.sedaChain.removeAllListeners();
 	}
 
 	/**
