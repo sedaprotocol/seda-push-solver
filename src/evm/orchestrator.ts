@@ -24,6 +24,9 @@ export class EvmOrchestrator {
   // Cache to prevent duplicate batch posting attempts for the same batch+network combination
   private static batchPostingCache = new Map<string, Promise<any>>();
   
+  // Cache expiration tracking to clean up old entries
+  private static batchPostingCacheExpiry = new Map<string, number>();
+  
   // Singleton instance to ensure shared nonce coordination across all DataRequest results
   private static sharedInstance: EvmOrchestrator | null = null;
 
@@ -33,6 +36,42 @@ export class EvmOrchestrator {
     this.resultPoster = new ResultPoster(logger);
     // Initialize with HYBRID strategy for production-grade nonce management
     this.nonceCoordinator = new EvmNonceCoordinator(logger, NonceStrategy.HYBRID);
+  }
+
+  /**
+   * Shutdown the EVM orchestrator and clean up all resources
+   */
+  async shutdown(): Promise<void> {
+    this.logger.info('🛑 Starting EVM orchestrator shutdown...');
+    
+    try {
+      // Reset nonce coordinator (calls destroy on all managers)
+      this.nonceCoordinator.reset();
+      
+      // Clear batch posting caches
+      EvmOrchestrator.batchPostingCache.clear();
+      EvmOrchestrator.batchPostingCacheExpiry.clear();
+      
+      // Clear shared instance
+      EvmOrchestrator.sharedInstance = null;
+      
+      this.logger.info('✅ EVM orchestrator shutdown completed');
+    } catch (error) {
+      this.logger.error('❌ Error during EVM orchestrator shutdown:', error instanceof Error ? error : String(error));
+    }
+  }
+
+  /**
+   * Static method to shutdown all shared resources
+   */
+  static async shutdownAll(): Promise<void> {
+    if (EvmOrchestrator.sharedInstance) {
+      await EvmOrchestrator.sharedInstance.shutdown();
+    }
+    
+    // Clear static caches
+    EvmOrchestrator.batchPostingCache.clear();
+    EvmOrchestrator.batchPostingCacheExpiry.clear();
   }
 
   /**
@@ -119,7 +158,11 @@ export class EvmOrchestrator {
           
           // If batch was just posted (not pre-existing), wait for confirmation
           if (result.posted === true && !result.batchExists) {
-            this.logger.info(`⏳ Waiting for batch ${batch.batchNumber} confirmation on ${network.displayName}...`);
+            if (result.assumedPosted) {
+              this.logger.info(`⏳ Waiting for batch ${batch.batchNumber} confirmation on ${network.displayName} (assumed posted)...`);
+            } else {
+              this.logger.info(`⏳ Waiting for batch ${batch.batchNumber} confirmation on ${network.displayName}...`);
+            }
             await this.waitForBatchConfirmation(network, batch.batchNumber);
           }
         }
@@ -187,36 +230,92 @@ export class EvmOrchestrator {
         return networkResult;
       }
 
-      // Batch missing - attempt to post with deduplication
+      // Batch missing - attempt to post with atomic deduplication
       const cacheKey = `${network.displayName}-${batch.batchNumber}`;
       
+      // Clean up expired cache entries first
+      this.cleanupExpiredCacheEntries();
+      
       let postResult;
-      if (EvmOrchestrator.batchPostingCache.has(cacheKey)) {
+      let existingPromise = EvmOrchestrator.batchPostingCache.get(cacheKey);
+      
+      if (existingPromise) {
+        // Batch posting already in progress - wait for it to complete
         this.logger.info(`${network.displayName}: Batch ${batch.batchNumber} posting already in progress - waiting...`);
-        postResult = await EvmOrchestrator.batchPostingCache.get(cacheKey);
+        postResult = await existingPromise;
         this.logger.info(`${network.displayName}: Batch ${batch.batchNumber} posting completed (deduplicated)`);
+        
+        // Update networkResult with the cached posting result
+        if (postResult.success) {
+          this.logger.info(`${network.displayName}: Using cached batch posting result - ${postResult.txHash}`);
+          networkResult.posted = true;
+          networkResult.txHash = postResult.txHash;
+        } else {
+          this.logger.warn(`${network.displayName}: Using cached batch posting result - ${postResult.error}`);
+          this.logger.info(`${network.displayName}: Assuming batch ${batch.batchNumber} is already posted, continuing with result posting`);
+          // Assume batch is already posted and continue with result posting
+          networkResult.posted = true;
+          networkResult.error = postResult.error;
+          networkResult.assumedPosted = true; // Flag to indicate this was an assumption
+        }
       } else {
+        // Atomically create and cache the posting promise to prevent race conditions
         this.logger.info(`${network.displayName}: Posting missing batch ${batch.batchNumber}`);
         
-        // Create and cache the posting promise
         const postingPromise = this.batchPoster.postBatch(network, batch, proverAddress);
-        EvmOrchestrator.batchPostingCache.set(cacheKey, postingPromise);
         
-        try {
-          postResult = await postingPromise;
+        // Check one more time if another thread already started posting
+        existingPromise = EvmOrchestrator.batchPostingCache.get(cacheKey);
+        if (existingPromise) {
+          this.logger.info(`${network.displayName}: Batch ${batch.batchNumber} posting started by another thread - waiting...`);
+          postResult = await existingPromise;
+          this.logger.info(`${network.displayName}: Batch ${batch.batchNumber} posting completed (deduplicated late)`);
           
+          // Update networkResult with the cached posting result
           if (postResult.success) {
-            this.logger.info(`${network.displayName}: Posted batch ${batch.batchNumber} - ${postResult.txHash}`);
+            this.logger.info(`${network.displayName}: Using cached batch posting result (late) - ${postResult.txHash}`);
             networkResult.posted = true;
             networkResult.txHash = postResult.txHash;
           } else {
-            this.logger.warn(`${network.displayName}: Failed to post batch - ${postResult.error}`);
-            networkResult.posted = false;
+            this.logger.warn(`${network.displayName}: Using cached batch posting result (late) - ${postResult.error}`);
+            this.logger.info(`${network.displayName}: Assuming batch ${batch.batchNumber} is already posted, continuing with result posting`);
+            // Assume batch is already posted and continue with result posting
+            networkResult.posted = true;
             networkResult.error = postResult.error;
+            networkResult.assumedPosted = true; // Flag to indicate this was an assumption
           }
-        } finally {
-          // Clean up cache entry
-          EvmOrchestrator.batchPostingCache.delete(cacheKey);
+        } else {
+          // We're the first thread to post this batch
+          EvmOrchestrator.batchPostingCache.set(cacheKey, postingPromise);
+          
+          // Set expiration time for this cache entry (10 minutes from now)
+          const expirationTime = Date.now() + (10 * 60 * 1000); // 10 minutes
+          EvmOrchestrator.batchPostingCacheExpiry.set(cacheKey, expirationTime);
+          
+          try {
+            postResult = await postingPromise;
+            
+            if (postResult.success) {
+              this.logger.info(`${network.displayName}: Posted batch ${batch.batchNumber} - ${postResult.txHash}`);
+              networkResult.posted = true;
+              networkResult.txHash = postResult.txHash;
+            } else {
+              this.logger.warn(`${network.displayName}: Failed to post batch - ${postResult.error}`);
+              this.logger.info(`${network.displayName}: Assuming batch ${batch.batchNumber} is already posted, continuing with result posting`);
+              // Assume batch is already posted and continue with result posting
+              networkResult.posted = true;
+              networkResult.error = postResult.error;
+              networkResult.assumedPosted = true; // Flag to indicate this was an assumption
+            }
+          } catch (error) {
+            // If posting fails, clean up cache entry immediately so retry is possible
+            EvmOrchestrator.batchPostingCache.delete(cacheKey);
+            EvmOrchestrator.batchPostingCacheExpiry.delete(cacheKey);
+            throw error;
+          }
+          
+          // Don't clean up cache entry here - let it expire naturally
+          // This prevents duplicate posting attempts for the same batch across multiple DataRequest results
         }
       }
 
@@ -226,6 +325,31 @@ export class EvmOrchestrator {
       const errorMsg = getErrorMessage(error);
       this.logger.warn(`${network.displayName}: Error processing batch - ${errorMsg}`);
       return this.createErrorResult(network, errorMsg);
+    }
+  }
+
+  /**
+   * Clean up expired cache entries
+   */
+  private cleanupExpiredCacheEntries(): void {
+    const now = Date.now();
+    const expiredKeys: string[] = [];
+    
+    // Find expired entries
+    for (const [key, expirationTime] of EvmOrchestrator.batchPostingCacheExpiry.entries()) {
+      if (now > expirationTime) {
+        expiredKeys.push(key);
+      }
+    }
+    
+    // Clean up expired entries
+    for (const key of expiredKeys) {
+      EvmOrchestrator.batchPostingCache.delete(key);
+      EvmOrchestrator.batchPostingCacheExpiry.delete(key);
+    }
+    
+    if (expiredKeys.length > 0) {
+      this.logger.debug(`🧹 Cleaned up ${expiredKeys.length} expired batch posting cache entries`);
     }
   }
 
@@ -327,7 +451,11 @@ export class EvmOrchestrator {
       networkResult.resultId = resultPostResult.resultId;
 
       if (resultPostResult.success) {
-        this.logger.info(`✅ ${network.displayName}: Posted result for DR ${dataRequestResult.drId} - ${resultPostResult.txHash}`);
+        if (resultPostResult.txHash) {
+          this.logger.info(`✅ ${network.displayName}: Posted result for DR ${dataRequestResult.drId} - ${resultPostResult.txHash}`);
+        } else {
+          this.logger.info(`✅ ${network.displayName}: Result confirmed for DR ${dataRequestResult.drId} - ${resultPostResult.error || 'already exists'}`);
+        }
       } else {
         this.logger.warn(`⚠️ ${network.displayName}: Failed to post result - ${resultPostResult.error}`);
       }
@@ -366,7 +494,11 @@ export class EvmOrchestrator {
       networkResult.resultId = resultPostResult.resultId;
 
       if (resultPostResult.success) {
-        this.logger.info(`✅ ${network.displayName}: Posted result for DR ${dataRequestResult.drId} - ${resultPostResult.txHash}`);
+        if (resultPostResult.txHash) {
+          this.logger.info(`✅ ${network.displayName}: Posted result for DR ${dataRequestResult.drId} - ${resultPostResult.txHash}`);
+        } else {
+          this.logger.info(`✅ ${network.displayName}: Result confirmed for DR ${dataRequestResult.drId} - ${resultPostResult.error || 'already exists'}`);
+        }
       } else {
         this.logger.warn(`⚠️ ${network.displayName}: Failed to post result - ${resultPostResult.error}`);
       }
@@ -424,8 +556,10 @@ export class EvmOrchestrator {
   private logBatchSummary(batchNumber: number, results: NetworkBatchStatus[]): void {
     const existsCount = results.filter(r => r.batchExists).length;
     const postedCount = results.filter(r => r.posted === true).length;
+    const assumedPostedCount = results.filter(r => r.assumedPosted === true).length;
     const errorCount = results.filter(r => r.error).length;
     const successfulPosts = results.filter(r => r.posted === true && r.txHash);
+    const assumedPosts = results.filter(r => r.assumedPosted === true);
     
     // Result posting summary
     const resultAttemptedCount = results.filter(r => r.resultPosted !== undefined).length;
@@ -435,6 +569,10 @@ export class EvmOrchestrator {
     this.logger.info(`📊 Batch ${batchNumber} Summary:`);
     this.logger.info(`   📦 Batches: ${existsCount}/${this.networks.length} exist, ${postedCount} posted`);
     
+    if (assumedPostedCount > 0) {
+      this.logger.info(`   ⚠️ Assumed Posted: ${assumedPostedCount} batches assumed posted due to posting failures`);
+    }
+    
     if (resultAttemptedCount > 0) {
       this.logger.info(`   📋 Results: ${resultPostedCount}/${resultAttemptedCount} posted successfully`);
     }
@@ -443,6 +581,13 @@ export class EvmOrchestrator {
       this.logger.info(`   🚀 Batch Posts:`);
       successfulPosts.forEach(result => {
         this.logger.info(`     ${result.networkName}: ${result.txHash}`);
+      });
+    }
+    
+    if (assumedPostedCount > 0) {
+      this.logger.info(`   🤔 Assumed Posts (batch posting failed, continuing with results):`);
+      assumedPosts.forEach(result => {
+        this.logger.info(`     ${result.networkName}: ${result.error}`);
       });
     }
     

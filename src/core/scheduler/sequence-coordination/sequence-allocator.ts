@@ -30,20 +30,21 @@ export class SequenceAllocator {
    * Atomically allocate the next sequence number
    */
   async atomicAllocateSequence(): Promise<number> {
-    // Use a more efficient non-blocking approach instead of polling
-    if (this.sequenceAllocationLock) {
-      // If locked, wait for a single promise instead of polling
-      await new Promise<void>((resolve) => {
-        const checkLock = () => {
-          if (!this.sequenceAllocationLock) {
-            resolve();
-          } else {
-            // Use immediate callback for responsive waiting
-            setImmediate(checkLock);
-          }
-        };
-        checkLock();
+    // Use a more efficient Promise-based approach with exponential backoff
+    let attempts = 0;
+    while (this.sequenceAllocationLock) {
+      // Exponential backoff to reduce CPU usage under contention
+      const delay = Math.min(1 * Math.pow(1.5, attempts), 10); // 1ms, 1.5ms, 2.25ms, ... max 10ms
+      await new Promise<void>(resolve => {
+        setTimeout(() => resolve(), delay);
       });
+      attempts++;
+      
+      // Safety check to prevent infinite waiting
+      if (attempts > 20) {
+        this.logger.warn('⚠️ Sequence allocation taking longer than expected, forcing allocation');
+        break;
+      }
     }
 
     this.sequenceAllocationLock = true;

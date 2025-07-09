@@ -50,6 +50,7 @@ export interface NetworkBatchStatus {
   posted?: boolean;
   txHash?: string;
   error?: string;
+  assumedPosted?: boolean; // Flag indicating the batch was assumed to be posted due to posting failure
   resultPosted?: boolean;
   resultTxHash?: string;
   resultError?: string;
