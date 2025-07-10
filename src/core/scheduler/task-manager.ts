@@ -35,6 +35,9 @@ export class TaskManager {
   // Task management modules
   private taskQueue: TaskQueue;
   private completionManager: TaskCompletionManager;
+  
+  // Periodic cleanup
+  private cleanupTimer: NodeJS.Timeout | null = null;
 
   constructor(
     private logger: LoggingService,
@@ -49,6 +52,9 @@ export class TaskManager {
     // Initialize task management modules
     this.taskQueue = new TaskQueue(this.logger, this.getTimestamp);
     this.completionManager = new TaskCompletionManager(this.logger);
+    
+    // Start periodic cleanup to prevent memory leaks
+    this.startPeriodicCleanup();
   }
 
   /**
@@ -312,9 +318,37 @@ export class TaskManager {
   }
 
   /**
+   * Start periodic cleanup to prevent memory leaks
+   */
+  private startPeriodicCleanup(): void {
+    // Clean up old tasks every 30 minutes
+    this.cleanupTimer = setInterval(() => {
+      // Clean up tasks older than 24 hours
+      const cleanedTasks = this.registry.cleanupOldTasks(24 * 60 * 60 * 1000);
+      
+      // Log registry statistics periodically
+      const stats = this.registry.getStats();
+      if (stats.totalTasks > 100 || cleanedTasks > 0) {
+        this.logger.debug(`📊 Task registry stats: ${stats.totalTasks} total tasks (active: ${stats.activeTasks}, completed: ${stats.statusCounts.completed}, failed: ${stats.statusCounts.failed})`);
+        if (cleanedTasks > 0) {
+          this.logger.info(`🧹 Cleaned up ${cleanedTasks} old tasks from registry`);
+        }
+      }
+    }, 30 * 60 * 1000); // 30 minutes
+    
+    this.logger.debug('⏰ Started periodic task cleanup (30-minute intervals)');
+  }
+
+  /**
    * Clear all active tasks
    */
   clear(): void {
+    // Stop cleanup timer
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = null;
+    }
+    
     this.taskQueue.clear();
     this.registry.clear();
     this.executor.reset();
@@ -327,6 +361,13 @@ export class TaskManager {
    */
   async shutdown(): Promise<void> {
     this.logger.info('🛑 Starting task manager shutdown...');
+    
+    // Stop periodic cleanup timer
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = null;
+      this.logger.debug('⏰ Stopped periodic task cleanup timer');
+    }
     
     // First, signal all components to stop accepting new work
     this.sequenceCoordinator.clear();
