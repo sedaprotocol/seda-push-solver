@@ -110,6 +110,55 @@ export class TaskRegistry {
   }
 
   /**
+   * Clean up old completed/failed tasks to prevent memory leaks
+   */
+  cleanupOldTasks(maxAgeMs: number = 24 * 60 * 60 * 1000): number {
+    const now = this.getTimestamp();
+    const cutoffTime = now - maxAgeMs;
+    let cleanedCount = 0;
+    
+    for (const [taskId, tracker] of this.dataRequestRegistry.entries()) {
+      // Only clean up completed or failed tasks
+      if (tracker.status === 'completed' || tracker.status === 'failed') {
+        const completionTime = tracker.completedAt || tracker.startTime;
+        if (completionTime < cutoffTime) {
+          this.dataRequestRegistry.delete(taskId);
+          cleanedCount++;
+        }
+      }
+    }
+    
+    if (cleanedCount > 0) {
+      this.logger.debug(`🧹 Cleaned up ${cleanedCount} old tasks from registry`);
+    }
+    
+    return cleanedCount;
+  }
+
+  /**
+   * Get registry statistics
+   */
+  getStats() {
+    const allTasks = this.getAllTasks();
+    const statusCounts = {
+      posting: 0,
+      posted: 0,
+      completed: 0,
+      failed: 0
+    };
+    
+    allTasks.forEach(task => {
+      statusCounts[task.status]++;
+    });
+    
+    return {
+      totalTasks: allTasks.length,
+      statusCounts,
+      activeTasks: statusCounts.posting + statusCounts.posted
+    };
+  }
+
+  /**
    * Clear all task history (for cleanup)
    */
   clear(): void {

@@ -29,6 +29,9 @@ export class EvmOrchestrator {
   
   // Singleton instance to ensure shared nonce coordination across all DataRequest results
   private static sharedInstance: EvmOrchestrator | null = null;
+  
+  // Periodic cache cleanup timer
+  private static cacheCleanupTimer: NodeJS.Timeout | null = null;
 
   constructor(private logger: LoggingServiceInterface, private networks: EvmNetworkConfig[]) {
     this.proverDiscovery = new ProverDiscovery(logger);
@@ -36,6 +39,9 @@ export class EvmOrchestrator {
     this.resultPoster = new ResultPoster(logger);
     // Initialize with HYBRID strategy for production-grade nonce management
     this.nonceCoordinator = new EvmNonceCoordinator(logger, NonceStrategy.HYBRID);
+    
+    // Start periodic cache cleanup to prevent memory leaks
+    this.startPeriodicCacheCleanup();
   }
 
   /**
@@ -47,6 +53,13 @@ export class EvmOrchestrator {
     try {
       // Reset nonce coordinator (calls destroy on all managers)
       this.nonceCoordinator.reset();
+      
+      // Stop periodic cache cleanup timer
+      if (EvmOrchestrator.cacheCleanupTimer) {
+        clearInterval(EvmOrchestrator.cacheCleanupTimer);
+        EvmOrchestrator.cacheCleanupTimer = null;
+        this.logger.debug('⏰ Stopped periodic cache cleanup timer');
+      }
       
       // Clear batch posting caches
       EvmOrchestrator.batchPostingCache.clear();
@@ -67,6 +80,12 @@ export class EvmOrchestrator {
   static async shutdownAll(): Promise<void> {
     if (EvmOrchestrator.sharedInstance) {
       await EvmOrchestrator.sharedInstance.shutdown();
+    }
+    
+    // Stop periodic cache cleanup timer
+    if (EvmOrchestrator.cacheCleanupTimer) {
+      clearInterval(EvmOrchestrator.cacheCleanupTimer);
+      EvmOrchestrator.cacheCleanupTimer = null;
     }
     
     // Clear static caches
@@ -326,6 +345,31 @@ export class EvmOrchestrator {
       this.logger.warn(`${network.displayName}: Error processing batch - ${errorMsg}`);
       return this.createErrorResult(network, errorMsg);
     }
+  }
+
+  /**
+   * Start periodic cache cleanup to prevent memory leaks
+   */
+  private startPeriodicCacheCleanup(): void {
+    // Only start cleanup timer once (static timer shared across instances)
+    if (EvmOrchestrator.cacheCleanupTimer) {
+      return;
+    }
+    
+    // Clean up cache every 5 minutes
+    EvmOrchestrator.cacheCleanupTimer = setInterval(() => {
+      this.cleanupExpiredCacheEntries();
+      
+      // Also log cache statistics periodically
+      const cacheSize = EvmOrchestrator.batchPostingCache.size;
+      const expirySize = EvmOrchestrator.batchPostingCacheExpiry.size;
+      
+      if (cacheSize > 0 || expirySize > 0) {
+        this.logger.debug(`📊 Batch posting cache stats: ${cacheSize} active entries, ${expirySize} expiry entries`);
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+    
+    this.logger.debug('⏰ Started periodic cache cleanup (5-minute intervals)');
   }
 
   /**
