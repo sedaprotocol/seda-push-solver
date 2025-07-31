@@ -36,7 +36,11 @@ export function categorizeEvmError(error: Error | string): CategorizedError {
 	const lowerMessage = errorMessage.toLowerCase();
 
 	// Gas-related errors
-	if (lowerMessage.includes("gas") || lowerMessage.includes("out of gas") || lowerMessage.includes("intrinsic gas too low")) {
+	if (
+		lowerMessage.includes("gas") ||
+		lowerMessage.includes("out of gas") ||
+		lowerMessage.includes("intrinsic gas too low")
+	) {
 		return {
 			category: TransactionErrorCategory.GAS_ERROR,
 			originalError: error,
@@ -47,7 +51,11 @@ export function categorizeEvmError(error: Error | string): CategorizedError {
 	}
 
 	// Balance/funds errors
-	if (lowerMessage.includes("insufficient funds") || lowerMessage.includes("insufficient balance") || lowerMessage.includes("not enough")) {
+	if (
+		lowerMessage.includes("insufficient funds") ||
+		lowerMessage.includes("insufficient balance") ||
+		lowerMessage.includes("not enough")
+	) {
 		return {
 			category: TransactionErrorCategory.BALANCE_ERROR,
 			originalError: error,
@@ -58,7 +66,12 @@ export function categorizeEvmError(error: Error | string): CategorizedError {
 	}
 
 	// Network connectivity errors
-	if (lowerMessage.includes("network") || lowerMessage.includes("connection") || lowerMessage.includes("timeout") || lowerMessage.includes("fetch")) {
+	if (
+		lowerMessage.includes("network") ||
+		lowerMessage.includes("connection") ||
+		lowerMessage.includes("timeout") ||
+		lowerMessage.includes("fetch")
+	) {
 		return {
 			category: TransactionErrorCategory.NETWORK_ERROR,
 			originalError: error,
@@ -69,7 +82,12 @@ export function categorizeEvmError(error: Error | string): CategorizedError {
 	}
 
 	// Contract-specific errors
-	if (lowerMessage.includes("revert") || lowerMessage.includes("execution reverted") || lowerMessage.includes("already exists") || lowerMessage.includes("enforced pause")) {
+	if (
+		lowerMessage.includes("revert") ||
+		lowerMessage.includes("execution reverted") ||
+		lowerMessage.includes("already exists") ||
+		lowerMessage.includes("enforced pause")
+	) {
 		return {
 			category: TransactionErrorCategory.CONTRACT_ERROR,
 			originalError: error,
@@ -107,7 +125,11 @@ export function categorizeCosmosError(error: Error | string): CategorizedError {
 	const lowerMessage = errorMessage.toLowerCase();
 
 	// Sequence errors
-	if (lowerMessage.includes("sequence") || lowerMessage.includes("nonce") || lowerMessage.includes("account sequence mismatch")) {
+	if (
+		lowerMessage.includes("sequence") ||
+		lowerMessage.includes("nonce") ||
+		lowerMessage.includes("account sequence mismatch")
+	) {
 		return {
 			category: TransactionErrorCategory.SEQUENCE_ERROR,
 			originalError: error,

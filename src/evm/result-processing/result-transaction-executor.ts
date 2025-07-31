@@ -37,7 +37,9 @@ export async function executeResultTransaction(
 			args: [evmResult, targetBatch, proof.map((p) => add0x(p))],
 		});
 
-		logger?.info(`✅ Result transaction successful! Block: ${result.blockNumber}, Gas: ${result.gasUsed}, TX: ${result.txHash}`);
+		logger?.info(
+			`✅ Result transaction successful! Block: ${result.blockNumber}, Gas: ${result.gasUsed}, TX: ${result.txHash}`,
+		);
 		return result.txHash;
 	} catch (error) {
 		logger?.error(`❌ Result transaction failed: ${getErrorMessage(error)}`);

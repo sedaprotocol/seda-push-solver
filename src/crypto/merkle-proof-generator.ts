@@ -20,7 +20,10 @@ export class MerkleProofGenerator {
 	/**
 	 * Build validator merkle tree from validator entries
 	 */
-	buildValidatorTree(validatorEntries: ValidatorEntry[], domainSeparator: string = SECP256K1_DOMAIN_SEPARATOR): SimpleMerkleTree {
+	buildValidatorTree(
+		validatorEntries: ValidatorEntry[],
+		domainSeparator: string = SECP256K1_DOMAIN_SEPARATOR,
+	): SimpleMerkleTree {
 		this.logger.info(`🌳 Building validator merkle tree with ${validatorEntries.length} validators...`);
 		this.logger.debug(`   Domain separator: ${domainSeparator}`);
 
@@ -29,7 +32,10 @@ export class MerkleProofGenerator {
 			const ethAddressHex = toHex(validator.ethAddress);
 
 			// Ensure votingPowerPercent is a proper number
-			const votingPowerPercent = typeof validator.votingPowerPercent === "number" ? validator.votingPowerPercent : Number(validator.votingPowerPercent);
+			const votingPowerPercent =
+				typeof validator.votingPowerPercent === "number"
+					? validator.votingPowerPercent
+					: Number(validator.votingPowerPercent);
 
 			this.logger.debug(`🔍 Processing validator ${index}:`);
 			this.logger.debug(`   Validator Address: ${Buffer.from(validator.validatorAddress).toString("hex")}`);
@@ -39,7 +45,12 @@ export class MerkleProofGenerator {
 			this.logger.debug(`   Voting Power type: ${typeof votingPowerPercent}`);
 
 			// Generate the leaf hash
-			const leaf = keccak256(encodePacked(["bytes1", "bytes", "uint32"], [domainSeparator as `0x${string}`, ethAddressHex, votingPowerPercent]));
+			const leaf = keccak256(
+				encodePacked(
+					["bytes1", "bytes", "uint32"],
+					[domainSeparator as `0x${string}`, ethAddressHex, votingPowerPercent],
+				),
+			);
 
 			this.logger.debug(`   Leaf hash: ${leaf}`);
 
@@ -62,14 +73,26 @@ export class MerkleProofGenerator {
 	/**
 	 * Generate merkle proof for a specific validator
 	 */
-	generateValidatorProof(validatorTree: SimpleMerkleTree, validatorEntry: ValidatorEntry, domainSeparator: string = SECP256K1_DOMAIN_SEPARATOR): HexString[] {
+	generateValidatorProof(
+		validatorTree: SimpleMerkleTree,
+		validatorEntry: ValidatorEntry,
+		domainSeparator: string = SECP256K1_DOMAIN_SEPARATOR,
+	): HexString[] {
 		const validatorEthAddressHex = toHex(validatorEntry.ethAddress);
 
 		// Ensure votingPowerPercent is a proper number
-		const validatorVotingPowerPercent = typeof validatorEntry.votingPowerPercent === "number" ? validatorEntry.votingPowerPercent : Number(validatorEntry.votingPowerPercent);
+		const validatorVotingPowerPercent =
+			typeof validatorEntry.votingPowerPercent === "number"
+				? validatorEntry.votingPowerPercent
+				: Number(validatorEntry.votingPowerPercent);
 
 		// Generate the same leaf that was used in tree construction
-		const leaf = keccak256(encodePacked(["bytes1", "bytes", "uint32"], [domainSeparator as `0x${string}`, validatorEthAddressHex, validatorVotingPowerPercent]));
+		const leaf = keccak256(
+			encodePacked(
+				["bytes1", "bytes", "uint32"],
+				[domainSeparator as `0x${string}`, validatorEthAddressHex, validatorVotingPowerPercent],
+			),
+		);
 
 		// Get merkle proof for this leaf
 		const proof = validatorTree.getProof(leaf);
@@ -90,7 +113,10 @@ export class MerkleProofGenerator {
 	/**
 	 * Generate proofs for all validators in batch
 	 */
-	generateAllValidatorProofs(validatorEntries: ValidatorEntry[], domainSeparator: string = SECP256K1_DOMAIN_SEPARATOR): Map<string, HexString[]> {
+	generateAllValidatorProofs(
+		validatorEntries: ValidatorEntry[],
+		domainSeparator: string = SECP256K1_DOMAIN_SEPARATOR,
+	): Map<string, HexString[]> {
 		this.logger.info(`🔍 Generating merkle proofs for ${validatorEntries.length} validators...`);
 
 		// Build the merkle tree

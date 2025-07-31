@@ -9,7 +9,10 @@ import type { SignedBatch } from "../../types";
 /**
  * Validate batch prerequisites for EVM posting
  */
-export function validateBatchPrerequisites(batch: SignedBatch, evmPrivateKey?: string): { valid: boolean; error?: string } {
+export function validateBatchPrerequisites(
+	batch: SignedBatch,
+	evmPrivateKey?: string,
+): { valid: boolean; error?: string } {
 	if (!evmPrivateKey) {
 		return { valid: false, error: "EVM_PRIVATE_KEY not configured" };
 	}

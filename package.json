@@ -5,11 +5,12 @@
 	"main": "src/index.ts",
 	"type": "module",
 	"scripts": {
-		"start": "bun run src/runner.ts",
+		"start": "bun run check-ts &&bun run src/runner.ts",
 		"scheduler": "bun run src/runner.ts",
 		"demo": "bun run examples/demo.ts",
 		"fmt": "bunx biome check --write .",
 		"check-fmt": "bunx biome check .",
+		"check-ts": "bunx tsc --noEmit",
 		"test": "bun test",
 		"test:unit": "bun test tests/unit/",
 		"test:integration": "bun run tests/test-seda-config.ts",
@@ -38,7 +39,9 @@
 		"ethers": "^6.14.4",
 		"effect": "^3.17.4",
 		"true-myth": "^9.0.1",
-		"viem": "^2.31.3"
+		"viem": "^2.31.3",
+		"winston": "^3.17.0",
+		"winston-daily-rotate-file": "^5.0.0"
 	},
 	"devDependencies": {
 		"@effect/language-service": "^0.32.0",

@@ -120,7 +120,12 @@ export class ResultPoster {
 	 * Post a DataRequest result to an EVM network
 	 * Simplified main method using extracted modules
 	 */
-	async postResult(network: EvmNetworkConfig, dataRequestResult: DataRequestResult, batch: SignedBatch, sedaCoreAddress: string): Promise<ResultPostingResult> {
+	async postResult(
+		network: EvmNetworkConfig,
+		dataRequestResult: DataRequestResult,
+		batch: SignedBatch,
+		sedaCoreAddress: string,
+	): Promise<ResultPostingResult> {
 		// LEGACY METHOD - to be deprecated in favor of postResultWithNonce
 		try {
 			this.logger.info(`🔍 Posting result for DR ${dataRequestResult.drId} to ${network.displayName}`);
@@ -137,7 +142,9 @@ export class ResultPoster {
 			// Check if result already exists to avoid unnecessary transaction attempts
 			const resultExists = await checkResultExists(network, sedaCoreAddress, dataRequestResult.drId, this.logger);
 			if (resultExists) {
-				this.logger.info(`✅ Result already exists for DR ${dataRequestResult.drId} on ${network.displayName} - skipping posting`);
+				this.logger.info(
+					`✅ Result already exists for DR ${dataRequestResult.drId} on ${network.displayName} - skipping posting`,
+				);
 				return { success: true, error: "Result already exists" };
 			}
 
@@ -176,14 +183,19 @@ export class ResultPoster {
 				this.logger.info(`✅ Using passed batch ${batch.batchNumber} (matches assignment)`);
 				assignedBatch = batch;
 			} else {
-				this.logger.info(`🔄 Fetching assigned batch ${assignedBatchNumber} (different from passed batch ${batch.batchNumber})`);
+				this.logger.info(
+					`🔄 Fetching assigned batch ${assignedBatchNumber} (different from passed batch ${batch.batchNumber})`,
+				);
 
 				// Fetch the assigned batch from solver SDK
 				const solver = await this.initializeSolver();
 				const batchResponse = await solver.getBatch(BigInt(assignedBatchNumber));
 
 				if (batchResponse.isErr) {
-					return { success: false, error: `Failed to fetch assigned batch ${assignedBatchNumber}: ${batchResponse.error}` };
+					return {
+						success: false,
+						error: `Failed to fetch assigned batch ${assignedBatchNumber}: ${batchResponse.error}`,
+					};
 				}
 
 				if (batchResponse.value.isNothing) {
@@ -202,7 +214,9 @@ export class ResultPoster {
 					dataResultEntries: solverBatch.dataResultEntries || [],
 				};
 
-				this.logger.info(`✅ Fetched assigned batch ${assignedBatchNumber} with ${assignedBatch.dataResultEntries?.length || 0} entries`);
+				this.logger.info(
+					`✅ Fetched assigned batch ${assignedBatchNumber} with ${assignedBatch.dataResultEntries?.length || 0} entries`,
+				);
 			}
 
 			// Get the current batch height for reference
@@ -223,19 +237,29 @@ export class ResultPoster {
 
 			try {
 				const solver = await this.initializeSolver();
-				this.logger.debug(`🔧 Calling solver.getDataResultProof('${dataRequestResult.drId}', ${targetBatch}) - using default dataRequestHeight=0n like simple-solver`);
+				this.logger.debug(
+					`🔧 Calling solver.getDataResultProof('${dataRequestResult.drId}', ${targetBatch}) - using default dataRequestHeight=0n like simple-solver`,
+				);
 
 				// DEBUG: Let's also check what the solver SDK will use for the proof
 				this.logger.info(`🔍 DEBUG: About to generate proof for DR ID: ${dataRequestResult.drId}`);
-				this.logger.info(`🔍 DEBUG: The solver SDK will internally use dataResult.id: ${dataResult.id} for the merkle leaf`);
+				this.logger.info(
+					`🔍 DEBUG: The solver SDK will internally use dataResult.id: ${dataResult.id} for the merkle leaf`,
+				);
 
 				// DEBUG: Get what the EVM contract thinks the result ID should be
 				try {
 					const contractDerivedResultId = await deriveResultId(network, sedaCoreAddress, evmResult, this.logger);
 					this.logger.info(`🔍 DEBUG: Contract-derived result ID: ${contractDerivedResultId}`);
-					this.logger.info(`🔍 DEBUG: Does solver SDK result ID match contract? ${dataResult.id === contractDerivedResultId}`);
-					this.logger.info(`🔍 DEBUG: Contract error showed result ID: 0xf080b7445b4d5dbbf84d3b5d9224a13bd2f01a88e4b97e4b41f5371b505be37b`);
-					this.logger.info(`🔍 DEBUG: Does contract-derived match error ID? ${contractDerivedResultId === "0xf080b7445b4d5dbbf84d3b5d9224a13bd2f01a88e4b97e4b41f5371b505be37b"}`);
+					this.logger.info(
+						`🔍 DEBUG: Does solver SDK result ID match contract? ${dataResult.id === contractDerivedResultId}`,
+					);
+					this.logger.info(
+						`🔍 DEBUG: Contract error showed result ID: 0xf080b7445b4d5dbbf84d3b5d9224a13bd2f01a88e4b97e4b41f5371b505be37b`,
+					);
+					this.logger.info(
+						`🔍 DEBUG: Does contract-derived match error ID? ${contractDerivedResultId === "0xf080b7445b4d5dbbf84d3b5d9224a13bd2f01a88e4b97e4b41f5371b505be37b"}`,
+					);
 				} catch (deriveError) {
 					this.logger.warn(`⚠️ Could not derive result ID from contract: ${getErrorMessage(deriveError)}`);
 				}
@@ -267,7 +291,15 @@ export class ResultPoster {
 			this.logger.debug(`📊 Target batch: ${targetBatch}, Proof length: ${proof.length}`);
 
 			// Execute the transaction using extracted executor
-			const txHash = await executeResultTransaction(network, evmPrivateKey!, sedaCoreAddress, evmResult, targetBatch, proof, this.logger);
+			const txHash = await executeResultTransaction(
+				network,
+				evmPrivateKey!,
+				sedaCoreAddress,
+				evmResult,
+				targetBatch,
+				proof,
+				this.logger,
+			);
 
 			// Derive result ID for tracking using extracted deriver
 			const resultId = await deriveResultId(network, sedaCoreAddress, evmResult, this.logger);
@@ -282,13 +314,18 @@ export class ResultPoster {
 
 			// CRITICAL: Treat ResultAlreadyExists as SUCCESS, not failure
 			if (errorMessage.includes("ResultAlreadyExists")) {
-				this.logger.info(`✅ Result already exists for DR ${dataRequestResult.drId} on ${network.displayName} - treating as success`);
+				this.logger.info(
+					`✅ Result already exists for DR ${dataRequestResult.drId} on ${network.displayName} - treating as success`,
+				);
 
 				// Try to derive result ID for tracking
 				let resultId: string | undefined;
 				try {
 					const solver = await this.initializeSolver();
-					const dataResultResponse = await solver.getDataResult(dataRequestResult.drId, dataRequestResult.drBlockHeight);
+					const dataResultResponse = await solver.getDataResult(
+						dataRequestResult.drId,
+						dataRequestResult.drBlockHeight,
+					);
 
 					if (dataResultResponse.isOk && !dataResultResponse.value.isNothing) {
 						const dataResult = dataResultResponse.value.value;
@@ -339,7 +376,9 @@ export class ResultPoster {
 		let proof: string[] = [];
 
 		try {
-			this.logger.info(`🔍 Posting result for DR ${dataRequestResult.drId} to ${network.displayName} (with nonce coordination)`);
+			this.logger.info(
+				`🔍 Posting result for DR ${dataRequestResult.drId} to ${network.displayName} (with nonce coordination)`,
+			);
 			this.logger.info(`   📋 DR ID: ${dataRequestResult.drId}`);
 			this.logger.info(`   🎯 Contract: ${sedaCoreAddress}`);
 			this.logger.info(`   📦 Batch: ${batch.batchNumber}`);
@@ -353,7 +392,9 @@ export class ResultPoster {
 			// Check if result already exists to avoid unnecessary transaction attempts
 			const resultExists = await checkResultExists(network, sedaCoreAddress, dataRequestResult.drId, this.logger);
 			if (resultExists) {
-				this.logger.info(`✅ Result already exists for DR ${dataRequestResult.drId} on ${network.displayName} - skipping posting`);
+				this.logger.info(
+					`✅ Result already exists for DR ${dataRequestResult.drId} on ${network.displayName} - skipping posting`,
+				);
 				return { success: true, error: "Result already exists" };
 			}
 
@@ -391,14 +432,19 @@ export class ResultPoster {
 				this.logger.info(`✅ Using passed batch ${batch.batchNumber} (matches assignment)`);
 				assignedBatch = batch;
 			} else {
-				this.logger.info(`🔄 Fetching assigned batch ${assignedBatchNumber} (different from passed batch ${batch.batchNumber})`);
+				this.logger.info(
+					`🔄 Fetching assigned batch ${assignedBatchNumber} (different from passed batch ${batch.batchNumber})`,
+				);
 
 				// Fetch the assigned batch from solver SDK
 				const solver = await this.initializeSolver();
 				const batchResponse = await solver.getBatch(BigInt(assignedBatchNumber!));
 
 				if (batchResponse.isErr) {
-					return { success: false, error: `Failed to fetch assigned batch ${assignedBatchNumber}: ${batchResponse.error}` };
+					return {
+						success: false,
+						error: `Failed to fetch assigned batch ${assignedBatchNumber}: ${batchResponse.error}`,
+					};
 				}
 
 				if (batchResponse.value.isNothing) {
@@ -417,7 +463,9 @@ export class ResultPoster {
 					dataResultEntries: solverBatch.dataResultEntries || [],
 				};
 
-				this.logger.info(`✅ Fetched assigned batch ${assignedBatchNumber} with ${assignedBatch.dataResultEntries?.length || 0} entries`);
+				this.logger.info(
+					`✅ Fetched assigned batch ${assignedBatchNumber} with ${assignedBatch.dataResultEntries?.length || 0} entries`,
+				);
 			}
 
 			// Get the current batch height for reference
@@ -437,19 +485,29 @@ export class ResultPoster {
 
 			try {
 				const solver = await this.initializeSolver();
-				this.logger.debug(`🔧 Calling solver.getDataResultProof('${dataRequestResult.drId}', ${targetBatch}) - using default dataRequestHeight=0n like simple-solver`);
+				this.logger.debug(
+					`🔧 Calling solver.getDataResultProof('${dataRequestResult.drId}', ${targetBatch}) - using default dataRequestHeight=0n like simple-solver`,
+				);
 
 				// DEBUG: Let's also check what the solver SDK will use for the proof
 				this.logger.info(`🔍 DEBUG: About to generate proof for DR ID: ${dataRequestResult.drId}`);
-				this.logger.info(`🔍 DEBUG: The solver SDK will internally use dataResult.id: ${dataResult.id} for the merkle leaf`);
+				this.logger.info(
+					`🔍 DEBUG: The solver SDK will internally use dataResult.id: ${dataResult.id} for the merkle leaf`,
+				);
 
 				// DEBUG: Get what the EVM contract thinks the result ID should be
 				try {
 					const contractDerivedResultId = await deriveResultId(network, sedaCoreAddress, evmResult, this.logger);
 					this.logger.info(`🔍 DEBUG: Contract-derived result ID: ${contractDerivedResultId}`);
-					this.logger.info(`🔍 DEBUG: Does solver SDK result ID match contract? ${dataResult.id === contractDerivedResultId}`);
-					this.logger.info(`🔍 DEBUG: Contract error showed result ID: 0xf080b7445b4d5dbbf84d3b5d9224a13bd2f01a88e4b97e4b41f5371b505be37b`);
-					this.logger.info(`🔍 DEBUG: Does contract-derived match error ID? ${contractDerivedResultId === "0xf080b7445b4d5dbbf84d3b5d9224a13bd2f01a88e4b97e4b41f5371b505be37b"}`);
+					this.logger.info(
+						`🔍 DEBUG: Does solver SDK result ID match contract? ${dataResult.id === contractDerivedResultId}`,
+					);
+					this.logger.info(
+						`🔍 DEBUG: Contract error showed result ID: 0xf080b7445b4d5dbbf84d3b5d9224a13bd2f01a88e4b97e4b41f5371b505be37b`,
+					);
+					this.logger.info(
+						`🔍 DEBUG: Does contract-derived match error ID? ${contractDerivedResultId === "0xf080b7445b4d5dbbf84d3b5d9224a13bd2f01a88e4b97e4b41f5371b505be37b"}`,
+					);
 				} catch (deriveError) {
 					this.logger.warn(`⚠️ Could not derive result ID from contract: ${getErrorMessage(deriveError)}`);
 				}
@@ -466,7 +524,14 @@ export class ResultPoster {
 				this.logger.debug(`🌳 Proof elements: ${JSON.stringify(proof)}`);
 
 				// Log detailed proof analysis before posting
-				this.logProofAnalysis(dataRequestResult, dataResult, assignedBatchNumber!, assignedBatch, proof, "BEFORE_POSTING");
+				this.logProofAnalysis(
+					dataRequestResult,
+					dataResult,
+					assignedBatchNumber!,
+					assignedBatch,
+					proof,
+					"BEFORE_POSTING",
+				);
 			} catch (proofError) {
 				const proofErrorMessage = proofError instanceof Error ? proofError.message : String(proofError);
 				this.logger.error(`❌ Failed to generate merkle proof: ${proofErrorMessage}`);
@@ -480,17 +545,26 @@ export class ResultPoster {
 			while (attempt < maxRetries) {
 				try {
 					// Reserve nonce for this transaction
-					this.logger.info(`🔢 Reserving nonce for ${network.displayName} transaction (DR: ${dataRequestResult.drId}) - Attempt ${attempt + 1}`);
+					this.logger.info(
+						`🔢 Reserving nonce for ${network.displayName} transaction (DR: ${dataRequestResult.drId}) - Attempt ${attempt + 1}`,
+					);
 
 					if (attempt === 0) {
 						// First attempt: use normal nonce reservation
 						nonceReservation = await nonceCoordinator.reserveNonce(network, evmPrivateKey);
-						this.logger.info(`🔢 Reserved ${nonceReservation.isReplacement ? "replacement" : "new"} nonce ${nonceReservation.nonce} for ${network.displayName} (DR: ${dataRequestResult.drId})`);
+						this.logger.info(
+							`🔢 Reserved ${nonceReservation.isReplacement ? "replacement" : "new"} nonce ${nonceReservation.nonce} for ${network.displayName} (DR: ${dataRequestResult.drId})`,
+						);
 					} else {
 						// Retry attempts: use nonce failure recovery
 						const errorMsg = `Retry attempt ${attempt} after nonce failure`;
 						const previousNonce = (nonceReservation as any)?.nonce ?? 0;
-						const recoveryResult = await nonceCoordinator.handleNonceFailure(network, evmPrivateKey, previousNonce, errorMsg);
+						const recoveryResult = await nonceCoordinator.handleNonceFailure(
+							network,
+							evmPrivateKey,
+							previousNonce,
+							errorMsg,
+						);
 						nonceReservation = {
 							nonce: recoveryResult.nonce,
 							gasPrice: recoveryResult.gasPrice,
@@ -498,7 +572,9 @@ export class ResultPoster {
 							release: recoveryResult.release,
 							isReplacement: true, // Mark as replacement for retry attempts
 						};
-						this.logger.info(`🔢 Recovered with fresh nonce ${nonceReservation.nonce} for ${network.displayName} (DR: ${dataRequestResult.drId})`);
+						this.logger.info(
+							`🔢 Recovered with fresh nonce ${nonceReservation.nonce} for ${network.displayName} (DR: ${dataRequestResult.drId})`,
+						);
 					}
 
 					// Debug: Log nonce coordinator status
@@ -507,7 +583,9 @@ export class ResultPoster {
 					const networkStatus = nonceStatus[networkKey];
 
 					if (networkStatus) {
-						this.logger.debug(`🔍 Nonce status for ${network.displayName}: confirmed=${networkStatus.confirmed}, pending=${networkStatus.pending}, gaps=[${networkStatus.gaps.join(",")}]`);
+						this.logger.debug(
+							`🔍 Nonce status for ${network.displayName}: confirmed=${networkStatus.confirmed}, pending=${networkStatus.pending}, gaps=[${networkStatus.gaps.join(",")}]`,
+						);
 					}
 
 					// Log result data for debugging
@@ -523,10 +601,21 @@ export class ResultPoster {
 						throw new Error("Nonce reservation is null - this should not happen");
 					}
 
-					this.logger.debug(`📊 Target batch: ${targetBatch}, Proof length: ${proof.length}, Nonce: ${nonceReservation.nonce}, Gas Price: ${nonceReservation.gasPrice}`);
+					this.logger.debug(
+						`📊 Target batch: ${targetBatch}, Proof length: ${proof.length}, Nonce: ${nonceReservation.nonce}, Gas Price: ${nonceReservation.gasPrice}`,
+					);
 
 					// Execute the transaction using extracted executor with manual nonce and CRITICAL VERIFICATION
-					const txHash = await this.executeResultTransactionWithNonce(network, evmPrivateKey, sedaCoreAddress, evmResult, targetBatch, proof, nonceReservation.nonce, this.logger);
+					const txHash = await this.executeResultTransactionWithNonce(
+						network,
+						evmPrivateKey,
+						sedaCoreAddress,
+						evmResult,
+						targetBatch,
+						proof,
+						nonceReservation.nonce,
+						this.logger,
+					);
 
 					// Update the nonce coordinator with the transaction hash
 					nonceReservation.updateHash(txHash);
@@ -534,7 +623,9 @@ export class ResultPoster {
 					// Derive result ID for tracking using extracted deriver
 					const resultId = await deriveResultId(network, sedaCoreAddress, evmResult, this.logger);
 
-					this.logger.info(`✅ Successfully posted result for DR ${dataRequestResult.drId} to ${network.displayName} (nonce: ${nonceReservation.nonce})`);
+					this.logger.info(
+						`✅ Successfully posted result for DR ${dataRequestResult.drId} to ${network.displayName} (nonce: ${nonceReservation.nonce})`,
+					);
 					this.logger.info(`   📋 Result ID: ${resultId}`);
 					this.logger.info(`   🔗 TX Hash: ${txHash}`);
 
@@ -546,10 +637,14 @@ export class ResultPoster {
 					const errorMessage = getErrorMessage(error);
 
 					// Check if this is a nonce-related error or replacement transaction underpriced
-					const isNonceError = errorMessage.toLowerCase().includes("nonce") || errorMessage.toLowerCase().includes("replacement transaction underpriced");
+					const isNonceError =
+						errorMessage.toLowerCase().includes("nonce") ||
+						errorMessage.toLowerCase().includes("replacement transaction underpriced");
 
 					if (isNonceError && attempt < maxRetries - 1) {
-						this.logger.warn(`⚠️ Nonce/replacement error on attempt ${attempt + 1}, retrying with fresh nonce: ${errorMessage}`);
+						this.logger.warn(
+							`⚠️ Nonce/replacement error on attempt ${attempt + 1}, retrying with fresh nonce: ${errorMessage}`,
+						);
 
 						// Special handling for "replacement transaction underpriced"
 						if (errorMessage.toLowerCase().includes("replacement transaction underpriced")) {
@@ -584,7 +679,9 @@ export class ResultPoster {
 
 			// CRITICAL: Treat ResultAlreadyExists as SUCCESS, not failure
 			if (errorMessage.includes("ResultAlreadyExists")) {
-				this.logger.info(`✅ Result already exists for DR ${dataRequestResult.drId} on ${network.displayName} - treating as success`);
+				this.logger.info(
+					`✅ Result already exists for DR ${dataRequestResult.drId} on ${network.displayName} - treating as success`,
+				);
 
 				// Try to derive result ID for tracking
 				let resultId: string | undefined;
@@ -609,7 +706,14 @@ export class ResultPoster {
 			// Log proof analysis for failed posting (if we have the required variables)
 			try {
 				if (dataResult && assignedBatch && proof && assignedBatchNumber !== undefined) {
-					this.logProofAnalysis(dataRequestResult, dataResult, Number(assignedBatchNumber), assignedBatch, proof, "FAILURE");
+					this.logProofAnalysis(
+						dataRequestResult,
+						dataResult,
+						Number(assignedBatchNumber),
+						assignedBatch,
+						proof,
+						"FAILURE",
+					);
 				}
 			} catch (analysisError) {
 				this.logger.debug(`Could not log proof analysis for failure: ${analysisError}`);
@@ -712,7 +816,9 @@ export class ResultPoster {
 				nonce, // Use the verified nonce
 			});
 
-			logger?.info(`✅ Result transaction successful! Block: ${result.blockNumber}, Gas: ${result.gasUsed}, TX: ${result.txHash}, Nonce: ${nonce}`);
+			logger?.info(
+				`✅ Result transaction successful! Block: ${result.blockNumber}, Gas: ${result.gasUsed}, TX: ${result.txHash}, Nonce: ${nonce}`,
+			);
 			return result.txHash;
 		} catch (error) {
 			const { getErrorMessage } = await import("../helpers/error-utils");

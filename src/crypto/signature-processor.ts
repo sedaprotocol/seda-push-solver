@@ -57,7 +57,12 @@ export class SignatureProcessor {
 	/**
 	 * Process a single signature and validator entry
 	 */
-	private async processSingleSignature(signature: BatchSignature, validatorEntry: ValidatorEntry, batchId: string | Buffer, validatorTreeProof: HexString[]): Promise<ProcessedBatchSignature | null> {
+	private async processSingleSignature(
+		signature: BatchSignature,
+		validatorEntry: ValidatorEntry,
+		batchId: string | Buffer,
+		validatorTreeProof: HexString[],
+	): Promise<ProcessedBatchSignature | null> {
 		try {
 			// Prepare batch ID buffer
 			const batchIdBuffer = Buffer.isBuffer(batchId) ? batchId : Buffer.from(batchId, "hex");
@@ -106,7 +111,10 @@ export class SignatureProcessor {
 			});
 
 			// Ensure votingPowerPercent is a proper number
-			const votingPowerPercentage = typeof validatorEntry.votingPowerPercent === "number" ? validatorEntry.votingPowerPercent : Number(validatorEntry.votingPowerPercent);
+			const votingPowerPercentage =
+				typeof validatorEntry.votingPowerPercent === "number"
+					? validatorEntry.votingPowerPercent
+					: Number(validatorEntry.votingPowerPercent);
 
 			return {
 				validatorAddr: validatorAddrHex,
@@ -124,7 +132,10 @@ export class SignatureProcessor {
 	/**
 	 * Process all signatures in a batch and validate consensus
 	 */
-	async processSignatures(batch: SignedBatch, validatorTreeProofs: Map<string, HexString[]>): Promise<SignatureProcessingResult> {
+	async processSignatures(
+		batch: SignedBatch,
+		validatorTreeProofs: Map<string, HexString[]>,
+	): Promise<SignatureProcessingResult> {
 		if (!batch.batchSignatures || batch.batchSignatures.length === 0) {
 			this.logger.warn(`⚠️ Batch ${batch.batchNumber} has no signatures`);
 			return {
@@ -154,10 +165,14 @@ export class SignatureProcessor {
 
 		for (const signature of batch.batchSignatures) {
 			// Find corresponding validator entry
-			const validatorEntry = batch.validatorEntries.find((v: ValidatorEntry) => Buffer.from(v.validatorAddress).equals(signature.validatorAddress));
+			const validatorEntry = batch.validatorEntries.find((v: ValidatorEntry) =>
+				Buffer.from(v.validatorAddress).equals(signature.validatorAddress),
+			);
 
 			if (!validatorEntry) {
-				this.logger.warn(`⚠️ Validator entry not found for signature from ${Buffer.from(signature.validatorAddress).toString("hex")}`);
+				this.logger.warn(
+					`⚠️ Validator entry not found for signature from ${Buffer.from(signature.validatorAddress).toString("hex")}`,
+				);
 				continue;
 			}
 
@@ -177,12 +192,16 @@ export class SignatureProcessor {
 				totalVotingPower += processed.votingPowerPercentage;
 				processedSignatures.push(processed);
 
-				this.logger.info(`✅ Processed signature from validator ${processed.ethAddress.toString("hex")} (power: ${processed.votingPowerPercentage})`);
+				this.logger.info(
+					`✅ Processed signature from validator ${processed.ethAddress.toString("hex")} (power: ${processed.votingPowerPercentage})`,
+				);
 			}
 		}
 
 		// Sort signatures lexicographically by ETH address (required by contract)
-		const sortedSignatures = processedSignatures.sort((a, b) => a.ethAddress.toString("hex").localeCompare(b.ethAddress.toString("hex")));
+		const sortedSignatures = processedSignatures.sort((a, b) =>
+			a.ethAddress.toString("hex").localeCompare(b.ethAddress.toString("hex")),
+		);
 
 		// Extract Ethereum signatures in sorted order
 		const ethereumSignatures = sortedSignatures.map((sig) => HexUtils.normalize(sig.signature.toString("hex")));
@@ -259,7 +278,11 @@ export class SignatureProcessor {
 	/**
 	 * Validate signature against expected parameters
 	 */
-	static validateSignature(signature: Uint8Array, message: Buffer, expectedEthAddress: Buffer): { valid: boolean; publicKey?: Buffer; error?: string } {
+	static validateSignature(
+		signature: Uint8Array,
+		message: Buffer,
+		expectedEthAddress: Buffer,
+	): { valid: boolean; publicKey?: Buffer; error?: string } {
 		try {
 			// Recover public key from signature
 			const publicKey = this.recoverPublicKey(signature, message);

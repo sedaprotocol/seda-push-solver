@@ -75,7 +75,13 @@ export class TaskManager {
 	 * Queue a task and return IMMEDIATELY
 	 * This NEVER blocks the timer interval
 	 */
-	queueTask(builder: SEDADataRequestBuilder, config: SchedulerConfig, isRunning: () => boolean, completionHandler: TaskCompletionHandler, statistics: SchedulerStatistics): string {
+	queueTask(
+		builder: SEDADataRequestBuilder,
+		config: SchedulerConfig,
+		isRunning: () => boolean,
+		completionHandler: TaskCompletionHandler,
+		statistics: SchedulerStatistics,
+	): string {
 		this.taskCounter++;
 		const taskId = `task-${this.taskCounter}-${Date.now()}`;
 		const requestNumber = this.taskCounter;
@@ -92,7 +98,12 @@ export class TaskManager {
 		this.registry.registerTask(taskId, config.memo);
 
 		// Create completion handler using the completion manager
-		const enhancedCompletionHandler = this.completionManager.createCompletionHandler(taskId, statistics, this.performanceTracker, completionHandler);
+		const enhancedCompletionHandler = this.completionManager.createCompletionHandler(
+			taskId,
+			statistics,
+			this.performanceTracker,
+			completionHandler,
+		);
 
 		// Start processing the task in the background (fire and forget)
 		this.processTaskInBackground(taskId, requestNumber, builder, config, isRunning, enhancedCompletionHandler);
@@ -104,7 +115,13 @@ export class TaskManager {
 	 * Queue a multi-program task for parallel execution
 	 * This executes multiple programs in parallel within a single task
 	 */
-	queueMultiProgramTask(builder: SEDADataRequestBuilder, config: SchedulerConfig, isRunning: () => boolean, completionHandler: TaskCompletionHandler, statistics: SchedulerStatistics): string {
+	queueMultiProgramTask(
+		builder: SEDADataRequestBuilder,
+		config: SchedulerConfig,
+		isRunning: () => boolean,
+		completionHandler: TaskCompletionHandler,
+		statistics: SchedulerStatistics,
+	): string {
 		this.taskCounter++;
 		const taskId = `multi-task-${this.taskCounter}-${Date.now()}`;
 		const requestNumber = this.taskCounter;
@@ -121,10 +138,22 @@ export class TaskManager {
 		this.registry.registerTask(taskId, `${config.memo} - Multi-Program`);
 
 		// Create completion handler using the completion manager
-		const enhancedCompletionHandler = this.completionManager.createCompletionHandler(taskId, statistics, this.performanceTracker, completionHandler);
+		const enhancedCompletionHandler = this.completionManager.createCompletionHandler(
+			taskId,
+			statistics,
+			this.performanceTracker,
+			completionHandler,
+		);
 
 		// Start processing the multi-program task in the background (fire and forget)
-		this.processMultiProgramTaskInBackground(taskId, requestNumber, builder, config, isRunning, enhancedCompletionHandler);
+		this.processMultiProgramTaskInBackground(
+			taskId,
+			requestNumber,
+			builder,
+			config,
+			isRunning,
+			enhancedCompletionHandler,
+		);
 
 		return taskId;
 	}
@@ -142,9 +171,20 @@ export class TaskManager {
 	): Promise<void> {
 		try {
 			// Execute the task using the executor
-			await this.executor.executeTask(taskId, requestNumber, builder, config, isRunning, completionHandler, this.performanceTracker);
+			await this.executor.executeTask(
+				taskId,
+				requestNumber,
+				builder,
+				config,
+				isRunning,
+				completionHandler,
+				this.performanceTracker,
+			);
 		} catch (error) {
-			this.logger.error(`❌ Background task processing failed for ${taskId}:`, error instanceof Error ? error : String(error));
+			this.logger.error(
+				`❌ Background task processing failed for ${taskId}:`,
+				error instanceof Error ? error : String(error),
+			);
 		} finally {
 			// Remove from queue when done using the queue module
 			this.taskQueue.dequeue(taskId);
@@ -164,9 +204,20 @@ export class TaskManager {
 	): Promise<void> {
 		try {
 			// Execute the multi-program task using the executor
-			await this.executor.executeMultiProgramTask(taskId, requestNumber, builder, config, isRunning, completionHandler, this.performanceTracker);
+			await this.executor.executeMultiProgramTask(
+				taskId,
+				requestNumber,
+				builder,
+				config,
+				isRunning,
+				completionHandler,
+				this.performanceTracker,
+			);
 		} catch (error) {
-			this.logger.error(`❌ Background multi-program task processing failed for ${taskId}:`, error instanceof Error ? error : String(error));
+			this.logger.error(
+				`❌ Background multi-program task processing failed for ${taskId}:`,
+				error instanceof Error ? error : String(error),
+			);
 		} finally {
 			// Remove from queue when done using the queue module
 			this.taskQueue.dequeue(taskId);
@@ -275,7 +326,9 @@ export class TaskManager {
 				// Log registry statistics periodically
 				const stats = this.registry.getStats();
 				if (stats.totalTasks > 100 || cleanedTasks > 0) {
-					this.logger.debug(`📊 Task registry stats: ${stats.totalTasks} total tasks (active: ${stats.activeTasks}, completed: ${stats.statusCounts.completed}, failed: ${stats.statusCounts.failed})`);
+					this.logger.debug(
+						`📊 Task registry stats: ${stats.totalTasks} total tasks (active: ${stats.activeTasks}, completed: ${stats.statusCounts.completed}, failed: ${stats.statusCounts.failed})`,
+					);
 					if (cleanedTasks > 0) {
 						this.logger.info(`🧹 Cleaned up ${cleanedTasks} old tasks from registry`);
 					}

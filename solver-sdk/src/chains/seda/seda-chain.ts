@@ -129,7 +129,10 @@ export class SedaChain extends EventEmitter<EventMap> {
 
 			// Either process the queue when we have too many messages in the queue or
 			// we haven't processed the queue in a while
-			if (this.transactionQueue.length >= MAX_MESSAGES_PER_TRANSACTION || timeBetweenLastInterval >= TIME_BETWEEN_PROCESSING_QUEUE) {
+			if (
+				this.transactionQueue.length >= MAX_MESSAGES_PER_TRANSACTION ||
+				timeBetweenLastInterval >= TIME_BETWEEN_PROCESSING_QUEUE
+			) {
 				lastInterval = now;
 				await this.processQueue();
 			}

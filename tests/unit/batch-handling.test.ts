@@ -13,7 +13,14 @@ process.env.SEDA_NETWORK = "testnet";
 import { loadSEDAConfig } from "../../src/config";
 
 // Mock the batch handling functions for testing
-async function mockAwaitDataRequestResult(queryConfig: any, drId: string, blockHeight: bigint, awaitOptions: any, networkConfig: any, logger: any) {
+async function mockAwaitDataRequestResult(
+	queryConfig: any,
+	drId: string,
+	blockHeight: bigint,
+	awaitOptions: any,
+	networkConfig: any,
+	logger: any,
+) {
 	// Simulate the original result
 	const basicResult = {
 		drId: drId,
@@ -40,7 +47,11 @@ async function mockAwaitDataRequestResult(queryConfig: any, drId: string, blockH
 		currentDataResultRoot: "0x" + Math.random().toString(16).substring(2, 66),
 		dataResultRoot: "0x" + Math.random().toString(16).substring(2, 66),
 		validatorRoot: "0x" + Math.random().toString(16).substring(2, 66),
-		dataResultEntries: [Buffer.from(`entry1_${batchAssignment}`), Buffer.from(`entry2_${batchAssignment}`), Buffer.from(`entry3_${batchAssignment}`)],
+		dataResultEntries: [
+			Buffer.from(`entry1_${batchAssignment}`),
+			Buffer.from(`entry2_${batchAssignment}`),
+			Buffer.from(`entry3_${batchAssignment}`),
+		],
 	};
 
 	logger.info("┌─────────────────────────────────────────────────────────────────────┐");

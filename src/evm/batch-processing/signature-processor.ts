@@ -26,8 +26,13 @@ export interface SignatureProcessingResult {
 /**
  * Process all signatures in a batch
  */
-export async function processBatchSignatures(batch: SignedBatch, logger?: LoggingServiceInterface): Promise<SignatureProcessingResult> {
-	logger?.debug(`Processing ${batch.batchSignatures!.length} signatures (${batch.validatorEntries!.length} validators)`);
+export async function processBatchSignatures(
+	batch: SignedBatch,
+	logger?: LoggingServiceInterface,
+): Promise<SignatureProcessingResult> {
+	logger?.debug(
+		`Processing ${batch.batchSignatures!.length} signatures (${batch.validatorEntries!.length} validators)`,
+	);
 
 	// Generate merkle tree for validators
 	const merkleGenerator = new MerkleProofGenerator(logger!);
@@ -38,7 +43,10 @@ export async function processBatchSignatures(batch: SignedBatch, logger?: Loggin
 
 	// Validate validator root consistency
 	const localValidatorRoot = merkleGenerator.getTreeRoot(validatorTree);
-	const batchValidatorRoot = typeof batch.validatorRoot === "string" ? HexUtils.normalize(batch.validatorRoot) : HexUtils.normalize(Buffer.from(batch.validatorRoot).toString("hex"));
+	const batchValidatorRoot =
+		typeof batch.validatorRoot === "string"
+			? HexUtils.normalize(batch.validatorRoot)
+			: HexUtils.normalize(Buffer.from(batch.validatorRoot).toString("hex"));
 
 	logger?.info(`🔍 Validator Root Validation:`);
 	logger?.info(`   Local root:  ${localValidatorRoot}`);
@@ -91,8 +99,12 @@ export async function processBatchSignatures(batch: SignedBatch, logger?: Loggin
 		.sort((a, b) => a.sig.ethAddress.toString("hex").localeCompare(b.sig.ethAddress.toString("hex")))
 		.map((item) => item.index);
 
-	const sortedValidatorProofs = sortedIndices.map((i) => validatorProofs[i]).filter((proof): proof is ValidatorProofData => proof !== undefined);
-	const sortedEthereumSignatures = sortedIndices.map((i) => ethereumSignatures[i]).filter((sig): sig is HexString => sig !== undefined);
+	const sortedValidatorProofs = sortedIndices
+		.map((i) => validatorProofs[i])
+		.filter((proof): proof is ValidatorProofData => proof !== undefined);
+	const sortedEthereumSignatures = sortedIndices
+		.map((i) => ethereumSignatures[i])
+		.filter((sig): sig is HexString => sig !== undefined);
 
 	return {
 		success: true,
@@ -105,9 +117,16 @@ export async function processBatchSignatures(batch: SignedBatch, logger?: Loggin
 /**
  * Process an individual signature
  */
-function processIndividualSignature(signature: any, batch: SignedBatch, merkleGenerator: MerkleProofGenerator, validatorTree: any): { success: boolean; error?: string; data?: any } {
+function processIndividualSignature(
+	signature: any,
+	batch: SignedBatch,
+	merkleGenerator: MerkleProofGenerator,
+	validatorTree: any,
+): { success: boolean; error?: string; data?: any } {
 	// Find corresponding validator entry
-	const validatorEntry = batch.validatorEntries!.find((v: any) => Buffer.from(v.validatorAddress).equals(signature.validatorAddress));
+	const validatorEntry = batch.validatorEntries!.find((v: any) =>
+		Buffer.from(v.validatorAddress).equals(signature.validatorAddress),
+	);
 
 	if (!validatorEntry) {
 		return {
@@ -120,7 +139,11 @@ function processIndividualSignature(signature: any, batch: SignedBatch, merkleGe
 	const batchIdBuffer = Buffer.isBuffer(batch.batchId) ? batch.batchId : Buffer.from(batch.batchId, "hex");
 
 	// Validate signature
-	const validationResult = CryptoSignatureProcessor.validateSignature(signature.secp256k1Signature, batchIdBuffer, Buffer.from(validatorEntry.ethAddress));
+	const validationResult = CryptoSignatureProcessor.validateSignature(
+		signature.secp256k1Signature,
+		batchIdBuffer,
+		Buffer.from(validatorEntry.ethAddress),
+	);
 
 	if (!validationResult.valid) {
 		return { success: false, error: validationResult.error };
@@ -132,7 +155,10 @@ function processIndividualSignature(signature: any, batch: SignedBatch, merkleGe
 	// Convert signature to Ethereum format
 	const ethereumSig = CryptoSignatureProcessor.toEthereumFormat(signature.secp256k1Signature);
 
-	const votingPowerPercent = typeof validatorEntry.votingPowerPercent === "number" ? validatorEntry.votingPowerPercent : Number(validatorEntry.votingPowerPercent);
+	const votingPowerPercent =
+		typeof validatorEntry.votingPowerPercent === "number"
+			? validatorEntry.votingPowerPercent
+			: Number(validatorEntry.votingPowerPercent);
 
 	return {
 		success: true,

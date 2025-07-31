@@ -8,7 +8,12 @@ import { getErrorMessage } from "../../helpers/error-utils";
 import type { LoggingServiceInterface } from "../../services";
 import type { SchedulerConfig } from "../../types";
 import type { SEDADataRequestBuilder } from "../data-request";
-import { awaitDataRequestResult, buildDataRequestInput, buildGasOptions, postDataRequestTransaction } from "../data-request";
+import {
+	awaitDataRequestResult,
+	buildDataRequestInput,
+	buildGasOptions,
+	postDataRequestTransaction,
+} from "../data-request";
 import type { CosmosSequenceCoordinator, PostingResult, SequencedPosting } from "./cosmos-sequence-coordinator";
 import { type DataRequestPerformanceTracker, STEP_NAMES } from "./performance-tracker";
 import { executeWithRetry } from "./retry-handler";
@@ -76,20 +81,30 @@ export class TaskExecutor {
 
 			if (!postingResult.success || !postingResult.result) {
 				performanceTracker?.failStep(taskId, STEP_NAMES.POSTING, "Posting failed");
-				this.logger.error(`❌ PHASE 1 FAILED: Posting failed after ${postingDuration}ms (${(postingDuration / 1000).toFixed(2)}s)`);
+				this.logger.error(
+					`❌ PHASE 1 FAILED: Posting failed after ${postingDuration}ms (${(postingDuration / 1000).toFixed(2)}s)`,
+				);
 				return this.handlePostingFailure(taskId, postingResult, startTime, completionHandler);
 			}
 
 			performanceTracker?.endStep(taskId, STEP_NAMES.POSTING);
 
 			const postedData = postingResult.result;
-			this.logger.info(`✅ PHASE 1 SUCCESS: DataRequest posted after ${postingDuration}ms (${(postingDuration / 1000).toFixed(2)}s)`);
+			this.logger.info(
+				`✅ PHASE 1 SUCCESS: DataRequest posted after ${postingDuration}ms (${(postingDuration / 1000).toFixed(2)}s)`,
+			);
 			this.logger.info(`   📋 Request ID: ${postedData.drId}`);
 			this.logger.info(`   📦 Block Height: ${postedData.blockHeight}`);
 			this.logger.info(`   🔗 Transaction: ${postedData.txHash}`);
 
 			// Mark as posted in registry
-			this.registry.markAsPosted(taskId, postedData.drId, postedData.blockHeight, postedData.txHash, postingResult.sequence);
+			this.registry.markAsPosted(
+				taskId,
+				postedData.drId,
+				postedData.blockHeight,
+				postedData.txHash,
+				postingResult.sequence,
+			);
 
 			// Prepare success result for posting
 			const postingSuccessResult: AsyncTaskResult = {
@@ -113,14 +128,26 @@ export class TaskExecutor {
 			// Phase 2: Start Oracle awaiting in parallel (non-blocking)
 			this.logger.info(`🔄 PHASE 2: Starting oracle awaiting in parallel (non-blocking)...`);
 
-			this.startOracleAwaitingInParallel(taskId, postedData, networkConfig, builderConfig, startTime, postingResult.sequence, completionHandler, performanceTracker);
+			this.startOracleAwaitingInParallel(
+				taskId,
+				postedData,
+				networkConfig,
+				builderConfig,
+				startTime,
+				postingResult.sequence,
+				completionHandler,
+				performanceTracker,
+			);
 
 			// Return the posting success result
 			return postingSuccessResult;
 		} catch (error) {
 			const errorTime = this.getTimestamp();
 			const errorDuration = errorTime - startTime;
-			this.logger.error(`💥 TASK ERROR: Task ${taskId} failed after ${errorDuration}ms (${(errorDuration / 1000).toFixed(2)}s):`, error instanceof Error ? error : String(error));
+			this.logger.error(
+				`💥 TASK ERROR: Task ${taskId} failed after ${errorDuration}ms (${(errorDuration / 1000).toFixed(2)}s):`,
+				error instanceof Error ? error : String(error),
+			);
 			return this.handleGeneralFailure(taskId, error, startTime, completionHandler);
 		}
 	}
@@ -141,9 +168,13 @@ export class TaskExecutor {
 
 		try {
 			this.logger.info(`\n${"=".repeat(73)}`);
-			this.logger.info(`🚀 Multi-Program DataRequest #${requestNumber} (${taskId}) | ${new Date().toLocaleTimeString()}`);
+			this.logger.info(
+				`🚀 Multi-Program DataRequest #${requestNumber} (${taskId}) | ${new Date().toLocaleTimeString()}`,
+			);
 			this.logger.info("=".repeat(73));
-			this.logger.info(`⏱️  MULTI-PROGRAM TASK START: Beginning execution at ${new Date(startTime).toLocaleTimeString()}`);
+			this.logger.info(
+				`⏱️  MULTI-PROGRAM TASK START: Beginning execution at ${new Date(startTime).toLocaleTimeString()}`,
+			);
 
 			// Get network configuration and program IDs
 			performanceTracker?.startStep(taskId, STEP_NAMES.PROCESS);
@@ -163,17 +194,28 @@ export class TaskExecutor {
 			performanceTracker?.startStep(taskId, STEP_NAMES.POSTING);
 
 			const postingStartTime = this.getTimestamp();
-			this.logger.info(`📋 PHASE 1: Starting individual program posting with transaction tracking at ${new Date(postingStartTime).toLocaleTimeString()}`);
+			this.logger.info(
+				`📋 PHASE 1: Starting individual program posting with transaction tracking at ${new Date(postingStartTime).toLocaleTimeString()}`,
+			);
 
 			// Execute each program individually to get proper transaction tracking
-			const programPostingResults = await this.executeMultipleProgramPostings(taskId, programIds, builder, config, networkConfig, isRunning);
+			const programPostingResults = await this.executeMultipleProgramPostings(
+				taskId,
+				programIds,
+				builder,
+				config,
+				networkConfig,
+				isRunning,
+			);
 
 			const postingEndTime = this.getTimestamp();
 			const postingDuration = postingEndTime - postingStartTime;
 
 			performanceTracker?.endStep(taskId, STEP_NAMES.POSTING);
 
-			this.logger.info(`✅ PHASE 1 SUCCESS: All ${programPostingResults.length} DataRequests posted after ${postingDuration}ms (${(postingDuration / 1000).toFixed(2)}s)`);
+			this.logger.info(
+				`✅ PHASE 1 SUCCESS: All ${programPostingResults.length} DataRequests posted after ${postingDuration}ms (${(postingDuration / 1000).toFixed(2)}s)`,
+			);
 
 			// Log individual transaction tracking results
 			programPostingResults.forEach((result, index) => {
@@ -188,7 +230,13 @@ export class TaskExecutor {
 			// Mark all programs as posted in registry with individual tracking
 			programPostingResults.forEach((result, index) => {
 				const programTaskId = `${taskId}-program-${index}`;
-				this.registry.markAsPosted(programTaskId, result.drId, result.blockHeight, result.txHash, result.sequenceNumber);
+				this.registry.markAsPosted(
+					programTaskId,
+					result.drId,
+					result.blockHeight,
+					result.txHash,
+					result.sequenceNumber,
+				);
 			});
 
 			// Prepare the combined result with individual transaction details
@@ -212,15 +260,29 @@ export class TaskExecutor {
 			completionHandler.onSuccess(multiProgramPostingResult);
 
 			// Phase 2: Start oracle awaiting for all programs in parallel (non-blocking)
-			this.logger.info(`🔄 PHASE 2: Starting oracle awaiting for all ${programPostingResults.length} programs in parallel (non-blocking)...`);
+			this.logger.info(
+				`🔄 PHASE 2: Starting oracle awaiting for all ${programPostingResults.length} programs in parallel (non-blocking)...`,
+			);
 
-			this.startMultiProgramOracleAwaitingInParallel(taskId, programPostingResults, programIds, networkConfig, builderConfig, startTime, completionHandler, performanceTracker);
+			this.startMultiProgramOracleAwaitingInParallel(
+				taskId,
+				programPostingResults,
+				programIds,
+				networkConfig,
+				builderConfig,
+				startTime,
+				completionHandler,
+				performanceTracker,
+			);
 
 			return multiProgramPostingResult;
 		} catch (error) {
 			const errorTime = this.getTimestamp();
 			const errorDuration = errorTime - startTime;
-			this.logger.error(`💥 MULTI-PROGRAM TASK ERROR: Task ${taskId} failed after ${errorDuration}ms (${(errorDuration / 1000).toFixed(2)}s):`, error instanceof Error ? error : String(error));
+			this.logger.error(
+				`💥 MULTI-PROGRAM TASK ERROR: Task ${taskId} failed after ${errorDuration}ms (${(errorDuration / 1000).toFixed(2)}s):`,
+				error instanceof Error ? error : String(error),
+			);
 			return this.handleGeneralFailure(taskId, error, startTime, completionHandler);
 		}
 	}
@@ -294,7 +356,9 @@ export class TaskExecutor {
 			const endTime = this.getTimestamp();
 			const duration = endTime - startTime;
 
-			this.logger.info(`✅ BUNDLE SUCCESS: All ${programIds.length} programs posted in ${duration}ms (${(duration / 1000).toFixed(2)}s)`);
+			this.logger.info(
+				`✅ BUNDLE SUCCESS: All ${programIds.length} programs posted in ${duration}ms (${(duration / 1000).toFixed(2)}s)`,
+			);
 			this.logger.info(`   🔗 Transaction: ${bundleResult.tx}`);
 			this.logger.info(`   📊 Data Requests: ${bundleResult.drs.length}`);
 
@@ -342,10 +406,15 @@ export class TaskExecutor {
 			timeout: process.env.COSMOS_POSTING_TIMEOUT_MS ? Number.parseInt(process.env.COSMOS_POSTING_TIMEOUT_MS) : 20000,
 			postTransaction: async (sequenceNumber: number) => {
 				const postStartTime = this.getTimestamp();
-				this.logger.info(`📤 POST START: Program ${programId} (${taskId}) with sequence ${sequenceNumber} at ${new Date(postStartTime).toLocaleTimeString()}`);
+				this.logger.info(
+					`📤 POST START: Program ${programId} (${taskId}) with sequence ${sequenceNumber} at ${new Date(postStartTime).toLocaleTimeString()}`,
+				);
 
 				// Generate unique memo for this specific program
-				const uniqueMemoData = this.memoGenerator.generateUniqueMemo(config.memo || `DataRequest - ${programId}`, sequenceNumber);
+				const uniqueMemoData = this.memoGenerator.generateUniqueMemo(
+					config.memo || `DataRequest - ${programId}`,
+					sequenceNumber,
+				);
 
 				// Post transaction with program-specific configuration
 				const retryResult = await executeWithRetry(
@@ -367,14 +436,18 @@ export class TaskExecutor {
 						}
 
 						const txStartTime = this.getTimestamp();
-						this.logger.info(`🔄 TX START: Posting transaction for program ${programId} (${taskId}) at ${new Date(txStartTime).toLocaleTimeString()}`);
+						this.logger.info(
+							`🔄 TX START: Posting transaction for program ${programId} (${taskId}) at ${new Date(txStartTime).toLocaleTimeString()}`,
+						);
 
 						// Post the transaction for this specific program
 						const result = await postDataRequestTransaction(signer, postInput, gasOptions, networkConfig, this.logger);
 
 						const txEndTime = this.getTimestamp();
 						const txDuration = txEndTime - txStartTime;
-						this.logger.info(`✅ TX COMPLETE: Transaction posted for program ${programId} (${taskId}) in ${txDuration}ms (${(txDuration / 1000).toFixed(2)}s)`);
+						this.logger.info(
+							`✅ TX COMPLETE: Transaction posted for program ${programId} (${taskId}) in ${txDuration}ms (${(txDuration / 1000).toFixed(2)}s)`,
+						);
 
 						return result;
 					},
@@ -388,23 +461,31 @@ export class TaskExecutor {
 				const postDuration = postEndTime - postStartTime;
 
 				if (retryResult.success && retryResult.result) {
-					this.logger.info(`🎯 POST COMPLETE: Program ${programId} (${taskId}) posted successfully in ${postDuration}ms (${(postDuration / 1000).toFixed(2)}s)`);
+					this.logger.info(
+						`🎯 POST COMPLETE: Program ${programId} (${taskId}) posted successfully in ${postDuration}ms (${(postDuration / 1000).toFixed(2)}s)`,
+					);
 					return retryResult.result;
 				} else {
-					this.logger.error(`❌ POST FAILED: Program ${programId} (${taskId}) failed after ${postDuration}ms (${(postDuration / 1000).toFixed(2)}s)`);
+					this.logger.error(
+						`❌ POST FAILED: Program ${programId} (${taskId}) failed after ${postDuration}ms (${(postDuration / 1000).toFixed(2)}s)`,
+					);
 					throw retryResult.lastError || new Error(`Failed to post DataRequest transaction for program ${programId}`);
 				}
 			},
 		};
 
 		const coordinationStartTime = this.getTimestamp();
-		this.logger.info(`⚡ COORDINATION START: Coordinating program ${programId} (${taskId}) at ${new Date(coordinationStartTime).toLocaleTimeString()}`);
+		this.logger.info(
+			`⚡ COORDINATION START: Coordinating program ${programId} (${taskId}) at ${new Date(coordinationStartTime).toLocaleTimeString()}`,
+		);
 
 		const result = await this.sequenceCoordinator.executeSequenced(sequencedPosting);
 
 		const coordinationEndTime = this.getTimestamp();
 		const coordinationDuration = coordinationEndTime - coordinationStartTime;
-		this.logger.info(`🚀 COORDINATION COMPLETE: Program ${programId} (${taskId}) coordination finished in ${coordinationDuration}ms (${(coordinationDuration / 1000).toFixed(2)}s)`);
+		this.logger.info(
+			`🚀 COORDINATION COMPLETE: Program ${programId} (${taskId}) coordination finished in ${coordinationDuration}ms (${(coordinationDuration / 1000).toFixed(2)}s)`,
+		);
 
 		return result;
 	}
@@ -450,12 +531,16 @@ export class TaskExecutor {
 				{
 					onSuccess: (result) => {
 						completedCount++;
-						this.logger.info(`✅ Program ${index + 1}/${totalPrograms} completed: ${programIds[index]} (${result.drId})`);
+						this.logger.info(
+							`✅ Program ${index + 1}/${totalPrograms} completed: ${programIds[index]} (${result.drId})`,
+						);
 						this.registry.markAsCompleted(programTaskId);
 
 						// Check if all programs are completed
 						if (completedCount === totalPrograms) {
-							this.logger.info(`🎉 ALL PROGRAMS COMPLETED: Multi-program task ${taskId} finished successfully (${completedCount}/${totalPrograms})`);
+							this.logger.info(
+								`🎉 ALL PROGRAMS COMPLETED: Multi-program task ${taskId} finished successfully (${completedCount}/${totalPrograms})`,
+							);
 
 							// Create final completion result with all program details
 							const finalCompletionResult: AsyncTaskResult = {
@@ -481,12 +566,16 @@ export class TaskExecutor {
 						}
 					},
 					onFailure: (result) => {
-						this.logger.error(`❌ Program ${index + 1}/${totalPrograms} failed: ${programIds[index]} - ${result.error}`);
+						this.logger.error(
+							`❌ Program ${index + 1}/${totalPrograms} failed: ${programIds[index]} - ${result.error}`,
+						);
 						// Continue with other programs even if one fails
 						completedCount++; // Count failed programs towards completion to avoid hanging
 
 						if (completedCount === totalPrograms) {
-							this.logger.warn(`⚠️ All programs processed (some failed): Multi-program task ${taskId} completed with errors`);
+							this.logger.warn(
+								`⚠️ All programs processed (some failed): Multi-program task ${taskId} completed with errors`,
+							);
 						}
 					},
 				},
@@ -511,7 +600,9 @@ export class TaskExecutor {
 			timeout: process.env.COSMOS_POSTING_TIMEOUT_MS ? Number.parseInt(process.env.COSMOS_POSTING_TIMEOUT_MS) : 20000,
 			postTransaction: async (sequenceNumber: number) => {
 				const postStartTime = this.getTimestamp();
-				this.logger.info(`📤 POST START: DataRequest ${taskId} with sequence ${sequenceNumber} at ${new Date(postStartTime).toLocaleTimeString()}`);
+				this.logger.info(
+					`📤 POST START: DataRequest ${taskId} with sequence ${sequenceNumber} at ${new Date(postStartTime).toLocaleTimeString()}`,
+				);
 
 				// Generate unique memo
 				const uniqueMemoData = this.memoGenerator.generateUniqueMemo(config.memo || "DataRequest", sequenceNumber);
@@ -535,14 +626,18 @@ export class TaskExecutor {
 						}
 
 						const txStartTime = this.getTimestamp();
-						this.logger.info(`🔄 TX START: Posting transaction for ${taskId} at ${new Date(txStartTime).toLocaleTimeString()}`);
+						this.logger.info(
+							`🔄 TX START: Posting transaction for ${taskId} at ${new Date(txStartTime).toLocaleTimeString()}`,
+						);
 
 						// ONLY post the transaction - return immediately
 						const result = await postDataRequestTransaction(signer, postInput, gasOptions, networkConfig, this.logger);
 
 						const txEndTime = this.getTimestamp();
 						const txDuration = txEndTime - txStartTime;
-						this.logger.info(`✅ TX COMPLETE: Transaction posted for ${taskId} in ${txDuration}ms (${(txDuration / 1000).toFixed(2)}s)`);
+						this.logger.info(
+							`✅ TX COMPLETE: Transaction posted for ${taskId} in ${txDuration}ms (${(txDuration / 1000).toFixed(2)}s)`,
+						);
 
 						return result;
 					},
@@ -556,23 +651,31 @@ export class TaskExecutor {
 				const postDuration = postEndTime - postStartTime;
 
 				if (retryResult.success && retryResult.result) {
-					this.logger.info(`🎯 POST COMPLETE: DataRequest ${taskId} posted successfully in ${postDuration}ms (${(postDuration / 1000).toFixed(2)}s)`);
+					this.logger.info(
+						`🎯 POST COMPLETE: DataRequest ${taskId} posted successfully in ${postDuration}ms (${(postDuration / 1000).toFixed(2)}s)`,
+					);
 					return retryResult.result;
 				} else {
-					this.logger.error(`❌ POST FAILED: DataRequest ${taskId} failed after ${postDuration}ms (${(postDuration / 1000).toFixed(2)}s)`);
+					this.logger.error(
+						`❌ POST FAILED: DataRequest ${taskId} failed after ${postDuration}ms (${(postDuration / 1000).toFixed(2)}s)`,
+					);
 					throw retryResult.lastError || new Error("Failed to post DataRequest transaction");
 				}
 			},
 		};
 
 		const coordinationStartTime = this.getTimestamp();
-		this.logger.info(`⚡ COORDINATION START: Coordinating DataRequest ${taskId} at ${new Date(coordinationStartTime).toLocaleTimeString()}`);
+		this.logger.info(
+			`⚡ COORDINATION START: Coordinating DataRequest ${taskId} at ${new Date(coordinationStartTime).toLocaleTimeString()}`,
+		);
 
 		const result = await this.sequenceCoordinator.executeSequenced(sequencedPosting);
 
 		const coordinationEndTime = this.getTimestamp();
 		const coordinationDuration = coordinationEndTime - coordinationStartTime;
-		this.logger.info(`🚀 COORDINATION COMPLETE: DataRequest ${taskId} coordination finished in ${coordinationDuration}ms (${(coordinationDuration / 1000).toFixed(2)}s)`);
+		this.logger.info(
+			`🚀 COORDINATION COMPLETE: DataRequest ${taskId} coordination finished in ${coordinationDuration}ms (${(coordinationDuration / 1000).toFixed(2)}s)`,
+		);
 
 		return result;
 	}
@@ -591,7 +694,16 @@ export class TaskExecutor {
 		performanceTracker?: DataRequestPerformanceTracker,
 	): void {
 		// Start oracle awaiting in background - don't await this!
-		this.executeOracleAwaitingAsync(taskId, postedData, networkConfig, builderConfig, taskStartTime, sequenceNumber, completionHandler, performanceTracker).catch((error) => {
+		this.executeOracleAwaitingAsync(
+			taskId,
+			postedData,
+			networkConfig,
+			builderConfig,
+			taskStartTime,
+			sequenceNumber,
+			completionHandler,
+			performanceTracker,
+		).catch((error) => {
 			this.logger.error(`❌ Background oracle awaiting failed for ${taskId}:`, error);
 		});
 
@@ -624,7 +736,16 @@ export class TaskExecutor {
 			this.logger.info(`⏳ BACKGROUND: Awaiting oracle execution for ${postedData.drId}...`);
 
 			// Wait for oracle execution with detailed timing
-			const executionResult = await awaitDataRequestResult(queryConfig, postedData.drId, postedData.blockHeight, awaitOptions, networkConfig, this.logger, performanceTracker, taskId);
+			const executionResult = await awaitDataRequestResult(
+				queryConfig,
+				postedData.drId,
+				postedData.blockHeight,
+				awaitOptions,
+				networkConfig,
+				this.logger,
+				performanceTracker,
+				taskId,
+			);
 
 			const completedAt = this.getTimestamp();
 			const totalDuration = completedAt - taskStartTime;
@@ -647,7 +768,15 @@ export class TaskExecutor {
 			// Call completion handler for ORACLE SUCCESS
 			completionHandler.onSuccess(oracleSuccessResult);
 		} catch (error) {
-			this.handleOracleFailureAsync(taskId, postedData, error, taskStartTime, sequenceNumber, networkConfig, completionHandler);
+			this.handleOracleFailureAsync(
+				taskId,
+				postedData,
+				error,
+				taskStartTime,
+				sequenceNumber,
+				networkConfig,
+				completionHandler,
+			);
 		}
 	}
 
@@ -718,11 +847,20 @@ export class TaskExecutor {
 	/**
 	 * Handle posting failure
 	 */
-	private handlePostingFailure(taskId: string, postingResult: PostingResult<any>, startTime: number, completionHandler: TaskCompletionHandler): AsyncTaskResult {
+	private handlePostingFailure(
+		taskId: string,
+		postingResult: PostingResult<any>,
+		startTime: number,
+		completionHandler: TaskCompletionHandler,
+	): AsyncTaskResult {
 		const completedAt = this.getTimestamp();
 		const duration = completedAt - startTime;
 
-		this.registry.markAsFailed(taskId, postingResult.error || new Error("Failed to post DataRequest transaction"), postingResult.sequence);
+		this.registry.markAsFailed(
+			taskId,
+			postingResult.error || new Error("Failed to post DataRequest transaction"),
+			postingResult.sequence,
+		);
 
 		const failureResult: AsyncTaskResult = {
 			taskId,
@@ -740,7 +878,11 @@ export class TaskExecutor {
 	/**
 	 * Log successful posting
 	 */
-	private logPostingSuccess(taskId: string, postedData: { drId: string; blockHeight: bigint; txHash: string }, startTime: number): void {
+	private logPostingSuccess(
+		taskId: string,
+		postedData: { drId: string; blockHeight: bigint; txHash: string },
+		startTime: number,
+	): void {
 		const postingDuration = this.getTimestamp() - startTime;
 
 		this.logger.info(`⚡ POST SUCCESS: ${taskId}`);
@@ -753,7 +895,12 @@ export class TaskExecutor {
 	/**
 	 * Handle general task failure
 	 */
-	private handleGeneralFailure(taskId: string, error: any, startTime: number, completionHandler: TaskCompletionHandler): AsyncTaskResult {
+	private handleGeneralFailure(
+		taskId: string,
+		error: any,
+		startTime: number,
+		completionHandler: TaskCompletionHandler,
+	): AsyncTaskResult {
 		const completedAt = this.getTimestamp();
 		const duration = completedAt - startTime;
 

@@ -23,7 +23,12 @@ export class SedaBatchService {
 	/**
 	 * Fetch batch information from SEDA chain
 	 */
-	async fetchBatch(drId: string, blockHeight: bigint, maxRetries = 10, pollingIntervalMs = 3000): Promise<SignedBatch | null> {
+	async fetchBatch(
+		drId: string,
+		blockHeight: bigint,
+		maxRetries = 10,
+		pollingIntervalMs = 3000,
+	): Promise<SignedBatch | null> {
 		try {
 			// Get DataResult with batch assignment
 			const dataResult = await this.getDataResult(drId, blockHeight);
@@ -35,7 +40,9 @@ export class SedaBatchService {
 			const { batchAssignment } = dataResult;
 
 			// Start polling with summary logging only
-			this.logger.info(`📦 Fetching batch ${batchAssignment} (max ${maxRetries} attempts, ${pollingIntervalMs}ms intervals)`);
+			this.logger.info(
+				`📦 Fetching batch ${batchAssignment} (max ${maxRetries} attempts, ${pollingIntervalMs}ms intervals)`,
+			);
 
 			for (let attempt = 1; attempt <= maxRetries; attempt++) {
 				this.logger.debug(`🔄 Polling attempt ${attempt}/${maxRetries} for batch ${batchAssignment}`);
@@ -48,7 +55,9 @@ export class SedaBatchService {
 				}
 
 				if (attempt < maxRetries) {
-					this.logger.debug(`⏱️ Batch ${batchAssignment} not ready, waiting ${pollingIntervalMs}ms (attempt ${attempt}/${maxRetries})`);
+					this.logger.debug(
+						`⏱️ Batch ${batchAssignment} not ready, waiting ${pollingIntervalMs}ms (attempt ${attempt}/${maxRetries})`,
+					);
 					await new Promise((resolve) => setTimeout(resolve, pollingIntervalMs));
 				}
 			}
@@ -198,7 +207,9 @@ export class SedaBatchService {
 				return null;
 			}
 
-			this.logger.debug(`✅ Latest signed batch ${batch.batchNumber} fetched with ${batchSignatures.length} signatures`);
+			this.logger.debug(
+				`✅ Latest signed batch ${batch.batchNumber} fetched with ${batchSignatures.length} signatures`,
+			);
 
 			return {
 				batchNumber: batch.batchNumber,
@@ -221,9 +232,15 @@ export class SedaBatchService {
 	 * Generate merkle proof for a DataRequest result in a batch
 	 * Following the exact logic from solver-sdk/src/services/data-result-service.ts
 	 */
-	async getDataResultProof(dataRequestId: string, dataRequestHeight: bigint, targetBatch?: bigint): Promise<{ success: boolean; proof?: string[]; error?: string }> {
+	async getDataResultProof(
+		dataRequestId: string,
+		dataRequestHeight: bigint,
+		targetBatch?: bigint,
+	): Promise<{ success: boolean; proof?: string[]; error?: string }> {
 		try {
-			this.logger.debug(`🔍 Generating result proof for DR ${dataRequestId} (height: ${dataRequestHeight}, target: ${targetBatch})`);
+			this.logger.debug(
+				`🔍 Generating result proof for DR ${dataRequestId} (height: ${dataRequestHeight}, target: ${targetBatch})`,
+			);
 
 			// Step 1: Get the DataResult to find batch assignment (like solver-sdk)
 			const dataResultResponse = await this.getDataResult(dataRequestId, dataRequestHeight);
@@ -300,7 +317,9 @@ export class SedaBatchService {
 
 			// Step 1: Process data result entries (like solver-sdk)
 			const treeEntries = currentBatch.dataResultEntries || [];
-			const dataResultEntries = treeEntries.map((entry) => keccak256(Buffer.concat([Buffer.from([0]), Buffer.from(entry)])));
+			const dataResultEntries = treeEntries.map((entry) =>
+				keccak256(Buffer.concat([Buffer.from([0]), Buffer.from(entry)])),
+			);
 
 			// Step 2: Generate the normal data result tree (like solver-sdk)
 			const dataResultTree = SimpleMerkleTree.of(dataResultEntries, {
@@ -311,7 +330,9 @@ export class SedaBatchService {
 			const dataResultMerkleRootBuffer = Buffer.from(this.strip0x(dataResultTree.root), "hex");
 			const previousDataResultRootBuffer = Buffer.from(previousBatch.dataResultRoot, "hex");
 
-			const finalTree = SimpleMerkleTree.of([dataResultMerkleRootBuffer, previousDataResultRootBuffer], { sortLeaves: true });
+			const finalTree = SimpleMerkleTree.of([dataResultMerkleRootBuffer, previousDataResultRootBuffer], {
+				sortLeaves: true,
+			});
 
 			// Step 4: Validate tree root (like solver-sdk)
 			if (this.strip0x(finalTree.root) !== this.strip0x(currentBatch.dataResultRoot)) {

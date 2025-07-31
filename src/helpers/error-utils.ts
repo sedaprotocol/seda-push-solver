@@ -8,7 +8,13 @@
  */
 export function isSequenceError(error: Error | string): boolean {
 	const errorMessage = error instanceof Error ? error.message : error;
-	const sequenceErrorPatterns = ["account sequence mismatch", "incorrect account sequence", "sequence number", "nonce too low", "sequence too low"];
+	const sequenceErrorPatterns = [
+		"account sequence mismatch",
+		"incorrect account sequence",
+		"sequence number",
+		"nonce too low",
+		"sequence too low",
+	];
 
 	return sequenceErrorPatterns.some((pattern) => errorMessage.toLowerCase().includes(pattern.toLowerCase()));
 }

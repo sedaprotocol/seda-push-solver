@@ -3,7 +3,10 @@
  * Provides structured logging with different levels
  */
 
+import { Option } from "effect";
+import { type Logger, createLogger, format, transports } from "winston";
 import type { LoggingArgs } from "../types/core";
+import "winston-daily-rotate-file";
 
 /**
  * Log levels for controlling output
@@ -64,32 +67,58 @@ export interface LoggingServiceInterface {
  */
 export class LoggingService implements LoggingServiceInterface {
 	private logLevel: "debug" | "info" | "warn" | "error";
+	private logger: Logger;
 
 	constructor(logLevel: "debug" | "info" | "warn" | "error" = "info") {
 		this.logLevel = logLevel;
+
+		const rotateFileTransport = new transports.DailyRotateFile({
+			level: "debug",
+			dirname: "./logs",
+			filename: "seda-push-solver-%DATE%.log",
+			datePattern: "YYYY-MM-DD",
+			zippedArchive: true,
+			maxFiles: "14d",
+			maxSize: "20m",
+			format: logFormat(false),
+		});
+
+		const logger = createLogger({
+			level: this.logLevel,
+			transports: [consoleTransport, rotateFileTransport],
+			format: format.combine(
+				format.timestamp({ format: "YYYY-MM-DD HH:mm:ss.SSS" }),
+				format.metadata({
+					fillExcept: ["message", "level", "timestamp", "label"],
+				}),
+				format.errors({ stack: true }),
+			),
+		});
+
+		this.logger = logger;
 	}
 
 	info(message: string, ...args: LoggingArgs): void {
 		if (this.shouldLog("info")) {
-			console.log(message, ...args);
+			this.logger.info(message, ...args);
 		}
 	}
 
 	error(message: string, ...args: LoggingArgs): void {
 		if (this.shouldLog("error")) {
-			console.error(message, ...args);
+			this.logger.error(message, ...args);
 		}
 	}
 
 	warn(message: string, ...args: LoggingArgs): void {
 		if (this.shouldLog("warn")) {
-			console.warn(message, ...args);
+			this.logger.warn(message, ...args);
 		}
 	}
 
 	debug(message: string, ...args: LoggingArgs): void {
 		if (this.shouldLog("debug")) {
-			console.log(`[DEBUG] ${message}`, ...args);
+			this.logger.debug(message, ...args);
 		}
 	}
 
@@ -120,3 +149,30 @@ export class LoggingService implements LoggingServiceInterface {
 		return requestedLevelIndex >= currentLevelIndex;
 	}
 }
+
+type ExtraInfo = {
+	id?: string;
+	error?: Error | string;
+};
+
+function cyan(val: string) {
+	return `\x1b[36m${val}\x1b[0m`;
+}
+
+const logFormat = (withColors: boolean) =>
+	format.printf((info) => {
+		const metadata = info.metadata as ExtraInfo;
+		const id = Option.fromNullable(metadata.id)
+			.pipe(Option.map((t) => (withColors ? `[${cyan(t)}] ` : `[${t}] `)))
+			.pipe(Option.getOrElse(() => ""));
+
+		const logMsg = `${info.timestamp} ${info.level}: ${id}`;
+
+		return Option.fromNullable(metadata.error)
+			.pipe(Option.map((err) => `${logMsg} ${info.message} ${err}`))
+			.pipe(Option.getOrElse(() => `${logMsg}${info.message}`));
+	});
+
+const consoleTransport = new transports.Console({
+	format: format.combine(format.colorize(), logFormat(true)),
+});

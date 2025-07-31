@@ -42,7 +42,15 @@ export class BatchPoster {
 			const evmBatch = createEvmBatch(batch);
 
 			// Post the batch to the network using extracted executor
-			const txHash = await executeBatchTransaction(network, evmPrivateKey!, proverAddress, evmBatch, signatureResult.signatures!, signatureResult.proofs!, this.logger);
+			const txHash = await executeBatchTransaction(
+				network,
+				evmPrivateKey!,
+				proverAddress,
+				evmBatch,
+				signatureResult.signatures!,
+				signatureResult.proofs!,
+				this.logger,
+			);
 
 			this.logger.info(`Successfully posted batch ${batch.batchNumber} to ${network.displayName}`);
 			this.logger.info(`TX Hash: ${txHash}`);

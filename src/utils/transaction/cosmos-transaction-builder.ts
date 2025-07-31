@@ -79,7 +79,10 @@ export async function executeCosmosTransaction(
 /**
  * Validate Cosmos transaction prerequisites
  */
-export function validateCosmosPrerequisites(signer: Signer | null, config?: CosmosTransactionConfig): { valid: boolean; error?: string } {
+export function validateCosmosPrerequisites(
+	signer: Signer | null,
+	config?: CosmosTransactionConfig,
+): { valid: boolean; error?: string } {
 	if (!signer) {
 		return { valid: false, error: "Signer is required for Cosmos transactions" };
 	}
@@ -110,7 +113,13 @@ export function formatCosmosMemo(memo: string, maxLength = 256): string {
  */
 export function isCosmosSequenceError(error: Error | string): boolean {
 	const errorMessage = error instanceof Error ? error.message : error;
-	const sequenceErrorPatterns = ["account sequence mismatch", "incorrect account sequence", "sequence number", "nonce too low", "sequence too low"];
+	const sequenceErrorPatterns = [
+		"account sequence mismatch",
+		"incorrect account sequence",
+		"sequence number",
+		"nonce too low",
+		"sequence too low",
+	];
 
 	return sequenceErrorPatterns.some((pattern) => errorMessage.toLowerCase().includes(pattern.toLowerCase()));
 }

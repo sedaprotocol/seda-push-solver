@@ -165,7 +165,11 @@ export class SEDADataRequestScheduler {
 /**
  * Create and start a scheduler with environment-based configuration
  */
-export async function startScheduler(overrides: Partial<SchedulerConfig> = {}, timerService?: TimerServiceInterface, processService?: ProcessServiceInterface): Promise<SEDADataRequestScheduler> {
+export async function startScheduler(
+	overrides: Partial<SchedulerConfig> = {},
+	timerService?: TimerServiceInterface,
+	processService?: ProcessServiceInterface,
+): Promise<SEDADataRequestScheduler> {
 	// Use injected services or create defaults
 	const { ServiceContainer } = await import("./services");
 	const services = ServiceContainer.createProduction();

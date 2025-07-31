@@ -57,12 +57,18 @@ export class TransactionExecutor {
 		while (attempts < this.SEQUENCE_RECOVERY_ATTEMPTS) {
 			const startTime = Date.now();
 
-			this.logger.info(`🔢 Executing transaction #${sequence} for task ${execution.taskId} (attempt ${attempts + 1}/${this.SEQUENCE_RECOVERY_ATTEMPTS})`);
+			this.logger.info(
+				`🔢 Executing transaction #${sequence} for task ${execution.taskId} (attempt ${attempts + 1}/${this.SEQUENCE_RECOVERY_ATTEMPTS})`,
+			);
 
 			try {
 				const timeout = execution.timeout || this.postingTimeoutMs;
 
-				const result = await withTimeout(execution.postTransaction(sequence), timeout, `Transaction timeout after ${timeout}ms`);
+				const result = await withTimeout(
+					execution.postTransaction(sequence),
+					timeout,
+					`Transaction timeout after ${timeout}ms`,
+				);
 
 				// Success - notify success handler
 				onSuccess(sequence);

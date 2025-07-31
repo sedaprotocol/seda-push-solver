@@ -91,7 +91,9 @@ export class TaskRegistry {
 	 * Get active DataRequest trackers only
 	 */
 	getActiveTasks(): DataRequestTracker[] {
-		return Array.from(this.dataRequestRegistry.values()).filter((tracker) => tracker.status === "posting" || tracker.status === "posted");
+		return Array.from(this.dataRequestRegistry.values()).filter(
+			(tracker) => tracker.status === "posting" || tracker.status === "posted",
+		);
 	}
 
 	/**

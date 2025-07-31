@@ -45,7 +45,12 @@ export class DataRequestClient {
 	 * Post a DataRequest transaction to the SEDA network
 	 * This phase should be coordinated by sequence to prevent conflicts
 	 */
-	async postRequest(signer: Signer, postInput: PostDataRequestInput, gasOptions: GasOptions, networkConfig: NetworkConfig): Promise<DataRequestPosted> {
+	async postRequest(
+		signer: Signer,
+		postInput: PostDataRequestInput,
+		gasOptions: GasOptions,
+		networkConfig: NetworkConfig,
+	): Promise<DataRequestPosted> {
 		// Clean, structured configuration display
 		this.logger.info("\n┌─────────────────────────────────────────────────────────────────────┐");
 		this.logger.info("│                        📤 Posting DataRequest                       │");
@@ -78,7 +83,13 @@ export class DataRequestClient {
 	 * Wait for a DataRequest to be executed and return results
 	 * This phase happens in parallel and doesn't need sequence coordination
 	 */
-	async awaitResult(queryConfig: QueryConfig, drId: string, blockHeight: bigint, awaitOptions: AwaitOptions, networkConfig: NetworkConfig): Promise<DataRequestResult> {
+	async awaitResult(
+		queryConfig: QueryConfig,
+		drId: string,
+		blockHeight: bigint,
+		awaitOptions: AwaitOptions,
+		networkConfig: NetworkConfig,
+	): Promise<DataRequestResult> {
 		this.logger.info(`\n⏳ Waiting for DataRequest ${drId} to complete...`);
 		this.logger.info(`   📦 Block Height: ${blockHeight}`);
 		this.logger.info(`   ⏱️ Timeout: ${awaitOptions.timeoutSeconds}s`);
@@ -122,7 +133,9 @@ export class DataRequestClient {
 
 		this.logger.info("├─────────────────────────────────────────────────────────────────────┤");
 		if (networkConfig.explorerEndpoint) {
-			this.logger.info(`│ Explorer: ${networkConfig.explorerEndpoint}/data-requests/${result.drId}/${result.drBlockHeight}`);
+			this.logger.info(
+				`│ Explorer: ${networkConfig.explorerEndpoint}/data-requests/${result.drId}/${result.drBlockHeight}`,
+			);
 		} else {
 			this.logger.info(`│ Explorer: N/A`);
 		}

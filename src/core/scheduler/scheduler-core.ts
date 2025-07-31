@@ -35,7 +35,11 @@ export class SchedulerCore {
 		this.statistics = new SchedulerStatistics();
 
 		// Initialize task management
-		this.taskManager = new TaskManager(this.logger, this.config.cosmosSequence, this.timerService?.now.bind(this.timerService) || Date.now);
+		this.taskManager = new TaskManager(
+			this.logger,
+			this.config.cosmosSequence,
+			this.timerService?.now.bind(this.timerService) || Date.now,
+		);
 
 		// Initialize task completion handler
 		this.completionHandler = new SchedulerTaskCompletionHandler(
@@ -251,7 +255,13 @@ export class SchedulerCore {
 	private launchAsyncDataRequest(): void {
 		if (!this.isRunning) return;
 
-		this.taskManager.queueMultiProgramTask(this.builder, this.config, () => this.isRunning, this.completionHandler, this.statistics);
+		this.taskManager.queueMultiProgramTask(
+			this.builder,
+			this.config,
+			() => this.isRunning,
+			this.completionHandler,
+			this.statistics,
+		);
 	}
 
 	/**
@@ -283,7 +293,8 @@ export class SchedulerCore {
 
 		if (secondsLeft > 0) {
 			const stats = this.getStats();
-			const successRate = stats.totalRequests > 0 ? `${((stats.successfulRequests / stats.totalRequests) * 100).toFixed(0)}%` : "0%";
+			const successRate =
+				stats.totalRequests > 0 ? `${((stats.successfulRequests / stats.totalRequests) * 100).toFixed(0)}%` : "0%";
 
 			const failedRequests = this.taskManager.getDataRequestsByStatus("failed");
 

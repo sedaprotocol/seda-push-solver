@@ -15,7 +15,11 @@ function createCacheKey(dataRequestId: string, dataRequestHeight: bigint) {
 	return `${dataRequestId}_${dataRequestHeight}`;
 }
 
-export async function getDataResult(dataRequestId: string, dataRequestHeight: bigint, sedaChain: SedaChain): Promise<Result<Maybe<DataResult>, Error>> {
+export async function getDataResult(
+	dataRequestId: string,
+	dataRequestHeight: bigint,
+	sedaChain: SedaChain,
+): Promise<Result<Maybe<DataResult>, Error>> {
 	const cachedDataResult = dataResultsCache.get(createCacheKey(dataRequestId, dataRequestHeight));
 	if (cachedDataResult.isJust) {
 		return Result.ok(cachedDataResult);
@@ -23,7 +27,9 @@ export async function getDataResult(dataRequestId: string, dataRequestHeight: bi
 
 	const client = new sedachain.batching.v1.QueryClientImpl(sedaChain.getProtobufRpcClient());
 
-	const dataResult: Result<Maybe<DataResult>, Error> = (await tryAsync(client.DataResult({ dataRequestId, dataRequestHeight }))).map((result) => {
+	const dataResult: Result<Maybe<DataResult>, Error> = (
+		await tryAsync(client.DataResult({ dataRequestId, dataRequestHeight }))
+	).map((result) => {
 		if (!result.batchAssignment) return Maybe.nothing();
 		if (!result.dataResult) return Maybe.nothing();
 
@@ -57,7 +63,12 @@ export async function getDataResult(dataRequestId: string, dataRequestHeight: bi
  * - An Error if the proof could not be generated
  */
 
-export async function getDataResultProof(dataRequestId: string, dataRequestHeight: bigint, sedaChain: SedaChain, targetBatch?: bigint): Promise<Result<string[], Error>> {
+export async function getDataResultProof(
+	dataRequestId: string,
+	dataRequestHeight: bigint,
+	sedaChain: SedaChain,
+	targetBatch?: bigint,
+): Promise<Result<string[], Error>> {
 	const dataResultResponse = await getDataResult(dataRequestId, dataRequestHeight, sedaChain);
 
 	if (dataResultResponse.isErr) {
@@ -72,7 +83,9 @@ export async function getDataResultProof(dataRequestId: string, dataRequestHeigh
 
 	if (targetBatch) {
 		if (dataResult.batchAssignment > targetBatch) {
-			return Result.err(new Error(`Data Request was assigned batch ${dataResult.batchAssignment} but given target was ${targetBatch}`));
+			return Result.err(
+				new Error(`Data Request was assigned batch ${dataResult.batchAssignment} but given target was ${targetBatch}`),
+			);
 		}
 	}
 
@@ -111,7 +124,9 @@ export async function getDataResultProof(dataRequestId: string, dataRequestHeigh
 		return Result.err(new Error(`Could not find previous batch #${dataResult.batchAssignment - 1n}`));
 	}
 
-	const dataResultEntries = treeEntries.map((entry) => keccak256(Buffer.concat([Buffer.from([0]), Buffer.from(entry)])));
+	const dataResultEntries = treeEntries.map((entry) =>
+		keccak256(Buffer.concat([Buffer.from([0]), Buffer.from(entry)])),
+	);
 
 	// Generate the normal data result tree (Previous batch is not included)
 	const dataResultTree = SimpleMerkleTree.of(dataResultEntries ?? [], {
@@ -127,7 +142,11 @@ export async function getDataResultProof(dataRequestId: string, dataRequestHeigh
 	});
 
 	if (strip0x(finalTree.root) !== strip0x(dataResultBatch.value.dataResultRoot)) {
-		return Result.err(new Error(`Generated tree root ${strip0x(finalTree.root)} did not match chain tree root ${strip0x(dataResultBatch.value.dataResultRoot)}`));
+		return Result.err(
+			new Error(
+				`Generated tree root ${strip0x(finalTree.root)} did not match chain tree root ${strip0x(dataResultBatch.value.dataResultRoot)}`,
+			),
+		);
 	}
 
 	const dataResultIdEntry = keccak256(Buffer.concat([Buffer.from("00", "hex"), Buffer.from(dataResult.id, "hex")]));

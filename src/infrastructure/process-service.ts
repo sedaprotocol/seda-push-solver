@@ -89,7 +89,12 @@ export class ProcessService implements ProcessServiceInterface {
 		try {
 			// Run all shutdown handlers with individual timeouts
 			const handlerPromises = this.shutdownHandlers.map((handler, index) =>
-				Promise.race([Promise.resolve(handler()), new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`Handler ${index} timeout after 5 seconds`)), 5000))]).catch((error) => {
+				Promise.race([
+					Promise.resolve(handler()),
+					new Promise<never>((_, reject) =>
+						setTimeout(() => reject(new Error(`Handler ${index} timeout after 5 seconds`)), 5000),
+					),
+				]).catch((error) => {
 					this.loggingService.error(`❌ Shutdown handler ${index} failed: ${error}`);
 				}),
 			);

@@ -92,7 +92,9 @@ export class SequenceAllocator {
 		const drift = Math.abs(this.nextSequence - blockchainSequence);
 
 		if (drift > maxDrift) {
-			this.logger.warn(`🚨 CRITICAL sequence drift detected: local=${this.nextSequence}, blockchain=${blockchainSequence}, drift=${drift}`);
+			this.logger.warn(
+				`🚨 CRITICAL sequence drift detected: local=${this.nextSequence}, blockchain=${blockchainSequence}, drift=${drift}`,
+			);
 
 			// Force synchronization for large drifts
 			if (this.nextSequence < blockchainSequence) {
@@ -105,7 +107,9 @@ export class SequenceAllocator {
 				return true; // Indicates major sync occurred
 			}
 		} else if (drift > 0) {
-			this.logger.debug(`🔄 Minor sequence drift: local=${this.nextSequence}, blockchain=${blockchainSequence}, drift=${drift}`);
+			this.logger.debug(
+				`🔄 Minor sequence drift: local=${this.nextSequence}, blockchain=${blockchainSequence}, drift=${drift}`,
+			);
 		}
 
 		// Update confirmed sequence conservatively

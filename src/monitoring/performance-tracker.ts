@@ -139,7 +139,9 @@ export class PerformanceTracker {
 	 * Get performance statistics for an operation type
 	 */
 	getPerformanceStats(operationType: string): PerformanceStats | null {
-		const measurements = this.completedMeasurements.filter((m) => m.operationType === operationType && m.duration !== undefined);
+		const measurements = this.completedMeasurements.filter(
+			(m) => m.operationType === operationType && m.duration !== undefined,
+		);
 
 		if (measurements.length === 0) {
 			return null;
@@ -186,7 +188,11 @@ export class PerformanceTracker {
 	 * Get operation by ID
 	 */
 	getOperation(operationId: string): PerformanceMeasurement | null {
-		return this.measurements.get(operationId) || this.completedMeasurements.find((m) => m.operationId === operationId) || null;
+		return (
+			this.measurements.get(operationId) ||
+			this.completedMeasurements.find((m) => m.operationId === operationId) ||
+			null
+		);
 	}
 
 	/**

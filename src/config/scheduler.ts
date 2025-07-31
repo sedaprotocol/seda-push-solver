@@ -8,7 +8,9 @@ import type { SchedulerConfig } from "../types";
 
 // Default scheduler configuration - all timeouts should be overridden by environment variables
 export const DEFAULT_SCHEDULER_CONFIG: SchedulerConfig = {
-	enablePostCondition: process.env.SCHEDULER_ENABLE_POST_CONDITION ? process.env.SCHEDULER_ENABLE_POST_CONDITION.toLowerCase() === "true" : true,
+	enablePostCondition: process.env.SCHEDULER_ENABLE_POST_CONDITION
+		? process.env.SCHEDULER_ENABLE_POST_CONDITION.toLowerCase() === "true"
+		: true,
 	intervalMs: process.env.SCHEDULER_INTERVAL_MS ? Number.parseInt(process.env.SCHEDULER_INTERVAL_MS, 10) : 15000, // 15 seconds - optimized for efficient posting
 	continuous: true, // Run continuously by default
 	maxRetries: 3,

@@ -66,7 +66,9 @@ export class HexUtils {
 		const expectedLength = bytes * 2;
 
 		if (cleaned.length !== expectedLength) {
-			throw new Error(`Invalid hex length: expected ${expectedLength} characters (${bytes} bytes), got ${cleaned.length}`);
+			throw new Error(
+				`Invalid hex length: expected ${expectedLength} characters (${bytes} bytes), got ${cleaned.length}`,
+			);
 		}
 
 		return `0x${cleaned}` as HexString;

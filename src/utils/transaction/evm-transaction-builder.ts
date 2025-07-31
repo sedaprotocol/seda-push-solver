@@ -65,7 +65,11 @@ export function createEvmClients(network: EvmNetworkConfig, privateKey: string) 
 /**
  * Execute EVM contract transaction with simulation
  */
-export async function executeEvmTransaction(network: EvmNetworkConfig, privateKey: string, config: EvmTransactionConfig): Promise<EvmTransactionResult> {
+export async function executeEvmTransaction(
+	network: EvmNetworkConfig,
+	privateKey: string,
+	config: EvmTransactionConfig,
+): Promise<EvmTransactionResult> {
 	const { publicClient, walletClient, account } = createEvmClients(network, privateKey);
 
 	// Simulate the transaction first
@@ -101,7 +105,13 @@ export async function executeEvmTransaction(network: EvmNetworkConfig, privateKe
 /**
  * Read from EVM contract
  */
-export async function readEvmContract<T>(network: EvmNetworkConfig, contractAddress: string, abi: any[], functionName: string, args: any[] = []): Promise<T> {
+export async function readEvmContract<T>(
+	network: EvmNetworkConfig,
+	contractAddress: string,
+	abi: any[],
+	functionName: string,
+	args: any[] = [],
+): Promise<T> {
 	const publicClient = createPublicClient({
 		chain: createEvmChain(network),
 		transport: http(network.rpcUrl),

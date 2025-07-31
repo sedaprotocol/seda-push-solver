@@ -7,7 +7,7 @@
 		"enabled": true
 	},
 	"formatter": {
-		"lineWidth": 200
+		"lineWidth": 120
 	},
 	"linter": {
 		"enabled": true,

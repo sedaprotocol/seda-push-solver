@@ -129,7 +129,9 @@ export class EvmOrchestrator {
 
 		this.logger.info(`Initializing ${this.networks.length} EVM networks with advanced nonce management`);
 
-		const discoveries = await Promise.all(this.networks.map((network) => this.proverDiscovery.discoverProverAddress(network)));
+		const discoveries = await Promise.all(
+			this.networks.map((network) => this.proverDiscovery.discoverProverAddress(network)),
+		);
 
 		const successCount = discoveries.filter((addr: string | null) => addr !== null).length;
 		this.logger.info(`Discovered ${successCount}/${this.networks.length} prover contracts`);
@@ -161,10 +163,14 @@ export class EvmOrchestrator {
 			this.logger.info(`🚀 Posting results sequentially across networks where batch ${batch.batchNumber} exists`);
 
 			// CRITICAL: Ensure all batches are posted and confirmed before posting results
-			const networksWithBatch = results.map((result, index) => ({ result, network: this.networks[index] })).filter(({ result }) => result.batchExists || result.posted === true);
+			const networksWithBatch = results
+				.map((result, index) => ({ result, network: this.networks[index] }))
+				.filter(({ result }) => result.batchExists || result.posted === true);
 
 			if (networksWithBatch.length > 0) {
-				this.logger.info(`📋 Ensuring batches are confirmed before posting results to ${networksWithBatch.length} networks`);
+				this.logger.info(
+					`📋 Ensuring batches are confirmed before posting results to ${networksWithBatch.length} networks`,
+				);
 
 				// STEP 1: Ensure all batches are fully posted and confirmed
 				for (const { result, network } of networksWithBatch) {
@@ -175,7 +181,9 @@ export class EvmOrchestrator {
 					// If batch was just posted (not pre-existing), wait for confirmation
 					if (result.posted === true && !result.batchExists) {
 						if (result.assumedPosted) {
-							this.logger.info(`⏳ Waiting for batch ${batch.batchNumber} confirmation on ${network.displayName} (assumed posted)...`);
+							this.logger.info(
+								`⏳ Waiting for batch ${batch.batchNumber} confirmation on ${network.displayName} (assumed posted)...`,
+							);
 						} else {
 							this.logger.info(`⏳ Waiting for batch ${batch.batchNumber} confirmation on ${network.displayName}...`);
 						}
@@ -207,7 +215,11 @@ export class EvmOrchestrator {
 	/**
 	 * Process batch on a specific network
 	 */
-	private async processNetworkBatch(network: EvmNetworkConfig, batch: SignedBatch, dataRequestResult?: DataRequestResult): Promise<NetworkBatchStatus> {
+	private async processNetworkBatch(
+		network: EvmNetworkConfig,
+		batch: SignedBatch,
+		dataRequestResult?: DataRequestResult,
+	): Promise<NetworkBatchStatus> {
 		try {
 			const proverAddress = await this.proverDiscovery.discoverProverAddress(network);
 
@@ -263,7 +275,9 @@ export class EvmOrchestrator {
 					networkResult.txHash = postResult.txHash;
 				} else {
 					this.logger.warn(`${network.displayName}: Using cached batch posting result - ${postResult.error}`);
-					this.logger.info(`${network.displayName}: Assuming batch ${batch.batchNumber} is already posted, continuing with result posting`);
+					this.logger.info(
+						`${network.displayName}: Assuming batch ${batch.batchNumber} is already posted, continuing with result posting`,
+					);
 					// Assume batch is already posted and continue with result posting
 					networkResult.posted = true;
 					networkResult.error = postResult.error;
@@ -278,7 +292,9 @@ export class EvmOrchestrator {
 				// Check one more time if another thread already started posting
 				existingPromise = EvmOrchestrator.batchPostingCache.get(cacheKey);
 				if (existingPromise) {
-					this.logger.info(`${network.displayName}: Batch ${batch.batchNumber} posting started by another thread - waiting...`);
+					this.logger.info(
+						`${network.displayName}: Batch ${batch.batchNumber} posting started by another thread - waiting...`,
+					);
 					postResult = await existingPromise;
 					this.logger.info(`${network.displayName}: Batch ${batch.batchNumber} posting completed (deduplicated late)`);
 
@@ -289,7 +305,9 @@ export class EvmOrchestrator {
 						networkResult.txHash = postResult.txHash;
 					} else {
 						this.logger.warn(`${network.displayName}: Using cached batch posting result (late) - ${postResult.error}`);
-						this.logger.info(`${network.displayName}: Assuming batch ${batch.batchNumber} is already posted, continuing with result posting`);
+						this.logger.info(
+							`${network.displayName}: Assuming batch ${batch.batchNumber} is already posted, continuing with result posting`,
+						);
 						// Assume batch is already posted and continue with result posting
 						networkResult.posted = true;
 						networkResult.error = postResult.error;
@@ -312,7 +330,9 @@ export class EvmOrchestrator {
 							networkResult.txHash = postResult.txHash;
 						} else {
 							this.logger.warn(`${network.displayName}: Failed to post batch - ${postResult.error}`);
-							this.logger.info(`${network.displayName}: Assuming batch ${batch.batchNumber} is already posted, continuing with result posting`);
+							this.logger.info(
+								`${network.displayName}: Assuming batch ${batch.batchNumber} is already posted, continuing with result posting`,
+							);
 							// Assume batch is already posted and continue with result posting
 							networkResult.posted = true;
 							networkResult.error = postResult.error;
@@ -411,13 +431,17 @@ export class EvmOrchestrator {
 					return;
 				}
 
-				this.logger.debug(`⏳ Batch ${batchNumber} not yet confirmed on ${network.displayName} (attempt ${attempt}/${maxAttempts}, current height: ${lastBatchHeight})`);
+				this.logger.debug(
+					`⏳ Batch ${batchNumber} not yet confirmed on ${network.displayName} (attempt ${attempt}/${maxAttempts}, current height: ${lastBatchHeight})`,
+				);
 
 				if (attempt < maxAttempts) {
 					await new Promise((resolve) => setTimeout(resolve, delayMs));
 				}
 			} catch (error) {
-				this.logger.warn(`⚠️ Error checking batch confirmation on ${network.displayName} (attempt ${attempt}): ${getErrorMessage(error)}`);
+				this.logger.warn(
+					`⚠️ Error checking batch confirmation on ${network.displayName} (attempt ${attempt}): ${getErrorMessage(error)}`,
+				);
 
 				if (attempt < maxAttempts) {
 					await new Promise((resolve) => setTimeout(resolve, delayMs));
@@ -425,7 +449,9 @@ export class EvmOrchestrator {
 			}
 		}
 
-		this.logger.warn(`⚠️ Batch ${batchNumber} confirmation timeout on ${network.displayName} after ${maxAttempts} attempts`);
+		this.logger.warn(
+			`⚠️ Batch ${batchNumber} confirmation timeout on ${network.displayName} after ${maxAttempts} attempts`,
+		);
 	}
 
 	/**
@@ -463,9 +489,16 @@ export class EvmOrchestrator {
 	/**
 	 * Post DataRequest result to a specific network with advanced nonce coordination
 	 */
-	private async postResultToNetworkWithNonce(network: EvmNetworkConfig, dataRequestResult: DataRequestResult, batch: SignedBatch, networkResult: NetworkBatchStatus): Promise<void> {
+	private async postResultToNetworkWithNonce(
+		network: EvmNetworkConfig,
+		dataRequestResult: DataRequestResult,
+		batch: SignedBatch,
+		networkResult: NetworkBatchStatus,
+	): Promise<void> {
 		try {
-			this.logger.info(`🔍 Attempting to post result for DR ${dataRequestResult.drId} to ${network.displayName} (with advanced nonce coordination)`);
+			this.logger.info(
+				`🔍 Attempting to post result for DR ${dataRequestResult.drId} to ${network.displayName} (with advanced nonce coordination)`,
+			);
 
 			const resultPostResult = await this.resultPoster.postResultWithNonce(
 				network,
@@ -483,9 +516,13 @@ export class EvmOrchestrator {
 
 			if (resultPostResult.success) {
 				if (resultPostResult.txHash) {
-					this.logger.info(`✅ ${network.displayName}: Posted result for DR ${dataRequestResult.drId} - ${resultPostResult.txHash}`);
+					this.logger.info(
+						`✅ ${network.displayName}: Posted result for DR ${dataRequestResult.drId} - ${resultPostResult.txHash}`,
+					);
 				} else {
-					this.logger.info(`✅ ${network.displayName}: Result confirmed for DR ${dataRequestResult.drId} - ${resultPostResult.error || "already exists"}`);
+					this.logger.info(
+						`✅ ${network.displayName}: Result confirmed for DR ${dataRequestResult.drId} - ${resultPostResult.error || "already exists"}`,
+					);
 				}
 			} else {
 				this.logger.warn(`⚠️ ${network.displayName}: Failed to post result - ${resultPostResult.error}`);
@@ -501,7 +538,12 @@ export class EvmOrchestrator {
 	/**
 	 * Post DataRequest result to a specific network (legacy method without nonce coordination)
 	 */
-	private async postResultToNetwork(network: EvmNetworkConfig, dataRequestResult: DataRequestResult, batch: SignedBatch, networkResult: NetworkBatchStatus): Promise<void> {
+	private async postResultToNetwork(
+		network: EvmNetworkConfig,
+		dataRequestResult: DataRequestResult,
+		batch: SignedBatch,
+		networkResult: NetworkBatchStatus,
+	): Promise<void> {
 		try {
 			this.logger.info(`🔍 Attempting to post result for DR ${dataRequestResult.drId} to ${network.displayName}`);
 
@@ -520,9 +562,13 @@ export class EvmOrchestrator {
 
 			if (resultPostResult.success) {
 				if (resultPostResult.txHash) {
-					this.logger.info(`✅ ${network.displayName}: Posted result for DR ${dataRequestResult.drId} - ${resultPostResult.txHash}`);
+					this.logger.info(
+						`✅ ${network.displayName}: Posted result for DR ${dataRequestResult.drId} - ${resultPostResult.txHash}`,
+					);
 				} else {
-					this.logger.info(`✅ ${network.displayName}: Result confirmed for DR ${dataRequestResult.drId} - ${resultPostResult.error || "already exists"}`);
+					this.logger.info(
+						`✅ ${network.displayName}: Result confirmed for DR ${dataRequestResult.drId} - ${resultPostResult.error || "already exists"}`,
+					);
 				}
 			} else {
 				this.logger.warn(`⚠️ ${network.displayName}: Failed to post result - ${resultPostResult.error}`);
@@ -549,11 +595,15 @@ export class EvmOrchestrator {
 		// Log detailed status for networks with issues
 		for (const [key, info] of Object.entries(status)) {
 			if (info.gaps.length > 0 || info.pendingTransactions.some((tx) => tx.isStuck)) {
-				this.logger.warn(`⚠️ ${key}: confirmed=${info.confirmed}, pending=${info.pending}, gaps=[${info.gaps.join(",")}]`);
+				this.logger.warn(
+					`⚠️ ${key}: confirmed=${info.confirmed}, pending=${info.pending}, gaps=[${info.gaps.join(",")}]`,
+				);
 
 				const stuckTxs = info.pendingTransactions.filter((tx) => tx.isStuck);
 				if (stuckTxs.length > 0) {
-					this.logger.warn(`   Stuck transactions: ${stuckTxs.map((tx) => `${tx.nonce}(${tx.retryCount})`).join(", ")}`);
+					this.logger.warn(
+						`   Stuck transactions: ${stuckTxs.map((tx) => `${tx.nonce}(${tx.retryCount})`).join(", ")}`,
+					);
 				}
 			}
 		}

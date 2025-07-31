@@ -72,7 +72,9 @@ export class SchedulerTaskCompletionHandler implements TaskCompletionHandler {
 	private getExplorerUrl(drId: string, blockHeight: number): string {
 		// Determine network based on RPC endpoint or use testnet as default
 		const isTestnet = true; // For now, assuming testnet - could be made configurable
-		const baseUrl = isTestnet ? "https://testnet.explorer.seda.xyz/data-requests" : "https://explorer.seda.xyz/data-requests";
+		const baseUrl = isTestnet
+			? "https://testnet.explorer.seda.xyz/data-requests"
+			: "https://explorer.seda.xyz/data-requests";
 
 		return `${baseUrl}/${drId}/${blockHeight}`;
 	}

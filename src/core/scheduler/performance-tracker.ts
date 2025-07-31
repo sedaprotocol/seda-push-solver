@@ -218,7 +218,9 @@ export class DataRequestPerformanceTracker {
 		logger.info("┌─────────────────────────────────────────────────────────────────────┐");
 		logger.info(`│               🏁 DataRequest Performance Summary                     │`);
 		logger.info("├─────────────────────────────────────────────────────────────────────┤");
-		logger.info(`│ Task: ${performance.taskId.padEnd(20)} │ DR: ${(performance.drId || "N/A").substring(0, 20).padEnd(20)} │`);
+		logger.info(
+			`│ Task: ${performance.taskId.padEnd(20)} │ DR: ${(performance.drId || "N/A").substring(0, 20).padEnd(20)} │`,
+		);
 		logger.info(`│ Total Duration: ${totalMs.toString().padEnd(10)}ms (${totalSec.padEnd(8)}s)                     │`);
 		logger.info("├─────────────────────────────────────────────────────────────────────┤");
 
@@ -265,15 +267,21 @@ export class DataRequestPerformanceTracker {
 
 		// Calculate average for each step
 		Object.values(STEP_NAMES).forEach((stepName) => {
-			const stepDurations = completed.map((req) => req.steps.get(stepName)?.duration).filter((duration): duration is number => duration !== undefined);
+			const stepDurations = completed
+				.map((req) => req.steps.get(stepName)?.duration)
+				.filter((duration): duration is number => duration !== undefined);
 
-			averages[stepName] = stepDurations.length > 0 ? stepDurations.reduce((sum, d) => sum + d, 0) / stepDurations.length : 0;
+			averages[stepName] =
+				stepDurations.length > 0 ? stepDurations.reduce((sum, d) => sum + d, 0) / stepDurations.length : 0;
 		});
 
 		// Calculate total average
-		const totalDurations = completed.map((req) => req.totalDuration).filter((duration): duration is number => duration !== undefined);
+		const totalDurations = completed
+			.map((req) => req.totalDuration)
+			.filter((duration): duration is number => duration !== undefined);
 
-		averages.total = totalDurations.length > 0 ? totalDurations.reduce((sum, d) => sum + d, 0) / totalDurations.length : 0;
+		averages.total =
+			totalDurations.length > 0 ? totalDurations.reduce((sum, d) => sum + d, 0) / totalDurations.length : 0;
 
 		return {
 			process: averages[STEP_NAMES.PROCESS] || 0,
@@ -326,8 +334,12 @@ export class DataRequestPerformanceTracker {
 		logger.info(`│ 🔧 Process:          ${formatDuration(averages.process).padEnd(20)}                     │`);
 		logger.info(`│ 📤 Posting:          ${formatDuration(averages.posting).padEnd(20)}                     │`);
 		logger.info(`│ ⏳ Awaiting Post:    ${formatDuration(averages.awaitingPost).padEnd(20)}                     │`);
-		logger.info(`│ 🔮 Oracle Result:    ${formatDuration(averages.awaitingOracleResult).padEnd(20)}                     │`);
-		logger.info(`│ ✍️  Awaiting Sigs:    ${formatDuration(averages.awaitingSignatures).padEnd(20)}                     │`);
+		logger.info(
+			`│ 🔮 Oracle Result:    ${formatDuration(averages.awaitingOracleResult).padEnd(20)}                     │`,
+		);
+		logger.info(
+			`│ ✍️  Awaiting Sigs:    ${formatDuration(averages.awaitingSignatures).padEnd(20)}                     │`,
+		);
 		logger.info(`│ 📦 Posting Batch:    ${formatDuration(averages.postingBatch).padEnd(20)}                     │`);
 		logger.info(`│ 📋 Posting Result:   ${formatDuration(averages.postingResult).padEnd(20)}                     │`);
 		logger.info("├─────────────────────────────────────────────────────────────────────┤");

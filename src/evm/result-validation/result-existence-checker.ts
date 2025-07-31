@@ -12,14 +12,25 @@ import { ABI_SEDA_CORE_V1 } from "../abi";
 /**
  * Check if a result already exists on the network
  */
-export async function checkResultExists(network: EvmNetworkConfig, sedaCoreAddress: string, drId: string, logger?: LoggingServiceInterface): Promise<boolean> {
+export async function checkResultExists(
+	network: EvmNetworkConfig,
+	sedaCoreAddress: string,
+	drId: string,
+	logger?: LoggingServiceInterface,
+): Promise<boolean> {
 	try {
 		// Convert DR ID to proper bytes32 format (same as in data-result-converter)
 		const requestId = convertDrIdToBytes32(drId);
 
 		logger?.info(`🔍 Checking hasResult('${requestId}') on ${network.displayName} at ${sedaCoreAddress}`);
 
-		const hasResult = await readEvmContract<boolean>(network, sedaCoreAddress, ABI_SEDA_CORE_V1 as unknown as any[], "hasResult", [requestId]);
+		const hasResult = await readEvmContract<boolean>(
+			network,
+			sedaCoreAddress,
+			ABI_SEDA_CORE_V1 as unknown as any[],
+			"hasResult",
+			[requestId],
+		);
 
 		logger?.info(`📋 hasResult result: ${hasResult} for DR ${drId} on ${network.displayName}`);
 
@@ -27,11 +38,21 @@ export async function checkResultExists(network: EvmNetworkConfig, sedaCoreAddre
 		if (hasResult) {
 			try {
 				logger?.info(`🔍 Double-checking by calling getResult('${requestId}') to verify result exists...`);
-				const result = await readEvmContract<any>(network, sedaCoreAddress, ABI_SEDA_CORE_V1 as unknown as any[], "getResult", [requestId]);
-				logger?.info(`📋 getResult verification: ${result ? "Result confirmed exists" : "Result not found despite hasResult=true"}`);
+				const result = await readEvmContract<any>(
+					network,
+					sedaCoreAddress,
+					ABI_SEDA_CORE_V1 as unknown as any[],
+					"getResult",
+					[requestId],
+				);
+				logger?.info(
+					`📋 getResult verification: ${result ? "Result confirmed exists" : "Result not found despite hasResult=true"}`,
+				);
 				return result !== null && result !== undefined;
 			} catch (getResultError) {
-				logger?.warn(`⚠️ getResult verification failed: ${getErrorMessage(getResultError)} - trusting hasResult=${hasResult}`);
+				logger?.warn(
+					`⚠️ getResult verification failed: ${getErrorMessage(getResultError)} - trusting hasResult=${hasResult}`,
+				);
 				return hasResult;
 			}
 		}

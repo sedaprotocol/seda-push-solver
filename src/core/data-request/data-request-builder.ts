@@ -72,11 +72,24 @@ export class SEDADataRequestBuilder {
 			const awaitOptions = buildAwaitOptions(drConfig, options);
 
 			// Post the DataRequest transaction first
-			const postResult = await postDataRequestTransaction(this.signer!, postInput, gasOptions, networkConfig, this.logger);
+			const postResult = await postDataRequestTransaction(
+				this.signer!,
+				postInput,
+				gasOptions,
+				networkConfig,
+				this.logger,
+			);
 
 			// Then wait for results
 			const queryConfig = { rpc: this.signer!.getEndpoint() };
-			return await awaitDataRequestResult(queryConfig, postResult.drId, postResult.blockHeight, awaitOptions, networkConfig, this.logger);
+			return await awaitDataRequestResult(
+				queryConfig,
+				postResult.drId,
+				postResult.blockHeight,
+				awaitOptions,
+				networkConfig,
+				this.logger,
+			);
 		} catch (error) {
 			this.logger.error("DataRequest Failed:", error instanceof Error ? error : String(error));
 			throw error;
@@ -121,7 +134,10 @@ export class SEDADataRequestBuilder {
 	/**
 	 * Post a DataRequest for a specific program
 	 */
-	private async postDataRequestForProgram(programId: string, options: DataRequestOptions = {}): Promise<DataRequestResult> {
+	private async postDataRequestForProgram(
+		programId: string,
+		options: DataRequestOptions = {},
+	): Promise<DataRequestResult> {
 		// Get network-specific DataRequest configuration
 		const networkConfig = getSedaNetworkConfig(this.config.network);
 		const drConfig = networkConfig.dataRequest;
@@ -144,16 +160,32 @@ export class SEDADataRequestBuilder {
 			const awaitOptions = buildAwaitOptions(drConfig, programOptions);
 
 			// Post the DataRequest transaction first
-			const postResult = await postDataRequestTransaction(this.signer!, postInput, gasOptions, networkConfig, this.logger);
+			const postResult = await postDataRequestTransaction(
+				this.signer!,
+				postInput,
+				gasOptions,
+				networkConfig,
+				this.logger,
+			);
 
 			// Then wait for results
 			const queryConfig = { rpc: this.signer!.getEndpoint() };
-			const result = await awaitDataRequestResult(queryConfig, postResult.drId, postResult.blockHeight, awaitOptions, networkConfig, this.logger);
+			const result = await awaitDataRequestResult(
+				queryConfig,
+				postResult.drId,
+				postResult.blockHeight,
+				awaitOptions,
+				networkConfig,
+				this.logger,
+			);
 
 			this.logger.info(`✅ DataRequest completed for Program: ${programId} (DR: ${result.drId})`);
 			return result;
 		} catch (error) {
-			this.logger.error(`❌ DataRequest failed for Program: ${programId}:`, error instanceof Error ? error : String(error));
+			this.logger.error(
+				`❌ DataRequest failed for Program: ${programId}:`,
+				error instanceof Error ? error : String(error),
+			);
 			throw error;
 		}
 	}

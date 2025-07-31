@@ -70,7 +70,9 @@ export class PendingSequenceManager {
 
 		for (const [seq, pending] of this.pendingSequences.entries()) {
 			if (now - pending.startTime > this.PENDING_TIMEOUT_MS) {
-				this.logger.warn(`⚠️ Cleaning up expired pending sequence ${seq} for task ${pending.taskId} (attempt ${pending.attempts})`);
+				this.logger.warn(
+					`⚠️ Cleaning up expired pending sequence ${seq} for task ${pending.taskId} (attempt ${pending.attempts})`,
+				);
 				expiredSequences.push(seq);
 			}
 		}

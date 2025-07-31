@@ -58,7 +58,11 @@ export async function estimateEvmGas(
 		const gasPrice = await publicClient.getGasPrice();
 
 		// Apply max gas price if specified
-		const finalGasPrice = options.maxGasPrice ? (gasPrice > options.maxGasPrice ? options.maxGasPrice : gasPrice) : gasPrice;
+		const finalGasPrice = options.maxGasPrice
+			? gasPrice > options.maxGasPrice
+				? options.maxGasPrice
+				: gasPrice
+			: gasPrice;
 
 		// Calculate total cost
 		const totalCost = gasLimit * finalGasPrice;
@@ -143,7 +147,10 @@ function calculateAveragePriorityFee(rewards: bigint[][]): bigint {
 /**
  * Estimate Cosmos gas (simplified)
  */
-export function estimateCosmosGas(operationType: "postDataRequest" | "transfer" | "delegate" | "custom", complexity: "low" | "medium" | "high" = "medium"): { gasLimit: number; gasPrice: string } {
+export function estimateCosmosGas(
+	operationType: "postDataRequest" | "transfer" | "delegate" | "custom",
+	complexity: "low" | "medium" | "high" = "medium",
+): { gasLimit: number; gasPrice: string } {
 	const baseGas = {
 		postDataRequest: { low: 800_000, medium: 1_000_000, high: 1_500_000 },
 		transfer: { low: 100_000, medium: 150_000, high: 200_000 },
@@ -160,7 +167,11 @@ export function estimateCosmosGas(operationType: "postDataRequest" | "transfer" 
 /**
  * Calculate transaction cost in native currency
  */
-export function calculateTransactionCost(gasLimit: bigint, gasPrice: bigint, decimals = 18): { wei: bigint; formatted: string } {
+export function calculateTransactionCost(
+	gasLimit: bigint,
+	gasPrice: bigint,
+	decimals = 18,
+): { wei: bigint; formatted: string } {
 	const totalWei = gasLimit * gasPrice;
 	const formatted = formatUnits(totalWei, decimals);
 

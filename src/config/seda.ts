@@ -155,7 +155,10 @@ export function getSedaDataRequestConfig(network: "testnet" | "mainnet" | "local
 /**
  * Log gas configuration for debugging
  */
-export function logSedaGasConfiguration(network: "testnet" | "mainnet" | "local", logger?: { info: (msg: string) => void }): void {
+export function logSedaGasConfiguration(
+	network: "testnet" | "mainnet" | "local",
+	logger?: { info: (msg: string) => void },
+): void {
 	const SEDA_NETWORKS = createSedaNetworks();
 	const networkConfig = SEDA_NETWORKS[network];
 	const txGasPrice = networkConfig.transaction.gasPrice;

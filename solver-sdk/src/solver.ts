@@ -43,7 +43,9 @@ export class Solver extends EventEmitter<EventMap> {
 		this.batchFetcher = new BatchFetcher(config, sedaChain);
 		this.sedaAddress = sedaChain.signer.getAddress();
 
-		this.batchFetcher.on("fetch-error", (error) => this.emit("solver-error", new Error(`Batch could not be fetched: ${error}`)));
+		this.batchFetcher.on("fetch-error", (error) =>
+			this.emit("solver-error", new Error(`Batch could not be fetched: ${error}`)),
+		);
 		this.batchFetcher.on("batch", (batch) => this.emit("batch", batch));
 	}
 

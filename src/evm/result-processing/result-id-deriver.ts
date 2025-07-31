@@ -13,9 +13,20 @@ import type { DataResultEvm } from "./data-result-converter";
 /**
  * Derive the result ID for a given result
  */
-export async function deriveResultId(network: EvmNetworkConfig, sedaCoreAddress: string, evmResult: DataResultEvm, logger?: LoggingServiceInterface): Promise<string> {
+export async function deriveResultId(
+	network: EvmNetworkConfig,
+	sedaCoreAddress: string,
+	evmResult: DataResultEvm,
+	logger?: LoggingServiceInterface,
+): Promise<string> {
 	try {
-		const resultId = await readEvmContract<string>(network, sedaCoreAddress, ABI_SEDA_CORE_V1 as unknown as any[], "deriveResultId", [evmResult]);
+		const resultId = await readEvmContract<string>(
+			network,
+			sedaCoreAddress,
+			ABI_SEDA_CORE_V1 as unknown as any[],
+			"deriveResultId",
+			[evmResult],
+		);
 
 		return resultId;
 	} catch (error) {

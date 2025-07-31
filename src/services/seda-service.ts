@@ -63,7 +63,12 @@ export class SEDAService implements SedaServiceInterface {
 		return await Signer.fromPartial(signingConfig);
 	}
 
-	async postAndAwaitDataRequest(signer: Signer, input: PostDataRequestInput, gasOptions: GasOptions, awaitOptions: { timeoutSeconds: number; pollingIntervalSeconds: number }) {
+	async postAndAwaitDataRequest(
+		signer: Signer,
+		input: PostDataRequestInput,
+		gasOptions: GasOptions,
+		awaitOptions: { timeoutSeconds: number; pollingIntervalSeconds: number },
+	) {
 		const { postAndAwaitDataRequest } = await import("@seda-protocol/dev-tools");
 
 		return await postAndAwaitDataRequest(signer, input, gasOptions, awaitOptions);

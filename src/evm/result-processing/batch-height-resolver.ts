@@ -12,13 +12,30 @@ import { ABI_SEDA_CORE_V1, I_PROVER } from "../abi";
 /**
  * Get the current batch height on the network
  */
-export async function getCurrentBatchHeight(network: EvmNetworkConfig, sedaCoreAddress: string, fallbackBatch: SignedBatch, logger?: LoggingServiceInterface): Promise<bigint> {
+export async function getCurrentBatchHeight(
+	network: EvmNetworkConfig,
+	sedaCoreAddress: string,
+	fallbackBatch: SignedBatch,
+	logger?: LoggingServiceInterface,
+): Promise<bigint> {
 	try {
 		// Get the prover address first
-		const proverAddress = await readEvmContract<string>(network, sedaCoreAddress, ABI_SEDA_CORE_V1 as unknown as any[], "getSedaProver", []);
+		const proverAddress = await readEvmContract<string>(
+			network,
+			sedaCoreAddress,
+			ABI_SEDA_CORE_V1 as unknown as any[],
+			"getSedaProver",
+			[],
+		);
 
 		// Then get the latest batch height from the prover
-		const latestBatchHeight = await readEvmContract<bigint>(network, proverAddress, I_PROVER as unknown as any[], "getLastBatchHeight", []);
+		const latestBatchHeight = await readEvmContract<bigint>(
+			network,
+			proverAddress,
+			I_PROVER as unknown as any[],
+			"getLastBatchHeight",
+			[],
+		);
 
 		logger?.debug(`📊 Current batch height on ${network.displayName}: ${latestBatchHeight}`);
 		return latestBatchHeight;

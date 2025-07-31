@@ -29,7 +29,11 @@ export class BatchClient {
 	/**
 	 * Get DataResult to find batch assignment
 	 */
-	private async getDataResult(drId: string, blockHeight: bigint, queryConfig: QueryConfig): Promise<{ batchAssignment: bigint } | null> {
+	private async getDataResult(
+		drId: string,
+		blockHeight: bigint,
+		queryConfig: QueryConfig,
+	): Promise<{ batchAssignment: bigint } | null> {
 		try {
 			const protoClient = await this.createSedaQueryClient(queryConfig.rpc);
 			const client = new sedachain.batching.v1.QueryClientImpl(protoClient);
@@ -90,7 +94,9 @@ export class BatchClient {
 				return null;
 			}
 
-			this.logger.info(`✅ Batch ${batchNumber} fetched successfully with ${batchSignatures.length} signatures and ${validatorEntries.length} validators!`);
+			this.logger.info(
+				`✅ Batch ${batchNumber} fetched successfully with ${batchSignatures.length} signatures and ${validatorEntries.length} validators!`,
+			);
 
 			return {
 				batchNumber: batch.batchNumber,
@@ -146,7 +152,9 @@ export class BatchClient {
 				return null;
 			}
 
-			this.logger.info(`✅ Latest signed batch ${batch.batchNumber} fetched with ${batchSignatures.length} signatures!`);
+			this.logger.info(
+				`✅ Latest signed batch ${batch.batchNumber} fetched with ${batchSignatures.length} signatures!`,
+			);
 
 			return {
 				batchNumber: batch.batchNumber,
@@ -169,7 +177,13 @@ export class BatchClient {
 	 * Fetch batch information for a specific DataRequest
 	 * Main public method for getting batch data
 	 */
-	async fetchBatchForDataRequest(drId: string, blockHeight: bigint, queryConfig: QueryConfig, maxRetries: number, pollingIntervalMs: number): Promise<SignedBatch | null> {
+	async fetchBatchForDataRequest(
+		drId: string,
+		blockHeight: bigint,
+		queryConfig: QueryConfig,
+		maxRetries: number,
+		pollingIntervalMs: number,
+	): Promise<SignedBatch | null> {
 		try {
 			this.logger.info("\n🔍 Fetching batch assignment and batch information from SEDA chain...");
 
@@ -208,7 +222,9 @@ export class BatchClient {
 			try {
 				const latestSignedBatch = await this.getLatestSignedBatch(queryConfig);
 				if (latestSignedBatch) {
-					this.logger.info(`✅ Using latest signed batch ${latestSignedBatch.batchNumber} instead of assigned batch ${batchAssignment}`);
+					this.logger.info(
+						`✅ Using latest signed batch ${latestSignedBatch.batchNumber} instead of assigned batch ${batchAssignment}`,
+					);
 					return latestSignedBatch;
 				}
 			} catch (error) {

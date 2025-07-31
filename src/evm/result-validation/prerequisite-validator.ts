@@ -10,7 +10,10 @@ import { validateDataRequestResult, validateNetworkPrerequisites } from "../../u
 /**
  * Validate all prerequisites for result posting
  */
-export function validateResultPostingPrerequisites(result: DataRequestResult, evmPrivateKey?: string): ValidationResult<void> {
+export function validateResultPostingPrerequisites(
+	result: DataRequestResult,
+	evmPrivateKey?: string,
+): ValidationResult<void> {
 	// Validate private key configuration
 	const networkValidation = validateNetworkPrerequisites(evmPrivateKey);
 	if (!networkValidation.valid) {

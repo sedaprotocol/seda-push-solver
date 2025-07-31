@@ -3,7 +3,12 @@
  * Validation functions for transaction parameters and signatures
  */
 
-import { type ValidationResult, validateHexString, validatePositiveNumber, validateRequired } from "./common-validators";
+import {
+	type ValidationResult,
+	validateHexString,
+	validatePositiveNumber,
+	validateRequired,
+} from "./common-validators";
 
 /**
  * Transaction parameters for validation

@@ -161,7 +161,10 @@ export class MockTimerService implements TimerServiceInterface {
 			this.mockTime = nextTriggerTime;
 
 			// Execute all timers that should trigger at this time
-			const triggeredTimers: Array<{ id: number; timer: { callback: () => void; triggerTime: number; interval?: number } }> = [];
+			const triggeredTimers: Array<{
+				id: number;
+				timer: { callback: () => void; triggerTime: number; interval?: number };
+			}> = [];
 
 			for (const [id, timer] of this.timers.entries()) {
 				if (timer.triggerTime <= this.mockTime) {
@@ -231,7 +234,10 @@ export class MockTimerService implements TimerServiceInterface {
 			this.mockTime = earliestTime;
 		}
 
-		const triggeredTimers: Array<{ id: number; timer: { callback: () => void; triggerTime: number; interval?: number } }> = [];
+		const triggeredTimers: Array<{
+			id: number;
+			timer: { callback: () => void; triggerTime: number; interval?: number };
+		}> = [];
 
 		// Find timers that should trigger at current time
 		for (const [id, timer] of this.timers.entries()) {

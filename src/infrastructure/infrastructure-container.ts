@@ -44,7 +44,10 @@ export class InfrastructureContainer {
 			try {
 				await EvmOrchestrator.shutdownAll();
 			} catch (error) {
-				this.loggingService.warn("⚠️ EVM orchestrator shutdown error:", error instanceof Error ? error.message : String(error));
+				this.loggingService.warn(
+					"⚠️ EVM orchestrator shutdown error:",
+					error instanceof Error ? error.message : String(error),
+				);
 			}
 
 			// Clear all active timers
@@ -56,7 +59,10 @@ export class InfrastructureContainer {
 			this.loggingService.info("✅ Infrastructure shutdown completed");
 		} catch (error) {
 			// Log error but continue shutdown
-			this.loggingService.error("❌ Error during infrastructure shutdown:", error instanceof Error ? error : String(error));
+			this.loggingService.error(
+				"❌ Error during infrastructure shutdown:",
+				error instanceof Error ? error : String(error),
+			);
 		}
 	}
 }

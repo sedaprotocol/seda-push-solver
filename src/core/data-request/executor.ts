@@ -60,7 +60,12 @@ export async function awaitDataRequestResult(
 	queryConfig: QueryConfig,
 	drId: string,
 	blockHeight: bigint,
-	awaitOptions: { timeoutSeconds: number; pollingIntervalSeconds: number; maxBatchRetries: number; batchPollingIntervalMs: number },
+	awaitOptions: {
+		timeoutSeconds: number;
+		pollingIntervalSeconds: number;
+		maxBatchRetries: number;
+		batchPollingIntervalMs: number;
+	},
 	networkConfig: NetworkConfig,
 	logger: LoggingServiceInterface,
 	performanceTracker?: any,
@@ -112,7 +117,9 @@ export async function awaitDataRequestResult(
 	}
 
 	if (networkConfig.explorerEndpoint) {
-		logger.info(`   🔗 Explorer: ${networkConfig.explorerEndpoint}/data-requests/${rawResult.drId}/${rawResult.drBlockHeight}`);
+		logger.info(
+			`   🔗 Explorer: ${networkConfig.explorerEndpoint}/data-requests/${rawResult.drId}/${rawResult.drBlockHeight}`,
+		);
 	}
 
 	// Fetch batch assignment and batch information from SEDA chain
@@ -126,7 +133,12 @@ export async function awaitDataRequestResult(
 		}
 
 		const batchService = new SedaBatchService(queryConfig, logger);
-		const batch = await batchService.fetchBatch(drId, blockHeight, awaitOptions.maxBatchRetries, awaitOptions.batchPollingIntervalMs);
+		const batch = await batchService.fetchBatch(
+			drId,
+			blockHeight,
+			awaitOptions.maxBatchRetries,
+			awaitOptions.batchPollingIntervalMs,
+		);
 
 		// Signatures received - END timing for signatures phase
 		if (performanceTracker && taskId) {
@@ -138,7 +150,9 @@ export async function awaitDataRequestResult(
 			// Log the batch information
 			logger.info("📦 Batch assignment completed");
 			logger.info(`   🔢 Batch: ${batch.batchNumber} | Block: ${batch.blockHeight}`);
-			logger.info(`   📊 Entries: ${batch.dataResultEntries?.length || 0} | Signatures: ${batch.batchSignatures?.length || 0} | Validators: ${batch.validatorEntries?.length || 0}`);
+			logger.info(
+				`   📊 Entries: ${batch.dataResultEntries?.length || 0} | Signatures: ${batch.batchSignatures?.length || 0} | Validators: ${batch.validatorEntries?.length || 0}`,
+			);
 
 			// Start timing EVM processing phase (batch + result posting)
 			if (performanceTracker && taskId) {
@@ -157,7 +171,11 @@ export async function awaitDataRequestResult(
 				paybackAddress: rawResult.paybackAddress,
 				sedaPayload: rawResult.sedaPayload,
 				version: rawResult.version,
-				blockTimestamp: BigInt(rawResult.blockTimestamp instanceof Date ? rawResult.blockTimestamp.getTime() : Number(rawResult.blockTimestamp)),
+				blockTimestamp: BigInt(
+					rawResult.blockTimestamp instanceof Date
+						? rawResult.blockTimestamp.getTime()
+						: Number(rawResult.blockTimestamp),
+				),
 			});
 
 			// EVM processing complete, end timing
@@ -172,11 +190,14 @@ export async function awaitDataRequestResult(
 					// Batch status
 					const batchStatus = networkResult.batchExists ? "✅ EXISTS" : "❌ MISSING";
 					const lastHeight = networkResult.lastBatchHeight !== null ? networkResult.lastBatchHeight.toString() : "N/A";
-					const batchPostInfo = networkResult.posted !== undefined ? (networkResult.posted ? " | 🚀 POSTED" : " | ⚠️ POST FAILED") : "";
+					const batchPostInfo =
+						networkResult.posted !== undefined ? (networkResult.posted ? " | 🚀 POSTED" : " | ⚠️ POST FAILED") : "";
 					const batchTxInfo = networkResult.txHash ? ` | TX: ${networkResult.txHash}` : "";
 					const batchErrorInfo = networkResult.error ? ` | Error: ${networkResult.error}` : "";
 
-					logger.info(`   📦 ${networkResult.networkName} Batch: ${batchStatus} | Height: ${lastHeight}${batchPostInfo}${batchTxInfo}${batchErrorInfo}`);
+					logger.info(
+						`   📦 ${networkResult.networkName} Batch: ${batchStatus} | Height: ${lastHeight}${batchPostInfo}${batchTxInfo}${batchErrorInfo}`,
+					);
 
 					// Result status (if attempted)
 					if (networkResult.resultPosted !== undefined) {
@@ -185,7 +206,9 @@ export async function awaitDataRequestResult(
 						const resultIdInfo = networkResult.resultId ? ` | ID: ${networkResult.resultId}` : "";
 						const resultErrorInfo = networkResult.resultError ? ` | Error: ${networkResult.resultError}` : "";
 
-						logger.info(`   📋 ${networkResult.networkName} Result: ${resultStatus}${resultTxInfo}${resultIdInfo}${resultErrorInfo}`);
+						logger.info(
+							`   📋 ${networkResult.networkName} Result: ${resultStatus}${resultTxInfo}${resultIdInfo}${resultErrorInfo}`,
+						);
 					}
 				}
 			}
@@ -208,7 +231,9 @@ export async function awaitDataRequestResult(
 		paybackAddress: rawResult.paybackAddress,
 		sedaPayload: rawResult.sedaPayload,
 		version: rawResult.version,
-		blockTimestamp: BigInt(rawResult.blockTimestamp instanceof Date ? rawResult.blockTimestamp.getTime() : Number(rawResult.blockTimestamp)),
+		blockTimestamp: BigInt(
+			rawResult.blockTimestamp instanceof Date ? rawResult.blockTimestamp.getTime() : Number(rawResult.blockTimestamp),
+		),
 	};
 }
 

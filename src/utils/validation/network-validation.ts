@@ -4,7 +4,12 @@
  */
 
 import type { DataRequestResult } from "../../types";
-import { type ValidationResult, validateEthereumAddress, validatePositiveNumber, validateRequired } from "./common-validators";
+import {
+	type ValidationResult,
+	validateEthereumAddress,
+	validatePositiveNumber,
+	validateRequired,
+} from "./common-validators";
 
 /**
  * Validate data request result structure

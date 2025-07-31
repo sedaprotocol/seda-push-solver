@@ -22,7 +22,12 @@ export class MockSEDAService implements SedaServiceInterface {
 		} as any;
 	}
 
-	async postAndAwaitDataRequest(signer: Signer, input: PostDataRequestInput, gasOptions: GasOptions, awaitOptions: { timeoutSeconds: number; pollingIntervalSeconds: number }) {
+	async postAndAwaitDataRequest(
+		signer: Signer,
+		input: PostDataRequestInput,
+		gasOptions: GasOptions,
+		awaitOptions: { timeoutSeconds: number; pollingIntervalSeconds: number },
+	) {
 		// Return mock result matching the actual SEDA protocol response
 		return {
 			version: "1.0.0",

@@ -18,7 +18,10 @@ import type { DataRequestOptions, SEDADataRequestConfig } from "../../types";
  * @param options Optional DataRequest parameters to override defaults
  * @returns PostDataRequestInput object ready for SEDA network submission
  */
-export function buildDataRequestInput(drConfig: SEDADataRequestConfig, options: DataRequestOptions = {}): PostDataRequestInput {
+export function buildDataRequestInput(
+	drConfig: SEDADataRequestConfig,
+	options: DataRequestOptions = {},
+): PostDataRequestInput {
 	// Convert memo to Uint8Array if provided
 	const memoBytes = options.memo ? new TextEncoder().encode(options.memo) : new Uint8Array(0);
 

@@ -214,7 +214,9 @@ export class MetricsCollector {
 				: "";
 			this.logger.info(`│ ${summary.name}${tagsStr}:`);
 			this.logger.info(`│   Type: ${summary.type}, Count: ${summary.count}`);
-			this.logger.info(`│   Min: ${summary.min.toFixed(2)}, Max: ${summary.max.toFixed(2)}, Avg: ${summary.avg.toFixed(2)}`);
+			this.logger.info(
+				`│   Min: ${summary.min.toFixed(2)}, Max: ${summary.max.toFixed(2)}, Avg: ${summary.avg.toFixed(2)}`,
+			);
 		}
 
 		this.logger.info("└─────────────────────────────────────────────────────────────────────┘");

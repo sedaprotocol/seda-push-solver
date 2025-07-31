@@ -217,7 +217,8 @@ export class HealthService implements HealthServiceInterface {
 				total: this.requestMetrics.total,
 				successful: this.requestMetrics.successful,
 				failed: this.requestMetrics.failed,
-				averageResponseTime: this.requestMetrics.total > 0 ? this.requestMetrics.totalResponseTime / this.requestMetrics.total : 0,
+				averageResponseTime:
+					this.requestMetrics.total > 0 ? this.requestMetrics.totalResponseTime / this.requestMetrics.total : 0,
 			},
 			memory: this.getMemoryMetrics(),
 			uptime: this.timerService.now() - this.startTime,

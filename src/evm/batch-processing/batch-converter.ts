@@ -22,9 +22,11 @@ export interface EvmBatch {
  * Convert SignedBatch to EVM format
  */
 export function createEvmBatch(batch: SignedBatch): EvmBatch {
-	const validatorRootHex = typeof batch.validatorRoot === "string" ? batch.validatorRoot : Buffer.from(batch.validatorRoot).toString("hex");
+	const validatorRootHex =
+		typeof batch.validatorRoot === "string" ? batch.validatorRoot : Buffer.from(batch.validatorRoot).toString("hex");
 
-	const dataResultRootHex = typeof batch.dataResultRoot === "string" ? batch.dataResultRoot : Buffer.from(batch.dataResultRoot).toString("hex");
+	const dataResultRootHex =
+		typeof batch.dataResultRoot === "string" ? batch.dataResultRoot : Buffer.from(batch.dataResultRoot).toString("hex");
 
 	return {
 		batchHeight: BigInt(batch.batchNumber),

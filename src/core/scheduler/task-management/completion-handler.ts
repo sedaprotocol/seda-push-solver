@@ -18,7 +18,12 @@ export class TaskCompletionManager {
 	/**
 	 * Create a completion handler for a task
 	 */
-	createCompletionHandler(taskId: string, statistics: SchedulerStatistics, performanceTracker: DataRequestPerformanceTracker, originalHandler: TaskCompletionHandler): TaskCompletionHandler {
+	createCompletionHandler(
+		taskId: string,
+		statistics: SchedulerStatistics,
+		performanceTracker: DataRequestPerformanceTracker,
+		originalHandler: TaskCompletionHandler,
+	): TaskCompletionHandler {
 		return {
 			onSuccess: (result: AsyncTaskResult) => {
 				this.handleSuccess(result, statistics, performanceTracker);
@@ -34,7 +39,11 @@ export class TaskCompletionManager {
 	/**
 	 * Handle successful task completion
 	 */
-	private handleSuccess(result: AsyncTaskResult, statistics: SchedulerStatistics, performanceTracker: DataRequestPerformanceTracker): void {
+	private handleSuccess(
+		result: AsyncTaskResult,
+		statistics: SchedulerStatistics,
+		performanceTracker: DataRequestPerformanceTracker,
+	): void {
 		if (result.result && result.result.type === "posted") {
 			// This is a posting success - increment posted counter
 			statistics.recordPosted();
@@ -52,7 +61,11 @@ export class TaskCompletionManager {
 	/**
 	 * Handle failed task completion
 	 */
-	private handleFailure(result: AsyncTaskResult, statistics: SchedulerStatistics, performanceTracker: DataRequestPerformanceTracker): void {
+	private handleFailure(
+		result: AsyncTaskResult,
+		statistics: SchedulerStatistics,
+		performanceTracker: DataRequestPerformanceTracker,
+	): void {
 		// Mark performance tracking as failed
 		const errorMsg = typeof result.error === "string" ? result.error : "Unknown error";
 		performanceTracker.failRequest(result.taskId, errorMsg);

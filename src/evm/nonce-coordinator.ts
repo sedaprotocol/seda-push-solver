@@ -160,7 +160,9 @@ class AdvancedNetworkNonceManager {
 			const pendingChanged = newPendingNonce !== this.pendingNonce;
 
 			if (confirmedChanged || pendingChanged) {
-				this.logger.debug(`🔄 Nonce sync for ${this.network.displayName}: confirmed ${this.confirmedNonce}→${newConfirmedNonce}, pending ${this.pendingNonce}→${newPendingNonce}`);
+				this.logger.debug(
+					`🔄 Nonce sync for ${this.network.displayName}: confirmed ${this.confirmedNonce}→${newConfirmedNonce}, pending ${this.pendingNonce}→${newPendingNonce}`,
+				);
 
 				// Update confirmed transactions - remove from pending
 				if (confirmedChanged && this.confirmedNonce !== null) {
@@ -250,9 +252,13 @@ class AdvancedNetworkNonceManager {
 		try {
 			// Calculate new gas price (20% higher)
 			const newGasPrice = BigInt(Math.ceil(Number(tx.gasPrice) * this.GAS_PRICE_INCREASE_FACTOR));
-			const newMaxFeePerGas = tx.maxFeePerGas ? BigInt(Math.ceil(Number(tx.maxFeePerGas) * this.GAS_PRICE_INCREASE_FACTOR)) : undefined;
+			const newMaxFeePerGas = tx.maxFeePerGas
+				? BigInt(Math.ceil(Number(tx.maxFeePerGas) * this.GAS_PRICE_INCREASE_FACTOR))
+				: undefined;
 
-			this.logger.info(`🔄 Replacing stuck transaction: nonce ${tx.nonce}, old gas ${tx.gasPrice}, new gas ${newGasPrice}`);
+			this.logger.info(
+				`🔄 Replacing stuck transaction: nonce ${tx.nonce}, old gas ${tx.gasPrice}, new gas ${newGasPrice}`,
+			);
 
 			// Update transaction record
 			tx.gasPrice = newGasPrice;
@@ -294,7 +300,9 @@ class AdvancedNetworkNonceManager {
 
 					// Check if we have too many pending transactions
 					if (this.pendingTransactions.size >= this.MAX_PENDING_TRANSACTIONS) {
-						throw new Error(`Too many pending transactions (${this.pendingTransactions.size}/${this.MAX_PENDING_TRANSACTIONS}) for ${this.network.displayName}`);
+						throw new Error(
+							`Too many pending transactions (${this.pendingTransactions.size}/${this.MAX_PENDING_TRANSACTIONS}) for ${this.network.displayName}`,
+						);
 					}
 
 					// CRITICAL: Always fetch real-time blockchain state to prevent stale nonces
@@ -349,7 +357,9 @@ class AdvancedNetworkNonceManager {
 
 						this.logger.info(`🔄 Replacing transaction with nonce ${nextNonce}:`);
 						this.logger.info(`   Previous gas price: ${existingTx.gasPrice}`);
-						this.logger.info(`   New gas price: ${gasPrice} (${Math.round((Number(gasPrice) / Number(existingTx.gasPrice) - 1) * 100)}% increase)`);
+						this.logger.info(
+							`   New gas price: ${gasPrice} (${Math.round((Number(gasPrice) / Number(existingTx.gasPrice) - 1) * 100)}% increase)`,
+						);
 					}
 
 					// Reserve the nonce - we'll return the reservation object later
@@ -365,7 +375,9 @@ class AdvancedNetworkNonceManager {
 					});
 
 					this.logger.info(`🔢 ATOMICALLY reserved new nonce ${nextNonce} for ${this.network.displayName}`);
-					this.logger.info(`   📊 Blockchain state: confirmed=${realTimeConfirmed}, pending=${realTimePending}, final=${nextNonce}`);
+					this.logger.info(
+						`   📊 Blockchain state: confirmed=${realTimeConfirmed}, pending=${realTimePending}, final=${nextNonce}`,
+					);
 					this.logger.info(`   📊 Local pending transactions: ${this.pendingTransactions.size}`);
 					this.logger.info(`   💰 Gas price: ${gasPrice}`);
 					this.logger.info(`   ⏰ Reservation timestamp: ${new Date().toISOString()}`);
@@ -389,7 +401,9 @@ class AdvancedNetworkNonceManager {
 	 * Clean up stale pending transactions that are no longer pending on blockchain
 	 */
 	private cleanupStalePendingTransactions(realTimePending: number): void {
-		const stalePendingTransactions = Array.from(this.pendingTransactions.keys()).filter((nonce) => nonce < realTimePending);
+		const stalePendingTransactions = Array.from(this.pendingTransactions.keys()).filter(
+			(nonce) => nonce < realTimePending,
+		);
 
 		if (stalePendingTransactions.length > 0) {
 			this.logger.info(`🧹 Cleaning up ${stalePendingTransactions.length} stale pending transactions`);
@@ -493,7 +507,10 @@ class AdvancedNetworkNonceManager {
 			}
 		}
 
-		const nextAvailable = this.confirmedNonce !== null && this.pendingNonce !== null ? Math.max(this.confirmedNonce, this.pendingNonce) : null;
+		const nextAvailable =
+			this.confirmedNonce !== null && this.pendingNonce !== null
+				? Math.max(this.confirmedNonce, this.pendingNonce)
+				: null;
 
 		return {
 			confirmed: this.confirmedNonce,
@@ -520,7 +537,9 @@ class AdvancedNetworkNonceManager {
 	 * Handle nonce failure and retry with fresh blockchain sync
 	 */
 	async handleNonceFailure(failedNonce: number, error: string): Promise<{ nonce: number; gasPrice: bigint }> {
-		this.logger.warn(`🔄 Handling nonce failure for ${this.network.displayName}: nonce ${failedNonce}, error: ${error}`);
+		this.logger.warn(
+			`🔄 Handling nonce failure for ${this.network.displayName}: nonce ${failedNonce}, error: ${error}`,
+		);
 
 		// Remove the failed transaction from pending
 		this.pendingTransactions.delete(failedNonce);
@@ -652,7 +671,9 @@ export class EvmNonceCoordinator {
 	async refreshAllNonces(): Promise<void> {
 		this.logger.info("🔄 Refreshing all nonce managers...");
 
-		const refreshPromises = Array.from(this.managers.values()).map((manager) => manager.refreshNonce().catch((error) => this.logger.error("Error refreshing manager:", error as Error)));
+		const refreshPromises = Array.from(this.managers.values()).map((manager) =>
+			manager.refreshNonce().catch((error) => this.logger.error("Error refreshing manager:", error as Error)),
+		);
 
 		await Promise.all(refreshPromises);
 		this.logger.info("✅ All nonce managers refreshed");

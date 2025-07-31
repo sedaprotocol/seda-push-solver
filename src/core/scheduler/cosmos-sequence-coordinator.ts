@@ -100,7 +100,9 @@ export class CosmosSequenceCoordinator {
 				reject,
 			});
 
-			this.logger.info(`🔢 Queued transaction for task ${execution.taskId} (queue size: ${this.executionQueue.length})`);
+			this.logger.info(
+				`🔢 Queued transaction for task ${execution.taskId} (queue size: ${this.executionQueue.length})`,
+			);
 
 			// Start processing if not already running
 			if (!this.isProcessing) {
@@ -142,7 +144,11 @@ export class CosmosSequenceCoordinator {
 	/**
 	 * Execute single transaction with reliable sequence handling
 	 */
-	private async executeWithReliableSequence(execution: SequencedPosting<any>, resolve: (result: PostingResult<any>) => void, reject: (error: Error) => void): Promise<void> {
+	private async executeWithReliableSequence(
+		execution: SequencedPosting<any>,
+		resolve: (result: PostingResult<any>) => void,
+		reject: (error: Error) => void,
+	): Promise<void> {
 		// Atomically allocate sequence number
 		const sequence = await this.sequenceAllocator.atomicAllocateSequence();
 		const startTime = Date.now();
@@ -219,7 +225,9 @@ export class CosmosSequenceCoordinator {
 		this.sequenceAllocator.clearAllocations();
 
 		const allocatorState = this.sequenceAllocator.getState();
-		this.logger.info(`🔧 Comprehensive recovery complete: next=${allocatorState.nextSequence}, confirmed=${allocatorState.confirmedSequence}, pending=${this.pendingManager.getPendingCount()}`);
+		this.logger.info(
+			`🔧 Comprehensive recovery complete: next=${allocatorState.nextSequence}, confirmed=${allocatorState.confirmedSequence}, pending=${this.pendingManager.getPendingCount()}`,
+		);
 	}
 
 	/**
