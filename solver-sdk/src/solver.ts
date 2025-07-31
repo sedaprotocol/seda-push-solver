@@ -1,23 +1,12 @@
 import { EventEmitter } from "node:events";
 import { BatchFetcher } from "./batch-fetcher";
 import { SedaChain, type TransactionMessage } from "./chains/seda/seda-chain";
-import {
-	type SolverConfig,
-	type SolverConfigInternal,
-	createConfig,
-} from "./config";
+import { type SolverConfig, type SolverConfigInternal, createConfig } from "./config";
 import type { Batch } from "./models/batch";
-import {
-	type DataRequest,
-	createDataRequestId,
-	createPostDataRequestArgs,
-} from "./models/data-request";
+import { type DataRequest, createDataRequestId, createPostDataRequestArgs } from "./models/data-request";
 import type { DataResult } from "./models/data-result";
 import { getBatch } from "./services/batch-service";
-import {
-	getDataResult,
-	getDataResultProof,
-} from "./services/data-result-service";
+import { getDataResult, getDataResultProof } from "./services/data-result-service";
 import { processingInterval } from "./services/processing-interval";
 
 type DrError = {
@@ -54,12 +43,7 @@ export class Solver extends EventEmitter<EventMap> {
 		this.batchFetcher = new BatchFetcher(config, sedaChain);
 		this.sedaAddress = sedaChain.signer.getAddress();
 
-		this.batchFetcher.on("fetch-error", (error) =>
-			this.emit(
-				"solver-error",
-				new Error(`Batch could not be fetched: ${error}`),
-			),
-		);
+		this.batchFetcher.on("fetch-error", (error) => this.emit("solver-error", new Error(`Batch could not be fetched: ${error}`)));
 		this.batchFetcher.on("batch", (batch) => this.emit("batch", batch));
 	}
 
@@ -71,9 +55,7 @@ export class Solver extends EventEmitter<EventMap> {
 			throw sedaChain.error;
 		}
 
-		const balance = await sedaChain.value.checkSignerBalance(
-			internalConfig.minimumBalance,
-		);
+		const balance = await sedaChain.value.checkSignerBalance(internalConfig.minimumBalance);
 		if (balance.isErr) {
 			throw balance.error;
 		}
@@ -87,10 +69,7 @@ export class Solver extends EventEmitter<EventMap> {
 	 * @param dataRequest
 	 */
 	watchDataRequestForResult(dataRequest: DataRequest) {
-		this.watchingDataRequests.set(
-			createDataRequestId(dataRequest),
-			dataRequest,
-		);
+		this.watchingDataRequests.set(createDataRequestId(dataRequest), dataRequest);
 	}
 
 	/**
@@ -101,17 +80,8 @@ export class Solver extends EventEmitter<EventMap> {
 	 * @param dataRequestHeight - Optional height to query data request at. Defaults to 0 which means latest height
 	 * @returns A Result containing either an array of hex strings representing the merkle proof, or an Error
 	 */
-	getDataResultProof(
-		dataRequestId: string,
-		targetBatch?: bigint,
-		dataRequestHeight = 0n,
-	) {
-		return getDataResultProof(
-			dataRequestId,
-			dataRequestHeight,
-			this.sedaChain,
-			targetBatch,
-		);
+	getDataResultProof(dataRequestId: string, targetBatch?: bigint, dataRequestHeight = 0n) {
+		return getDataResultProof(dataRequestId, dataRequestHeight, this.sedaChain, targetBatch);
 	}
 
 	/**
@@ -146,11 +116,7 @@ export class Solver extends EventEmitter<EventMap> {
 				this.processingDataRequests.delete(transaction.id);
 
 				if (error.includes("DataRequestAlreadyExists")) {
-					this.emit(
-						"dr-error",
-						{ msg: error, type: "AlreadyExists" },
-						dataRequest,
-					);
+					this.emit("dr-error", { msg: error, type: "AlreadyExists" }, dataRequest);
 				} else {
 					this.emit("dr-error", { msg: error, type: "unknown" }, dataRequest);
 				}
@@ -158,12 +124,7 @@ export class Solver extends EventEmitter<EventMap> {
 				return;
 			}
 
-			this.emit(
-				"solver-error",
-				new Error(
-					`Transaction on SEDA chain could not be posted (${transaction}): ${error}`,
-				),
-			);
+			this.emit("solver-error", new Error(`Transaction on SEDA chain could not be posted (${transaction}): ${error}`));
 		});
 
 		this.sedaChain.on("tx-success", (transaction) => {
@@ -185,12 +146,7 @@ export class Solver extends EventEmitter<EventMap> {
 				const dataResult = await this.getDataResult(drId);
 
 				if (dataResult.isErr) {
-					this.emit(
-						"solver-error",
-						new Error(
-							`Could not get data result for ${drId}: ${dataResult.error}`,
-						),
-					);
+					this.emit("solver-error", new Error(`Could not get data result for ${drId}: ${dataResult.error}`));
 					continue;
 				}
 
@@ -233,7 +189,7 @@ export class Solver extends EventEmitter<EventMap> {
 	 */
 	async shutdown(): Promise<void> {
 		this.stop();
-		
+
 		// Remove all event listeners
 		this.removeAllListeners();
 		this.sedaChain.removeAllListeners();
@@ -252,10 +208,7 @@ export class Solver extends EventEmitter<EventMap> {
 			const drId = createDataRequestId(dr);
 
 			// This data request was already submitted
-			if (
-				this.processingDataRequests.has(drId) ||
-				this.watchingDataRequests.has(drId)
-			) {
+			if (this.processingDataRequests.has(drId) || this.watchingDataRequests.has(drId)) {
 				continue;
 			}
 

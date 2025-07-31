@@ -11,10 +11,7 @@ import type { Maybe, Result } from "true-myth";
  * @returns The unwrapped value of type T
  * @throws Error if the input cannot be unwrapped
  */
-export function unwrap<T, E = unknown>(
-	input: Maybe<T> | Result<T, E>,
-	message?: string | Error,
-): T {
+export function unwrap<T, E = unknown>(input: Maybe<T> | Result<T, E>, message?: string | Error): T {
 	return input.unwrapOrElse((error?: unknown) => {
 		if (message) {
 			if (message instanceof Error) {

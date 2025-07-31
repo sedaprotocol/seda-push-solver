@@ -15,10 +15,7 @@ export interface DataResult {
 	sedaPayload: Buffer;
 }
 
-export function convertSedaChainDataResultToDataResult(
-	dataResult: sedachain.batching.v1.DataResult,
-	batchAssignment: bigint,
-): DataResult {
+export function convertSedaChainDataResultToDataResult(dataResult: sedachain.batching.v1.DataResult, batchAssignment: bigint): DataResult {
 	const result: DataResult = {
 		id: dataResult.id,
 		blockHeight: dataResult.blockHeight,

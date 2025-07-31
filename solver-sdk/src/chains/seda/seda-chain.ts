@@ -1,8 +1,5 @@
 import { EventEmitter } from "node:events";
-import type {
-	JsonObject,
-	SigningCosmWasmClient,
-} from "@cosmjs/cosmwasm-stargate";
+import type { JsonObject, SigningCosmWasmClient } from "@cosmjs/cosmwasm-stargate";
 import type { EncodeObject } from "@cosmjs/proto-signing";
 import type { ProtobufRpcClient } from "@cosmjs/stargate";
 import { StargateClient } from "@cosmjs/stargate";
@@ -61,15 +58,8 @@ export class SedaChain extends EventEmitter<EventMap> {
 		}
 	}
 
-	async queryContractSmart<T = unknown>(
-		queryMsg: JsonObject,
-	): Promise<Result<T, Error>> {
-		return tryAsync<T>(() =>
-			this.signerClient.queryContractSmart(
-				this.getCoreContractAddress(),
-				queryMsg,
-			),
-		);
+	async queryContractSmart<T = unknown>(queryMsg: JsonObject): Promise<Result<T, Error>> {
+		return tryAsync<T>(() => this.signerClient.queryContractSmart(this.getCoreContractAddress(), queryMsg));
 	}
 
 	/**
@@ -78,9 +68,7 @@ export class SedaChain extends EventEmitter<EventMap> {
 	 * @returns Result containing the balance if sufficient, or an error if insufficient
 	 */
 	async checkSignerBalance(minimumBalance: bigint) {
-		const response = await tryAsync(() =>
-			this.stargateClient.getBalance(this.signer.getAddress(), "aseda"),
-		);
+		const response = await tryAsync(() => this.stargateClient.getBalance(this.signer.getAddress(), "aseda"));
 
 		if (response.isErr) {
 			return Result.err(response.error);
@@ -90,18 +78,11 @@ export class SedaChain extends EventEmitter<EventMap> {
 		if (balance > minimumBalance) {
 			return Result.ok(response.value);
 		}
-		return Result.err(
-			new Error(
-				`Signer has insufficient balance: Want ${minimumBalance}aseda, got ${balance}aseda`,
-			),
-		);
+		return Result.err(new Error(`Signer has insufficient balance: Want ${minimumBalance}aseda, got ${balance}aseda`));
 	}
 
 	async processQueue() {
-		const txMessages = this.transactionQueue.splice(
-			0,
-			MAX_MESSAGES_PER_TRANSACTION,
-		);
+		const txMessages = this.transactionQueue.splice(0, MAX_MESSAGES_PER_TRANSACTION);
 
 		// No need to send empty transactions
 		if (txMessages.length === 0) {
@@ -109,17 +90,10 @@ export class SedaChain extends EventEmitter<EventMap> {
 		}
 
 		const cosmosMessages = txMessages.map((msg) => msg.message);
-		const result = await signAndSendTx(
-			this.signerClient,
-			this.signer.getAddress(),
-			cosmosMessages,
-		);
+		const result = await signAndSendTx(this.signerClient, this.signer.getAddress(), cosmosMessages);
 
 		if (result.isErr) {
-			const error =
-				result.error instanceof Error
-					? result.error.message
-					: `${result.error}`;
+			const error = result.error instanceof Error ? result.error.message : `${result.error}`;
 
 			const messageIndexRegex = new RegExp(/message index: (\d+)/gm);
 			const capturedGroup = Maybe.of(messageIndexRegex.exec(error));
@@ -155,10 +129,7 @@ export class SedaChain extends EventEmitter<EventMap> {
 
 			// Either process the queue when we have too many messages in the queue or
 			// we haven't processed the queue in a while
-			if (
-				this.transactionQueue.length >= MAX_MESSAGES_PER_TRANSACTION ||
-				timeBetweenLastInterval >= TIME_BETWEEN_PROCESSING_QUEUE
-			) {
+			if (this.transactionQueue.length >= MAX_MESSAGES_PER_TRANSACTION || timeBetweenLastInterval >= TIME_BETWEEN_PROCESSING_QUEUE) {
 				lastInterval = now;
 				await this.processQueue();
 			}
@@ -173,9 +144,7 @@ export class SedaChain extends EventEmitter<EventMap> {
 		this.transactionQueue = [];
 	}
 
-	static async fromConfig(
-		config: SolverConfigInternal,
-	): Promise<Result<SedaChain, unknown>> {
+	static async fromConfig(config: SolverConfigInternal): Promise<Result<SedaChain, unknown>> {
 		const signer = await Signer.fromConfig(config);
 		const signingClient = await createSigningClient(signer);
 		const protoClient = await createProtoQueryClient(config.rpc);
@@ -185,13 +154,6 @@ export class SedaChain extends EventEmitter<EventMap> {
 			return Result.err(signingClient.error);
 		}
 
-		return Result.ok(
-			new SedaChain(
-				signer,
-				signingClient.value.client,
-				protoClient,
-				stargateClient,
-			),
-		);
+		return Result.ok(new SedaChain(signer, signingClient.value.client, protoClient, stargateClient));
 	}
 }

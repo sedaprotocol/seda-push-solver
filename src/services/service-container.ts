@@ -3,31 +3,31 @@
  * Simplified service management without over-engineering
  */
 
-import { SEDAService, ConfigService, LoggingService } from './index';
+import { ConfigService, LoggingService, SEDAService } from "./index";
 
 /**
  * Simple service container with concrete implementations
  */
 export class ServiceContainer {
-  public readonly sedaService: SEDAService;
-  public readonly configService: ConfigService;
-  public readonly loggingService: LoggingService;
+	public readonly sedaService: SEDAService;
+	public readonly configService: ConfigService;
+	public readonly loggingService: LoggingService;
 
-  constructor() {
-    this.loggingService = new LoggingService();
-    this.configService = new ConfigService();
-    this.sedaService = new SEDAService();
-  }
+	constructor() {
+		this.loggingService = new LoggingService();
+		this.configService = new ConfigService();
+		this.sedaService = new SEDAService();
+	}
 
-  /**
-   * Create a production service container
-   */
-  static createProduction(): ServiceContainer {
-    return new ServiceContainer();
-  }
+	/**
+	 * Create a production service container
+	 */
+	static createProduction(): ServiceContainer {
+		return new ServiceContainer();
+	}
 }
 
 /**
  * Default service instances for simple access
  */
-export const DEFAULT_SERVICES = ServiceContainer.createProduction(); 
+export const DEFAULT_SERVICES = ServiceContainer.createProduction();

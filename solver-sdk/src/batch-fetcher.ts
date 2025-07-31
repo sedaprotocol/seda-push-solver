@@ -29,29 +29,20 @@ export class BatchFetcher extends EventEmitter<EventMap> {
 		if (this.config.startingBatch === "latest") {
 			const latestBatch = await getLatestBatch(this.sedaChain);
 			if (latestBatch.isErr) {
-				throw new Error(
-					`Could not boot, latest batch is not available: ${latestBatch.error.message}`,
-				);
+				throw new Error(`Could not boot, latest batch is not available: ${latestBatch.error.message}`);
 			}
 
 			this.currentBatch = Maybe.just(latestBatch.value);
 			this.emit("batch", latestBatch.value);
 		} else {
-			const startingBatch = await getBatch(
-				this.config.startingBatch,
-				this.sedaChain,
-			);
+			const startingBatch = await getBatch(this.config.startingBatch, this.sedaChain);
 
 			if (startingBatch.isErr) {
-				throw new Error(
-					`Could not boot, starting batch is not available: ${startingBatch.error.message}`,
-				);
+				throw new Error(`Could not boot, starting batch is not available: ${startingBatch.error.message}`);
 			}
 
 			if (startingBatch.value.isNothing) {
-				throw new Error(
-					`Could not boot, starting batch #${this.config.startingBatch} does not exist (yet)`,
-				);
+				throw new Error(`Could not boot, starting batch #${this.config.startingBatch} does not exist (yet)`);
 			}
 
 			this.currentBatch = Maybe.just(startingBatch.value.value);

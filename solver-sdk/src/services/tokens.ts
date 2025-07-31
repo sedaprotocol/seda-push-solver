@@ -22,11 +22,7 @@ Big.NE = -1_000_000;
  * @param dp Number of decimal places to show in the formatted output
  * @returns The formatted token amount
  */
-export function formatTokenUnits(
-	amount: string | bigint | number,
-	decimals = 18,
-	dp = 2,
-): string {
+export function formatTokenUnits(amount: string | bigint | number, decimals = 18, dp = 2): string {
 	const denominator = new Big(10).pow(decimals);
 	return new Big(amount.toString()).div(denominator).toFixed(dp);
 }

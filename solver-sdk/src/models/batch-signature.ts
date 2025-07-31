@@ -17,9 +17,7 @@ export class Secp256k1Signature {
 	 * @returns {Buffer} The Ethereum formatted signature
 	 */
 	getEthereumSignature(): Buffer {
-		const extendedSignature = ExtendedSecp256k1Signature.fromFixedLength(
-			this.signature,
-		);
+		const extendedSignature = ExtendedSecp256k1Signature.fromFixedLength(this.signature);
 		// According to the Ethereum spec. (Legacy)
 		const recoveryId = Buffer.from([extendedSignature.recovery + 27]);
 

@@ -4,15 +4,13 @@
  */
 
 // Core application types
-export * from './core';
+export * from "./core";
 
 // SEDA network types
-export * from './seda';
+export * from "./seda";
 
 // EVM network types
-export * from './evm';
+export * from "./evm";
 
 // Batch operation types
-export * from './batch-types';
-
- 
+export * from "./batch-types";

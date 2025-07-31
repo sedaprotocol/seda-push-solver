@@ -1,8 +1,7 @@
 import type { sedachain } from "@seda-protocol/proto-messages";
 import type { Secp256k1Signature } from "./batch-signature";
 
-export interface BatchParams
-	extends Omit<sedachain.batching.v1.Batch, "batchId"> {
+export interface BatchParams extends Omit<sedachain.batching.v1.Batch, "batchId"> {
 	batchId: string;
 }
 
@@ -49,9 +48,7 @@ export class UnsignedBatch {
 	}
 }
 
-export function convertSedaChainBatchToUnsignedBatch(
-	batch: sedachain.batching.v1.Batch,
-): UnsignedBatch {
+export function convertSedaChainBatchToUnsignedBatch(batch: sedachain.batching.v1.Batch): UnsignedBatch {
 	return new UnsignedBatch({
 		...batch,
 		batchId: Buffer.from(batch.batchId).toString("hex"),

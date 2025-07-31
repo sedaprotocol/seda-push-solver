@@ -1,7 +1,4 @@
-import {
-	DirectSecp256k1HdWallet,
-	type OfflineSigner,
-} from "@cosmjs/proto-signing";
+import { DirectSecp256k1HdWallet, type OfflineSigner } from "@cosmjs/proto-signing";
 import { tryAsync } from "@seda-protocol/utils";
 import type { SolverConfigInternal } from "../../config";
 import { AUTO_CORE_CONTRACT_VALUE } from "../../constants";
@@ -71,14 +68,10 @@ async function resolveCoreContractAddress(config: SolverConfigInternal) {
 
 	const queryClient = await createWasmQueryClient(config.rpc);
 
-	const response = await tryAsync(async () =>
-		queryClient.CoreContractRegistry({}),
-	);
+	const response = await tryAsync(async () => queryClient.CoreContractRegistry({}));
 
 	if (response.isErr) {
-		throw Error(
-			"No core contract set on chain. Please provide a coreContractAddress address manually.",
-		);
+		throw Error("No core contract set on chain. Please provide a coreContractAddress address manually.");
 	}
 
 	return response.value.address;

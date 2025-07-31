@@ -35,9 +35,7 @@ export interface PostDataRequestArgs {
 	memo: string;
 }
 
-export function createPostDataRequestArgs(
-	dr: DataRequest,
-): PostDataRequestArgs {
+export function createPostDataRequestArgs(dr: DataRequest): PostDataRequestArgs {
 	return {
 		exec_program_id: dr.execProgramId,
 		replication_factor: dr.replicationFactor,
